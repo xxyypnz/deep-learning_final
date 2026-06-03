@@ -6,8 +6,8 @@ from pathlib import Path
 
 TOOLKIT_DIR = Path(__file__).resolve().parents[1]
 CHAT_ECNU_BASE_URL = "https://chat.ecnu.edu.cn/open/api/v1"
-CHAT_ECNU_DEFAULT_MODEL = "ecnu-plus" # 或"ecnu-max"
-CHAT_ECNU_DEFAULT_API_KEY = "" # 请替换为你的实际API Key, 或export CHAT_ECNU_API_KEY="你的API Key"
+CHAT_ECNU_DEFAULT_MODEL = "ecnu-max" # 或"ecnu-max"
+CHAT_ECNU_DEFAULT_API_KEY = "sk-75e55c99c4464b159baf021b14e1cf1f" # 请替换为你的实际API Key, 或export CHAT_ECNU_API_KEY="你的API Key"
 
 
 def default_test_file():

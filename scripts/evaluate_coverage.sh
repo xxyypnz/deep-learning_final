@@ -39,7 +39,8 @@ EVAL_RESULT_PATH="${EVAL_RESULT_PATH:-${TOOLKIT_DIR}/outputs/eval_result.json}"
 EVAL_SCRIPT="${EVAL_SCRIPT:-${SCRIPT_DIR}/evaluate.py}"
 # ---- v5: Branch Coverage ----
 ENABLE_BRANCH_COVERAGE="${ENABLE_BRANCH_COVERAGE:-1}"
-LCOV_IGNORE_ERRORS="${LCOV_IGNORE_ERRORS:-gcov,unsupported,inconsistent,range}"
+LCOV_IGNORE_ERRORS="${LCOV_IGNORE_ERRORS:-gcov,unsupported,mismatch}"
+GENHTML_IGNORE_ERRORS="${GENHTML_IGNORE_ERRORS:-unsupported,mismatch,unmapped}"
 
 usage() {
     cat <<EOF
@@ -213,6 +214,7 @@ log "=== Step 3: 初始化数据库 ==="
 
 MY_TEST_DATA="${WORKSPACE_DIR}/data"
 initdb -D "$MY_TEST_DATA"
+echo "listen_addresses = ''" >> "$MY_TEST_DATA/postgresql.conf"
 
 # ================= Step 4: 启动 postgres =================
 log "=== Step 4: 启动 PostgreSQL ==="
@@ -348,7 +350,7 @@ lcov $LCOV_OPTS \
     --output-file "$WORKSPACE_DIR/coverage_filtered.info"
 
 genhtml $GENHTML_OPTS \
-    --ignore-errors "$LCOV_IGNORE_ERRORS" \
+    --ignore-errors "$GENHTML_IGNORE_ERRORS" \
     "$WORKSPACE_DIR/coverage_filtered.info" \
     --output-directory "$REPORT_DIR"
 

@@ -1,0 +1,240 @@
+2026-06-03 15:07:45.336 UTC [115078] LOG:  starting PostgreSQL 13.23 on x86_64-pc-linux-gnu, compiled by gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0, 64-bit
+2026-06-03 15:07:45.338 UTC [115078] LOG:  listening on Unix socket "/tmp/pgcov-55432/.s.PGSQL.55432"
+2026-06-03 15:07:45.361 UTC [115079] LOG:  database system was shut down at 2026-06-03 15:07:44 UTC
+2026-06-03 15:07:45.428 UTC [115078] LOG:  database system is ready to accept connections
+2026-06-03 15:07:49.111 UTC [115153] ERROR:  cannot use non-unique index "test_idx" as replica identity
+2026-06-03 15:07:49.111 UTC [115153] STATEMENT:  ALTER TABLE test_replica_invalid REPLICA IDENTITY USING INDEX test_idx;
+2026-06-03 15:07:49.121 UTC [115153] ERROR:  cannot use non-unique index "test_idx2" as replica identity
+2026-06-03 15:07:49.121 UTC [115153] STATEMENT:  ALTER TABLE test_replica_invalid2 REPLICA IDENTITY USING INDEX test_idx2;
+2026-06-03 15:07:49.139 UTC [115153] ERROR:  cannot use non-unique index "idx_a" as replica identity
+2026-06-03 15:07:49.139 UTC [115153] STATEMENT:  ALTER TABLE test_multi_replica REPLICA IDENTITY USING INDEX idx_a;
+2026-06-03 15:07:49.139 UTC [115153] ERROR:  cannot use non-unique index "idx_b" as replica identity
+2026-06-03 15:07:49.139 UTC [115153] STATEMENT:  ALTER TABLE test_multi_replica REPLICA IDENTITY USING INDEX idx_b;
+2026-06-03 15:07:49.430 UTC [115153] ERROR:  cannot use generated column "val2" in column generation expression at character 162
+2026-06-03 15:07:49.430 UTC [115153] DETAIL:  A generated column cannot reference another generated column.
+2026-06-03 15:07:49.430 UTC [115153] STATEMENT:  CREATE TABLE test_gen_multi (
+	    id INT PRIMARY KEY,
+	    val1 INT,
+	    val2 INT GENERATED ALWAYS AS (val1 * 3) STORED,
+	    val3 INT GENERATED ALWAYS AS (val1 + val2) STORED
+	);
+2026-06-03 15:07:49.435 UTC [115153] ERROR:  relation "test_gen_multi" does not exist
+2026-06-03 15:07:49.435 UTC [115153] STATEMENT:  CREATE TRIGGER test_multi_trig BEFORE UPDATE ON test_gen_multi FOR EACH ROW EXECUTE FUNCTION test_multi_trigger();
+2026-06-03 15:07:49.435 UTC [115153] ERROR:  relation "test_gen_multi" does not exist at character 13
+2026-06-03 15:07:49.435 UTC [115153] STATEMENT:  INSERT INTO test_gen_multi VALUES (1, 5);
+2026-06-03 15:07:49.435 UTC [115153] ERROR:  relation "test_gen_multi" does not exist at character 8
+2026-06-03 15:07:49.435 UTC [115153] STATEMENT:  UPDATE test_gen_multi SET val1 = 7 WHERE id = 1;
+2026-06-03 15:07:49.666 UTC [115153] ERROR:  unrecognized configuration parameter "enable_memoize"
+2026-06-03 15:07:49.666 UTC [115153] STATEMENT:  SET enable_memoize = on;
+2026-06-03 15:07:49.678 UTC [115153] ERROR:  unrecognized configuration parameter "enable_memoize"
+2026-06-03 15:07:49.678 UTC [115153] STATEMENT:  RESET enable_memoize;
+2026-06-03 15:07:49.697 UTC [115153] ERROR:  unrecognized configuration parameter "enable_memoize"
+2026-06-03 15:07:49.697 UTC [115153] STATEMENT:  SET enable_memoize = on;
+2026-06-03 15:07:49.709 UTC [115153] ERROR:  unrecognized configuration parameter "enable_memoize"
+2026-06-03 15:07:49.709 UTC [115153] STATEMENT:  RESET enable_memoize;
+2026-06-03 15:07:49.731 UTC [115153] ERROR:  unrecognized configuration parameter "enable_memoize"
+2026-06-03 15:07:49.731 UTC [115153] STATEMENT:  SET enable_memoize = on;
+2026-06-03 15:07:49.744 UTC [115153] ERROR:  unrecognized configuration parameter "enable_memoize"
+2026-06-03 15:07:49.744 UTC [115153] STATEMENT:  RESET enable_memoize;
+2026-06-03 15:07:49.830 UTC [115153] WARNING:  there is already a transaction in progress
+2026-06-03 15:07:49.848 UTC [115153] WARNING:  there is already a transaction in progress
+2026-06-03 15:07:49.849 UTC [115153] WARNING:  there is already a transaction in progress
+2026-06-03 15:07:49.876 UTC [115153] WARNING:  there is already a transaction in progress
+2026-06-03 15:07:49.895 UTC [115153] WARNING:  skipping "test_vacuum_perm" --- only table or database owner can vacuum it
+2026-06-03 15:07:49.901 UTC [115153] WARNING:  skipping "test_analyze_perm" --- only table or database owner can analyze it
+2026-06-03 15:07:49.906 UTC [115153] WARNING:  skipping "test_vacuum_analyze_perm" --- only table or database owner can vacuum it
+2026-06-03 15:07:50.313 UTC [115153] WARNING:  wal_level is insufficient to publish logical changes
+2026-06-03 15:07:50.313 UTC [115153] HINT:  Set wal_level to logical before creating subscriptions.
+2026-06-03 15:07:50.316 UTC [115153] ERROR:  could not connect to the publisher: could not connect to server: No such file or directory
+		Is the server running locally and accepting
+		connections on Unix domain socket "/tmp/.s.PGSQL.5432"?
+2026-06-03 15:07:50.316 UTC [115153] STATEMENT:  CREATE SUBSCRIPTION test_sub1 CONNECTION 'dbname=postgres' PUBLICATION test_pub1;
+2026-06-03 15:07:50.316 UTC [115153] ERROR:  logical decoding requires wal_level >= logical
+2026-06-03 15:07:50.316 UTC [115153] STATEMENT:  SELECT pg_create_logical_replication_slot('test_slot', 'pgoutput');
+2026-06-03 15:07:50.317 UTC [115153] ERROR:  division by zero
+2026-06-03 15:07:50.317 UTC [115153] CONTEXT:  SQL statement "SELECT 1/0"
+	PL/pgSQL function inline_code_block line 1 at PERFORM
+2026-06-03 15:07:50.317 UTC [115153] STATEMENT:  DO $$ BEGIN PERFORM 1/0; END; $$ LANGUAGE plpgsql;
+2026-06-03 15:07:50.319 UTC [115153] ERROR:  logical decoding requires wal_level >= logical
+2026-06-03 15:07:50.319 UTC [115153] STATEMENT:  SELECT * FROM pg_create_logical_replication_slot('test_slot2', 'pgoutput');
+2026-06-03 15:07:50.322 UTC [115153] ERROR:  test
+2026-06-03 15:07:50.322 UTC [115153] CONTEXT:  PL/pgSQL function inline_code_block line 1 at RAISE
+2026-06-03 15:07:50.322 UTC [115153] STATEMENT:  DO $$ BEGIN RAISE EXCEPTION 'test'; END; $$ LANGUAGE plpgsql;
+2026-06-03 15:07:50.332 UTC [115153] ERROR:  division by zero
+2026-06-03 15:07:50.332 UTC [115153] STATEMENT:  SELECT 1/0;
+2026-06-03 15:07:50.335 UTC [115153] ERROR:  replication slot "test_slot" does not exist
+2026-06-03 15:07:50.335 UTC [115153] STATEMENT:  SELECT pg_drop_replication_slot('test_slot');
+2026-06-03 15:07:50.336 UTC [115153] ERROR:  replication slot "test_slot2" does not exist
+2026-06-03 15:07:50.336 UTC [115153] STATEMENT:  SELECT pg_drop_replication_slot('test_slot2');
+2026-06-03 15:07:50.340 UTC [115153] WARNING:  wal_level is insufficient to publish logical changes
+2026-06-03 15:07:50.340 UTC [115153] HINT:  Set wal_level to logical before creating subscriptions.
+2026-06-03 15:07:50.341 UTC [115153] ERROR:  could not connect to the publisher: could not connect to server: No such file or directory
+		Is the server running locally and accepting
+		connections on Unix domain socket "/tmp/.s.PGSQL.5432"?
+2026-06-03 15:07:50.341 UTC [115153] STATEMENT:  CREATE SUBSCRIPTION test_sub2 CONNECTION 'dbname=postgres' PUBLICATION test_pub2;
+2026-06-03 15:07:50.341 UTC [115153] ERROR:  logical decoding requires wal_level >= logical
+2026-06-03 15:07:50.341 UTC [115153] STATEMENT:  SELECT pg_create_logical_replication_slot('test_slot3', 'pgoutput');
+2026-06-03 15:07:50.346 UTC [115153] ERROR:  replication slot "test_slot3" does not exist
+2026-06-03 15:07:50.346 UTC [115153] STATEMENT:  SELECT pg_drop_replication_slot('test_slot3');
+2026-06-03 15:07:50.350 UTC [115153] WARNING:  wal_level is insufficient to publish logical changes
+2026-06-03 15:07:50.350 UTC [115153] HINT:  Set wal_level to logical before creating subscriptions.
+2026-06-03 15:07:50.350 UTC [115153] ERROR:  could not connect to the publisher: could not connect to server: No such file or directory
+		Is the server running locally and accepting
+		connections on Unix domain socket "/tmp/.s.PGSQL.5432"?
+2026-06-03 15:07:50.350 UTC [115153] STATEMENT:  CREATE SUBSCRIPTION test_sub3 CONNECTION 'dbname=postgres' PUBLICATION test_pub3;
+2026-06-03 15:07:50.351 UTC [115153] ERROR:  logical decoding requires wal_level >= logical
+2026-06-03 15:07:50.351 UTC [115153] STATEMENT:  SELECT pg_create_logical_replication_slot('test_slot4', 'pgoutput');
+2026-06-03 15:07:50.351 UTC [115153] ERROR:  test
+2026-06-03 15:07:50.351 UTC [115153] CONTEXT:  PL/pgSQL function inline_code_block line 1 at RAISE
+2026-06-03 15:07:50.351 UTC [115153] STATEMENT:  DO $$ BEGIN RAISE EXCEPTION 'test'; END; $$ LANGUAGE plpgsql;
+2026-06-03 15:07:50.351 UTC [115153] ERROR:  test
+2026-06-03 15:07:50.351 UTC [115153] CONTEXT:  PL/pgSQL function inline_code_block line 1 at RAISE
+2026-06-03 15:07:50.351 UTC [115153] STATEMENT:  DO $$ BEGIN RAISE EXCEPTION 'test'; END; $$ LANGUAGE plpgsql;
+2026-06-03 15:07:50.351 UTC [115153] ERROR:  test
+2026-06-03 15:07:50.351 UTC [115153] CONTEXT:  PL/pgSQL function inline_code_block line 1 at RAISE
+2026-06-03 15:07:50.351 UTC [115153] STATEMENT:  DO $$ BEGIN RAISE EXCEPTION 'test'; END; $$ LANGUAGE plpgsql;
+2026-06-03 15:07:50.351 UTC [115153] ERROR:  test
+2026-06-03 15:07:50.351 UTC [115153] CONTEXT:  PL/pgSQL function inline_code_block line 1 at RAISE
+2026-06-03 15:07:50.351 UTC [115153] STATEMENT:  DO $$ BEGIN RAISE EXCEPTION 'test'; END; $$ LANGUAGE plpgsql;
+2026-06-03 15:07:50.353 UTC [115153] ERROR:  replication slot "test_slot4" does not exist
+2026-06-03 15:07:50.353 UTC [115153] STATEMENT:  SELECT pg_drop_replication_slot('test_slot4');
+2026-06-03 15:07:50.368 UTC [115153] ERROR:  column "id" in child table must be marked NOT NULL
+2026-06-03 15:07:50.368 UTC [115153] STATEMENT:  ALTER TABLE part_parent ATTACH PARTITION child_tbl FOR VALUES FROM (1) TO (2);
+2026-06-03 15:07:50.382 UTC [115153] ERROR:  column "id" in child table must be marked NOT NULL
+2026-06-03 15:07:50.382 UTC [115153] STATEMENT:  ALTER TABLE part_ref ATTACH PARTITION ref_child FOR VALUES FROM (1) TO (2);
+2026-06-03 15:07:50.400 UTC [115153] ERROR:  duplicate key value violates unique constraint "detach_child_pkey"
+2026-06-03 15:07:50.400 UTC [115153] DETAIL:  Key (id)=(1) already exists.
+2026-06-03 15:07:50.400 UTC [115153] STATEMENT:  INSERT INTO detach_child VALUES (1);
+2026-06-03 15:07:50.400 UTC [115153] ERROR:  removing partition "detach_child" violates foreign key constraint "detach_child_id_fkey"
+2026-06-03 15:07:50.400 UTC [115153] DETAIL:  Key (id)=(1) is still referenced from table "detach_child".
+2026-06-03 15:07:50.400 UTC [115153] STATEMENT:  ALTER TABLE detach_parent DETACH PARTITION detach_child;
+2026-06-03 15:07:50.404 UTC [115153] ERROR:  non-view rule for "test_t1" must not be named "_RETURN"
+2026-06-03 15:07:50.404 UTC [115153] STATEMENT:  CREATE OR REPLACE RULE "_RETURN" AS ON INSERT TO test_t1 DO INSTEAD NOTHING;
+2026-06-03 15:07:50.410 UTC [115153] ERROR:  non-view rule for "test_v2" must not be named "_RETURN"
+2026-06-03 15:07:50.410 UTC [115153] STATEMENT:  CREATE OR REPLACE RULE "_RETURN" AS ON INSERT TO test_v2 DO INSTEAD NOTHING;
+2026-06-03 15:07:50.420 UTC [115153] ERROR:  syntax error at or near "SEARCH" at character 130
+2026-06-03 15:07:50.420 UTC [115153] STATEMENT:  WITH RECURSIVE cte AS (
+	    SELECT 1 AS val, id FROM test_bf_const
+	    UNION ALL
+	    SELECT val + 1, id FROM cte WHERE val < 3
+	)
+	SEARCH BREADTH FIRST BY val SET order_col
+	SELECT * FROM cte ORDER BY order_col;
+2026-06-03 15:07:50.423 UTC [115153] ERROR:  syntax error at or near "SEARCH" at character 130
+2026-06-03 15:07:50.423 UTC [115153] STATEMENT:  WITH RECURSIVE cte AS (
+	    SELECT 1 AS val, id FROM test_df_const
+	    UNION ALL
+	    SELECT val + 1, id FROM cte WHERE val < 3
+	)
+	SEARCH DEPTH FIRST BY val SET order_col
+	SELECT * FROM cte ORDER BY order_col;
+2026-06-03 15:07:50.427 UTC [115153] ERROR:  syntax error at or near "CYCLE" at character 133
+2026-06-03 15:07:50.427 UTC [115153] STATEMENT:  WITH RECURSIVE cte AS (
+	    SELECT 1 AS val, id FROM test_cycle_const
+	    UNION ALL
+	    SELECT val + 1, id FROM cte WHERE val < 3
+	)
+	CYCLE val SET is_cycle USING path
+	SELECT * FROM cte ORDER BY val;
+2026-06-03 15:07:50.488 UTC [115153] ERROR:  no partition of relation "test_part_multi" found for row
+2026-06-03 15:07:50.488 UTC [115153] DETAIL:  Partition key of the failing row contains (id) = (100).
+2026-06-03 15:07:50.488 UTC [115153] STATEMENT:  INSERT INTO test_part_multi (id, ref_id) VALUES (100, NULL);
+2026-06-03 15:07:50.489 UTC [115153] ERROR:  no partition of relation "test_part_multi" found for row
+2026-06-03 15:07:50.489 UTC [115153] DETAIL:  Partition key of the failing row contains (id) = (200).
+2026-06-03 15:07:50.489 UTC [115153] STATEMENT:  INSERT INTO test_part_multi (id, ref_id) VALUES (200, 100);
+2026-06-03 15:07:50.642 UTC [115153] ERROR:  no partition of relation "test_part_multi" found for row
+2026-06-03 15:07:50.642 UTC [115153] DETAIL:  Partition key of the failing row contains (id) = (100).
+2026-06-03 15:07:50.642 UTC [115153] CONTEXT:  COPY test_part_multi, line 1: "100"
+2026-06-03 15:07:50.642 UTC [115153] STATEMENT:  COPY test_part_multi FROM STDIN WITH (FORMAT CSV);
+2026-06-03 15:07:50.820 UTC [115153] ERROR:  relation "test_idx" already exists
+2026-06-03 15:07:50.820 UTC [115153] STATEMENT:  CREATE INDEX test_idx ON test_part_t3_p2 (a);
+2026-06-03 15:07:50.820 UTC [115153] ERROR:  relation "test_idx" already exists
+2026-06-03 15:07:50.820 UTC [115153] STATEMENT:  CREATE INDEX test_idx ON test_part_t3 (a);
+2026-06-03 15:07:50.848 UTC [115153] ERROR:  32 kB is outside the valid range for parameter "work_mem" (64 .. 2147483647)
+2026-06-03 15:07:50.848 UTC [115153] STATEMENT:  SET work_mem = '32kB';
+2026-06-03 15:07:50.922 UTC [115153] ERROR:  check constraint "ck_invalid" of relation "test_check_invalid" is violated by some row
+2026-06-03 15:07:50.922 UTC [115153] STATEMENT:  ALTER TABLE test_check_invalid VALIDATE CONSTRAINT ck_invalid;
+2026-06-03 15:07:51.036 UTC [115153] ERROR:  column "id" specified more than once
+2026-06-03 15:07:51.036 UTC [115153] STATEMENT:  CREATE VIEW test_v1 AS SELECT * FROM test_t1 JOIN test_t2 ON test_t1.id = test_t2.id;
+2026-06-03 15:07:51.036 UTC [115153] ERROR:  relation "test_v1" does not exist at character 15
+2026-06-03 15:07:51.036 UTC [115153] STATEMENT:  SELECT * FROM test_v1 FOR UPDATE OF test_t1;
+2026-06-03 15:07:51.051 UTC [115153] ERROR:  relation "test_t1" in FOR UPDATE clause not found in FROM clause at character 37
+2026-06-03 15:07:51.051 UTC [115153] STATEMENT:  SELECT * FROM test_v2 FOR UPDATE OF test_t1;
+2026-06-03 15:07:51.061 UTC [115153] ERROR:  invalid reference to FROM-clause entry for table "test_t2" at character 85
+2026-06-03 15:07:51.061 UTC [115153] HINT:  Perhaps you meant to reference the table alias "myjoin".
+2026-06-03 15:07:51.061 UTC [115153] STATEMENT:  CREATE VIEW test_v3 AS SELECT * FROM test_t1 JOIN test_t2 AS myjoin ON test_t1.id = test_t2.id;
+2026-06-03 15:07:51.062 UTC [115153] ERROR:  relation "test_v3" does not exist at character 15
+2026-06-03 15:07:51.062 UTC [115153] STATEMENT:  SELECT * FROM test_v3 FOR UPDATE OF myjoin;
+2026-06-03 15:07:51.102 UTC [115153] ERROR:  logical decoding requires wal_level >= logical
+2026-06-03 15:07:51.102 UTC [115153] STATEMENT:  SELECT pg_create_logical_replication_slot('test_slot', 'pgoutput');
+2026-06-03 15:07:51.104 UTC [115153] ERROR:  replication slot "test_slot" does not exist
+2026-06-03 15:07:51.104 UTC [115153] STATEMENT:  SELECT pg_drop_replication_slot('test_slot');
+2026-06-03 15:07:51.112 UTC [115153] ERROR:  logical decoding requires wal_level >= logical
+2026-06-03 15:07:51.112 UTC [115153] STATEMENT:  SELECT pg_create_logical_replication_slot('test_slot2', 'pgoutput');
+2026-06-03 15:07:51.113 UTC [115153] ERROR:  replication slot "test_slot2" does not exist
+2026-06-03 15:07:51.113 UTC [115153] STATEMENT:  SELECT pg_drop_replication_slot('test_slot2');
+2026-06-03 15:07:51.118 UTC [115153] ERROR:  logical decoding requires wal_level >= logical
+2026-06-03 15:07:51.118 UTC [115153] STATEMENT:  SELECT pg_create_logical_replication_slot('test_slot3', 'pgoutput');
+2026-06-03 15:07:51.119 UTC [115153] ERROR:  replication slot "test_slot3" does not exist
+2026-06-03 15:07:51.119 UTC [115153] STATEMENT:  SELECT pg_drop_replication_slot('test_slot3');
+2026-06-03 15:07:51.127 UTC [115153] ERROR:  function pg_xact_status(bigint) does not exist at character 8
+2026-06-03 15:07:51.127 UTC [115153] HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+2026-06-03 15:07:51.127 UTC [115153] STATEMENT:  SELECT pg_xact_status(txid_current()) FROM test_t1 LIMIT 1;
+2026-06-03 15:07:51.151 UTC [115153] ERROR:  function pg_xact_status(bigint) does not exist at character 8
+2026-06-03 15:07:51.151 UTC [115153] HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+2026-06-03 15:07:51.151 UTC [115153] STATEMENT:  SELECT pg_xact_status(txid_current()) AS status;
+2026-06-03 15:07:51.174 UTC [115153] ERROR:  could not open extension control file "/workspaces/deep-learning_final/postgresql-13.23/install_coverage/share/extension/pageinspect.control": No such file or directory
+2026-06-03 15:07:51.174 UTC [115153] STATEMENT:  CREATE EXTENSION IF NOT EXISTS pageinspect;
+2026-06-03 15:07:51.188 UTC [115153] ERROR:  subquery must return only one column at character 24
+2026-06-03 15:07:51.188 UTC [115153] STATEMENT:  SELECT * FROM (VALUES ((SELECT * FROM zero_col_tab))) AS v;
+2026-06-03 15:07:51.312 UTC [115153] ERROR:  column "oid" of relation "test_alter_sys_attr" does not exist
+2026-06-03 15:07:51.312 UTC [115153] STATEMENT:  ALTER TABLE test_alter_sys_attr ALTER COLUMN oid TYPE bigint;
+2026-06-03 15:07:51.325 UTC [115153] ERROR:  column "nonexistent" of relation "test_alter_nonexist" does not exist
+2026-06-03 15:07:51.325 UTC [115153] STATEMENT:  ALTER TABLE test_alter_nonexist ALTER COLUMN nonexistent TYPE text;
+2026-06-03 15:07:51.371 UTC [115153] ERROR:  no partition of relation "test_part_empty" found for row
+2026-06-03 15:07:51.371 UTC [115153] DETAIL:  Partition key of the failing row contains (a) = (1).
+2026-06-03 15:07:51.371 UTC [115153] STATEMENT:  INSERT INTO test_part_empty VALUES (1, 2);
+2026-06-03 15:07:51.380 UTC [115153] ERROR:  could not open extension control file "/workspaces/deep-learning_final/postgresql-13.23/install_coverage/share/extension/pgcrypto.control": No such file or directory
+2026-06-03 15:07:51.380 UTC [115153] STATEMENT:  CREATE EXTENSION IF NOT EXISTS pgcrypto;
+2026-06-03 15:07:51.388 UTC [115153] ERROR:  type "query" does not exist at character 99
+2026-06-03 15:07:51.388 UTC [115153] STATEMENT:  SELECT pg_get_querydef(plan, true) FROM (SELECT (SELECT * FROM test_querydef1 WHERE a = 1)::text::query AS plan) q;
+2026-06-03 15:07:51.405 UTC [115153] ERROR:  type "query" does not exist at character 137
+2026-06-03 15:07:51.405 UTC [115153] STATEMENT:  SELECT pg_get_querydef(plan, false) FROM (SELECT (SELECT * FROM test_pretty_false t1 JOIN test_pretty_false t2 ON t1.id = t2.id)::text::query AS plan) q;
+2026-06-03 15:07:51.439 UTC [115153] ERROR:  cannot drop partitioned index "idx_parent2" concurrently
+2026-06-03 15:07:51.439 UTC [115153] STATEMENT:  DROP INDEX CONCURRENTLY idx_parent2;
+2026-06-03 15:07:51.720 UTC [115153] ERROR:  multiple primary keys for table "test_t3" are not allowed
+2026-06-03 15:07:51.720 UTC [115153] STATEMENT:  ALTER TABLE test_t3 ADD PRIMARY KEY USING INDEX idx_t3;
+2026-06-03 15:07:51.722 UTC [115153] ERROR:  parameter "track_commit_timestamp" cannot be changed without restarting the server
+2026-06-03 15:07:51.722 UTC [115153] STATEMENT:  SET track_commit_timestamp = on;
+2026-06-03 15:07:51.729 UTC [115153] ERROR:  parameter "track_commit_timestamp" cannot be changed without restarting the server
+2026-06-03 15:07:51.729 UTC [115153] STATEMENT:  SET track_commit_timestamp = off;
+2026-06-03 15:07:51.730 UTC [115153] ERROR:  parameter "track_commit_timestamp" cannot be changed without restarting the server
+2026-06-03 15:07:51.730 UTC [115153] STATEMENT:  SET track_commit_timestamp = on;
+2026-06-03 15:07:51.790 UTC [115153] ERROR:  parameter "track_commit_timestamp" cannot be changed without restarting the server
+2026-06-03 15:07:51.790 UTC [115153] STATEMENT:  SET track_commit_timestamp = off;
+2026-06-03 15:07:51.790 UTC [115153] ERROR:  parameter "track_commit_timestamp" cannot be changed without restarting the server
+2026-06-03 15:07:51.790 UTC [115153] STATEMENT:  SET track_commit_timestamp = on;
+2026-06-03 15:07:51.796 UTC [115153] ERROR:  parameter "track_commit_timestamp" cannot be changed without restarting the server
+2026-06-03 15:07:51.796 UTC [115153] STATEMENT:  SET track_commit_timestamp = off;
+2026-06-03 15:07:51.799 UTC [115153] ERROR:  column "a" is of type integer but expression is of type test_insert_row at character 37
+2026-06-03 15:07:51.799 UTC [115153] HINT:  You will need to rewrite or cast the expression.
+2026-06-03 15:07:51.799 UTC [115153] STATEMENT:  INSERT INTO test_insert_row VALUES ((SELECT test_insert_row FROM test_insert_row));
+2026-06-03 15:07:51.877 UTC [115153] ERROR:  cannot alter column "a" because it is part of the partition key of relation "test_partitioned"
+2026-06-03 15:07:51.877 UTC [115153] STATEMENT:  ALTER TABLE test_partitioned ALTER COLUMN a TYPE bigint;
+2026-06-03 15:07:51.924 UTC [115153] ERROR:  cannot alter table "test_regular" because column "test_uses_rowtype2.b" uses its row type
+2026-06-03 15:07:51.924 UTC [115153] STATEMENT:  ALTER TABLE test_regular ALTER COLUMN a TYPE bigint;
+2026-06-03 15:07:51.933 UTC [115153] ERROR:  syntax error at or near "(" at character 48
+2026-06-03 15:07:51.933 UTC [115153] STATEMENT:  CREATE FOREIGN DATA WRAPPER test_fdw VALIDATOR (pg_catalog.postgresql_fdw_validator);
+2026-06-03 15:07:51.933 UTC [115153] ERROR:  foreign-data wrapper "test_fdw" does not exist
+2026-06-03 15:07:51.933 UTC [115153] STATEMENT:  CREATE SERVER test_server FOREIGN DATA WRAPPER test_fdw;
+2026-06-03 15:07:51.935 UTC [115153] ERROR:  server "test_server" does not exist
+2026-06-03 15:07:51.935 UTC [115153] STATEMENT:  CREATE FOREIGN TABLE test_foreign (a int) SERVER test_server;
+2026-06-03 15:07:51.935 UTC [115153] ERROR:  type "test_foreign" does not exist at character 36
+2026-06-03 15:07:51.935 UTC [115153] STATEMENT:  CREATE TABLE test_uses_rowtype3 (b test_foreign);
+2026-06-03 15:07:51.936 UTC [115153] ERROR:  relation "test_foreign" does not exist
+2026-06-03 15:07:51.936 UTC [115153] STATEMENT:  ALTER TABLE test_foreign ALTER COLUMN a TYPE bigint;
+2026-06-03 15:07:52.148 UTC [115078] LOG:  received fast shutdown request
+2026-06-03 15:07:52.156 UTC [115078] LOG:  aborting any active transactions
+2026-06-03 15:07:52.325 UTC [115078] LOG:  background worker "logical replication launcher" (PID 115085) exited with exit code 1
+2026-06-03 15:07:52.327 UTC [115080] LOG:  shutting down
+2026-06-03 15:07:52.630 UTC [115078] LOG:  database system is shut down

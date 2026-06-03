@@ -1,0 +1,227 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - coverage_filtered.info - common/psprintf.c</title>
+  <link rel="stylesheet" type="text/css" href="../gcov.css">
+</head>
+
+<body>
+
+          <table width="100%" border=0 cellspacing=0 cellpadding=0>
+            <tr><td class="title">LCOV - code coverage report</td></tr>
+            <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+
+            <tr>
+              <td width="100%">
+                <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="10%" class="headerValue"><a href="../index.html">top level</a> - <a href="index.html">common</a> - psprintf.c<span style="font-size: 80%;"> (source / <a href="psprintf.c.func-c.html">functions</a>)</span></td>
+            <td width="5%"></td>
+            <td width="5%"></td>
+            <td width="5%" class="headerCovTableHead">Coverage</td>
+            <td width="5%" class="headerCovTableHead" title="Covered + Uncovered code">Total</td>
+            <td width="5%" class="headerCovTableHead" title="Exercised code only">Hit</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">coverage_filtered.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntryLo">74.1&nbsp;%</td>
+            <td class="headerCovTableEntry">27</td>
+            <td class="headerCovTableEntry">20</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test Date:</td>
+            <td class="headerValue">2026-06-03 15:11:46</td>
+            <td></td>
+            <td class="headerItem">Functions:</td>
+            <td class="headerCovTableEntryHi">100.0&nbsp;%</td>
+            <td class="headerCovTableEntry">2</td>
+            <td class="headerCovTableEntry">2</td>
+          </tr>
+                  <tr><td><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+                </table>
+              </td>
+            </tr>
+
+            <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+          </table>
+
+          <table cellpadding=0 cellspacing=0 border=0>
+            <tr>
+              <td><br></td>
+            </tr>
+            <tr>
+              <td>
+<pre class="sourceHeading">            Line data    Source code</pre>
+<pre class="source">
+<span id="L1"><span class="lineNum">       1</span>              : /*-------------------------------------------------------------------------</span>
+<span id="L2"><span class="lineNum">       2</span>              :  *</span>
+<span id="L3"><span class="lineNum">       3</span>              :  * psprintf.c</span>
+<span id="L4"><span class="lineNum">       4</span>              :  *              sprintf into an allocated-on-demand buffer</span>
+<span id="L5"><span class="lineNum">       5</span>              :  *</span>
+<span id="L6"><span class="lineNum">       6</span>              :  *</span>
+<span id="L7"><span class="lineNum">       7</span>              :  * Portions Copyright (c) 1996-2020, PostgreSQL Global Development Group</span>
+<span id="L8"><span class="lineNum">       8</span>              :  * Portions Copyright (c) 1994, Regents of the University of California</span>
+<span id="L9"><span class="lineNum">       9</span>              :  *</span>
+<span id="L10"><span class="lineNum">      10</span>              :  *</span>
+<span id="L11"><span class="lineNum">      11</span>              :  * IDENTIFICATION</span>
+<span id="L12"><span class="lineNum">      12</span>              :  *        src/common/psprintf.c</span>
+<span id="L13"><span class="lineNum">      13</span>              :  *</span>
+<span id="L14"><span class="lineNum">      14</span>              :  *-------------------------------------------------------------------------</span>
+<span id="L15"><span class="lineNum">      15</span>              :  */</span>
+<span id="L16"><span class="lineNum">      16</span>              : </span>
+<span id="L17"><span class="lineNum">      17</span>              : #ifndef FRONTEND</span>
+<span id="L18"><span class="lineNum">      18</span>              : </span>
+<span id="L19"><span class="lineNum">      19</span>              : #include &quot;postgres.h&quot;</span>
+<span id="L20"><span class="lineNum">      20</span>              : </span>
+<span id="L21"><span class="lineNum">      21</span>              : #include &quot;utils/memutils.h&quot;</span>
+<span id="L22"><span class="lineNum">      22</span>              : </span>
+<span id="L23"><span class="lineNum">      23</span>              : #else</span>
+<span id="L24"><span class="lineNum">      24</span>              : </span>
+<span id="L25"><span class="lineNum">      25</span>              : #include &quot;postgres_fe.h&quot;</span>
+<span id="L26"><span class="lineNum">      26</span>              : </span>
+<span id="L27"><span class="lineNum">      27</span>              : /* It's possible we could use a different value for this in frontend code */</span>
+<span id="L28"><span class="lineNum">      28</span>              : #define MaxAllocSize    ((Size) 0x3fffffff) /* 1 gigabyte - 1 */</span>
+<span id="L29"><span class="lineNum">      29</span>              : </span>
+<span id="L30"><span class="lineNum">      30</span>              : #endif</span>
+<span id="L31"><span class="lineNum">      31</span>              : </span>
+<span id="L32"><span class="lineNum">      32</span>              : </span>
+<span id="L33"><span class="lineNum">      33</span>              : /*</span>
+<span id="L34"><span class="lineNum">      34</span>              :  * psprintf</span>
+<span id="L35"><span class="lineNum">      35</span>              :  *</span>
+<span id="L36"><span class="lineNum">      36</span>              :  * Format text data under the control of fmt (an sprintf-style format string)</span>
+<span id="L37"><span class="lineNum">      37</span>              :  * and return it in an allocated-on-demand buffer.  The buffer is allocated</span>
+<span id="L38"><span class="lineNum">      38</span>              :  * with palloc in the backend, or malloc in frontend builds.  Caller is</span>
+<span id="L39"><span class="lineNum">      39</span>              :  * responsible to free the buffer when no longer needed, if appropriate.</span>
+<span id="L40"><span class="lineNum">      40</span>              :  *</span>
+<span id="L41"><span class="lineNum">      41</span>              :  * Errors are not returned to the caller, but are reported via elog(ERROR)</span>
+<span id="L42"><span class="lineNum">      42</span>              :  * in the backend, or printf-to-stderr-and-exit() in frontend builds.</span>
+<span id="L43"><span class="lineNum">      43</span>              :  * One should therefore think twice about using this in libpq.</span>
+<span id="L44"><span class="lineNum">      44</span>              :  */</span>
+<span id="L45"><span class="lineNum">      45</span>              : char *</span>
+<span id="L46"><span class="lineNum">      46</span> <span class="tlaGNC tlaBgGNC">        8480 : psprintf(const char *fmt,...)</span></span>
+<span id="L47"><span class="lineNum">      47</span>              : {</span>
+<span id="L48"><span class="lineNum">      48</span> <span class="tlaGNC">        8480 :         int                     save_errno = errno;</span></span>
+<span id="L49"><span class="lineNum">      49</span> <span class="tlaGNC">        8480 :         size_t          len = 128;              /* initial assumption about buffer size */</span></span>
+<span id="L50"><span class="lineNum">      50</span>              : </span>
+<span id="L51"><span class="lineNum">      51</span>              :         for (;;)</span>
+<span id="L52"><span class="lineNum">      52</span> <span class="tlaGNC">           1 :         {</span></span>
+<span id="L53"><span class="lineNum">      53</span>              :                 char       *result;</span>
+<span id="L54"><span class="lineNum">      54</span>              :                 va_list         args;</span>
+<span id="L55"><span class="lineNum">      55</span>              :                 size_t          newlen;</span>
+<span id="L56"><span class="lineNum">      56</span>              : </span>
+<span id="L57"><span class="lineNum">      57</span>              :                 /*</span>
+<span id="L58"><span class="lineNum">      58</span>              :                  * Allocate result buffer.  Note that in frontend this maps to malloc</span>
+<span id="L59"><span class="lineNum">      59</span>              :                  * with exit-on-error.</span>
+<span id="L60"><span class="lineNum">      60</span>              :                  */</span>
+<span id="L61"><span class="lineNum">      61</span> <span class="tlaGNC">        8481 :                 result = (char *) palloc(len);</span></span>
+<span id="L62"><span class="lineNum">      62</span>              : </span>
+<span id="L63"><span class="lineNum">      63</span>              :                 /* Try to format the data. */</span>
+<span id="L64"><span class="lineNum">      64</span> <span class="tlaGNC">        8481 :                 errno = save_errno;</span></span>
+<span id="L65"><span class="lineNum">      65</span> <span class="tlaGNC">        8481 :                 va_start(args, fmt);</span></span>
+<span id="L66"><span class="lineNum">      66</span> <span class="tlaGNC">        8481 :                 newlen = pvsnprintf(result, len, fmt, args);</span></span>
+<span id="L67"><span class="lineNum">      67</span> <span class="tlaGNC">        8481 :                 va_end(args);</span></span>
+<span id="L68"><span class="lineNum">      68</span>              : </span>
+<span id="L69"><span class="lineNum">      69</span> <span class="tlaGNC">        8481 :                 if (newlen &lt; len)</span></span>
+<span id="L70"><span class="lineNum">      70</span> <span class="tlaGNC">        8480 :                         return result;          /* success */</span></span>
+<span id="L71"><span class="lineNum">      71</span>              : </span>
+<span id="L72"><span class="lineNum">      72</span>              :                 /* Release buffer and loop around to try again with larger len. */</span>
+<span id="L73"><span class="lineNum">      73</span> <span class="tlaGNC">           1 :                 pfree(result);</span></span>
+<span id="L74"><span class="lineNum">      74</span> <span class="tlaGNC">           1 :                 len = newlen;</span></span>
+<span id="L75"><span class="lineNum">      75</span>              :         }</span>
+<span id="L76"><span class="lineNum">      76</span>              : }</span>
+<span id="L77"><span class="lineNum">      77</span>              : </span>
+<span id="L78"><span class="lineNum">      78</span>              : /*</span>
+<span id="L79"><span class="lineNum">      79</span>              :  * pvsnprintf</span>
+<span id="L80"><span class="lineNum">      80</span>              :  *</span>
+<span id="L81"><span class="lineNum">      81</span>              :  * Attempt to format text data under the control of fmt (an sprintf-style</span>
+<span id="L82"><span class="lineNum">      82</span>              :  * format string) and insert it into buf (which has length len).</span>
+<span id="L83"><span class="lineNum">      83</span>              :  *</span>
+<span id="L84"><span class="lineNum">      84</span>              :  * If successful, return the number of bytes emitted, not counting the</span>
+<span id="L85"><span class="lineNum">      85</span>              :  * trailing zero byte.  This will always be strictly less than len.</span>
+<span id="L86"><span class="lineNum">      86</span>              :  *</span>
+<span id="L87"><span class="lineNum">      87</span>              :  * If there's not enough space in buf, return an estimate of the buffer size</span>
+<span id="L88"><span class="lineNum">      88</span>              :  * needed to succeed (this *must* be more than the given len, else callers</span>
+<span id="L89"><span class="lineNum">      89</span>              :  * might loop infinitely).</span>
+<span id="L90"><span class="lineNum">      90</span>              :  *</span>
+<span id="L91"><span class="lineNum">      91</span>              :  * Other error cases do not return, but exit via elog(ERROR) or exit().</span>
+<span id="L92"><span class="lineNum">      92</span>              :  * Hence, this shouldn't be used inside libpq.</span>
+<span id="L93"><span class="lineNum">      93</span>              :  *</span>
+<span id="L94"><span class="lineNum">      94</span>              :  * Caution: callers must be sure to preserve their entry-time errno</span>
+<span id="L95"><span class="lineNum">      95</span>              :  * when looping, in case the fmt contains &quot;%m&quot;.</span>
+<span id="L96"><span class="lineNum">      96</span>              :  *</span>
+<span id="L97"><span class="lineNum">      97</span>              :  * Note that the semantics of the return value are not exactly C99's.</span>
+<span id="L98"><span class="lineNum">      98</span>              :  * First, we don't promise that the estimated buffer size is exactly right;</span>
+<span id="L99"><span class="lineNum">      99</span>              :  * callers must be prepared to loop multiple times to get the right size.</span>
+<span id="L100"><span class="lineNum">     100</span>              :  * (Given a C99-compliant vsnprintf, that won't happen, but it is rumored</span>
+<span id="L101"><span class="lineNum">     101</span>              :  * that some implementations don't always return the same value ...)</span>
+<span id="L102"><span class="lineNum">     102</span>              :  * Second, we return the recommended buffer size, not one less than that;</span>
+<span id="L103"><span class="lineNum">     103</span>              :  * this lets overflow concerns be handled here rather than in the callers.</span>
+<span id="L104"><span class="lineNum">     104</span>              :  */</span>
+<span id="L105"><span class="lineNum">     105</span>              : size_t</span>
+<span id="L106"><span class="lineNum">     106</span> <span class="tlaGNC">      170220 : pvsnprintf(char *buf, size_t len, const char *fmt, va_list args)</span></span>
+<span id="L107"><span class="lineNum">     107</span>              : {</span>
+<span id="L108"><span class="lineNum">     108</span>              :         int                     nprinted;</span>
+<span id="L109"><span class="lineNum">     109</span>              : </span>
+<span id="L110"><span class="lineNum">     110</span> <span class="tlaGNC">      170220 :         nprinted = vsnprintf(buf, len, fmt, args);</span></span>
+<span id="L111"><span class="lineNum">     111</span>              : </span>
+<span id="L112"><span class="lineNum">     112</span>              :         /* We assume failure means the fmt is bogus, hence hard failure is OK */</span>
+<span id="L113"><span class="lineNum">     113</span> <span class="tlaGNC">      170220 :         if (unlikely(nprinted &lt; 0))</span></span>
+<span id="L114"><span class="lineNum">     114</span>              :         {</span>
+<span id="L115"><span class="lineNum">     115</span>              : #ifndef FRONTEND</span>
+<span id="L116"><span class="lineNum">     116</span> <span class="tlaUNC tlaBgUNC">           0 :                 elog(ERROR, &quot;vsnprintf failed: %m with format string \&quot;%s\&quot;&quot;, fmt);</span></span>
+<span id="L117"><span class="lineNum">     117</span>              : #else</span>
+<span id="L118"><span class="lineNum">     118</span> <span class="tlaUNC">           0 :                 fprintf(stderr, &quot;vsnprintf failed: %s with format string \&quot;%s\&quot;\n&quot;,</span></span>
+<span id="L119"><span class="lineNum">     119</span> <span class="tlaUNC">           0 :                                 strerror(errno), fmt);</span></span>
+<span id="L120"><span class="lineNum">     120</span> <span class="tlaUNC">           0 :                 exit(EXIT_FAILURE);</span></span>
+<span id="L121"><span class="lineNum">     121</span>              : #endif</span>
+<span id="L122"><span class="lineNum">     122</span>              :         }</span>
+<span id="L123"><span class="lineNum">     123</span>              : </span>
+<span id="L124"><span class="lineNum">     124</span> <span class="tlaGNC tlaBgGNC">      170220 :         if ((size_t) nprinted &lt; len)</span></span>
+<span id="L125"><span class="lineNum">     125</span>              :         {</span>
+<span id="L126"><span class="lineNum">     126</span>              :                 /* Success.  Note nprinted does not include trailing null. */</span>
+<span id="L127"><span class="lineNum">     127</span> <span class="tlaGNC">      170211 :                 return (size_t) nprinted;</span></span>
+<span id="L128"><span class="lineNum">     128</span>              :         }</span>
+<span id="L129"><span class="lineNum">     129</span>              : </span>
+<span id="L130"><span class="lineNum">     130</span>              :         /*</span>
+<span id="L131"><span class="lineNum">     131</span>              :          * We assume a C99-compliant vsnprintf, so believe its estimate of the</span>
+<span id="L132"><span class="lineNum">     132</span>              :          * required space, and add one for the trailing null.  (If it's wrong, the</span>
+<span id="L133"><span class="lineNum">     133</span>              :          * logic will still work, but we may loop multiple times.)</span>
+<span id="L134"><span class="lineNum">     134</span>              :          *</span>
+<span id="L135"><span class="lineNum">     135</span>              :          * Choke if the required space would exceed MaxAllocSize.  Note we use</span>
+<span id="L136"><span class="lineNum">     136</span>              :          * this palloc-oriented overflow limit even when in frontend.</span>
+<span id="L137"><span class="lineNum">     137</span>              :          */</span>
+<span id="L138"><span class="lineNum">     138</span> <span class="tlaGNC">           9 :         if (unlikely((size_t) nprinted &gt; MaxAllocSize - 1))</span></span>
+<span id="L139"><span class="lineNum">     139</span>              :         {</span>
+<span id="L140"><span class="lineNum">     140</span>              : #ifndef FRONTEND</span>
+<span id="L141"><span class="lineNum">     141</span> <span class="tlaUNC tlaBgUNC">           0 :                 ereport(ERROR,</span></span>
+<span id="L142"><span class="lineNum">     142</span>              :                                 (errcode(ERRCODE_PROGRAM_LIMIT_EXCEEDED),</span>
+<span id="L143"><span class="lineNum">     143</span>              :                                  errmsg(&quot;out of memory&quot;)));</span>
+<span id="L144"><span class="lineNum">     144</span>              : #else</span>
+<span id="L145"><span class="lineNum">     145</span> <span class="tlaUNC">           0 :                 fprintf(stderr, _(&quot;out of memory\n&quot;));</span></span>
+<span id="L146"><span class="lineNum">     146</span> <span class="tlaUNC">           0 :                 exit(EXIT_FAILURE);</span></span>
+<span id="L147"><span class="lineNum">     147</span>              : #endif</span>
+<span id="L148"><span class="lineNum">     148</span>              :         }</span>
+<span id="L149"><span class="lineNum">     149</span>              : </span>
+<span id="L150"><span class="lineNum">     150</span> <span class="tlaGNC tlaBgGNC">           9 :         return nprinted + 1;</span></span>
+<span id="L151"><span class="lineNum">     151</span>              : }</span>
+        </pre>
+              </td>
+            </tr>
+          </table>
+          <br>
+
+          <table width="100%" border=0 cellspacing=0 cellpadding=0>
+            <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+            <tr><td class="versionInfo">Generated by: <a href="https://github.com//linux-test-project/lcov" target="_parent">LCOV version 2.0-1</a></td></tr>
+          </table>
+          <br>
+
+</body>
+</html>

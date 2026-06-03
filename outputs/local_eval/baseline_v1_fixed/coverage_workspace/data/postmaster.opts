@@ -1,0 +1,1 @@
+/workspaces/deep-learning_final/postgresql-13.23/install_coverage/bin/postgres "-D" "/workspaces/deep-learning_final/outputs/local_eval/baseline_v1_fixed/coverage_workspace/data" "-k" "/tmp/pgcov-55432" "-p" "55432"

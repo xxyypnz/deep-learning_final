@@ -1,0 +1,11 @@
+Local evaluation summary
+result_file: /workspaces/deep-learning_final/outputs/local_eval/baseline_v1_fixed/eval_result.json
+n_items: 50
+total_meaningful_added: 460
+total_matched: 200
+total_not_found: 2
+total_covered: 71
+global_recall: 0.4348
+global_precision: 0.355
+global_precision_excl_ctrl: 0.3757
+global_precision_excl_not_found: 0.3586
