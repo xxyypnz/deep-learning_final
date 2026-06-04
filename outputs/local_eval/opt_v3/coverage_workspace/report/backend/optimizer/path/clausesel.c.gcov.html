@@ -1,0 +1,976 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - coverage_filtered.info - backend/optimizer/path/clausesel.c</title>
+  <link rel="stylesheet" type="text/css" href="../../../gcov.css">
+</head>
+
+<body>
+
+          <table width="100%" border=0 cellspacing=0 cellpadding=0>
+            <tr><td class="title">LCOV - code coverage report</td></tr>
+            <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+
+            <tr>
+              <td width="100%">
+                <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="10%" class="headerValue"><a href="../../../index.html">top level</a> - <a href="index.html">backend/optimizer/path</a> - clausesel.c<span style="font-size: 80%;"> (source / <a href="clausesel.c.func-c.html">functions</a>)</span></td>
+            <td width="5%"></td>
+            <td width="5%"></td>
+            <td width="5%" class="headerCovTableHead">Coverage</td>
+            <td width="5%" class="headerCovTableHead" title="Covered + Uncovered code">Total</td>
+            <td width="5%" class="headerCovTableHead" title="Exercised code only">Hit</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">coverage_filtered.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntryLo">69.6&nbsp;%</td>
+            <td class="headerCovTableEntry">230</td>
+            <td class="headerCovTableEntry">160</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test Date:</td>
+            <td class="headerValue">2026-06-04 06:01:07</td>
+            <td></td>
+            <td class="headerItem">Functions:</td>
+            <td class="headerCovTableEntryHi">100.0&nbsp;%</td>
+            <td class="headerCovTableEntry">7</td>
+            <td class="headerCovTableEntry">7</td>
+          </tr>
+                  <tr><td><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+                </table>
+              </td>
+            </tr>
+
+            <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+          </table>
+
+          <table cellpadding=0 cellspacing=0 border=0>
+            <tr>
+              <td><br></td>
+            </tr>
+            <tr>
+              <td>
+<pre class="sourceHeading">            Line data    Source code</pre>
+<pre class="source">
+<span id="L1"><span class="lineNum">       1</span>              : /*-------------------------------------------------------------------------</span>
+<span id="L2"><span class="lineNum">       2</span>              :  *</span>
+<span id="L3"><span class="lineNum">       3</span>              :  * clausesel.c</span>
+<span id="L4"><span class="lineNum">       4</span>              :  *        Routines to compute clause selectivities</span>
+<span id="L5"><span class="lineNum">       5</span>              :  *</span>
+<span id="L6"><span class="lineNum">       6</span>              :  * Portions Copyright (c) 1996-2020, PostgreSQL Global Development Group</span>
+<span id="L7"><span class="lineNum">       7</span>              :  * Portions Copyright (c) 1994, Regents of the University of California</span>
+<span id="L8"><span class="lineNum">       8</span>              :  *</span>
+<span id="L9"><span class="lineNum">       9</span>              :  *</span>
+<span id="L10"><span class="lineNum">      10</span>              :  * IDENTIFICATION</span>
+<span id="L11"><span class="lineNum">      11</span>              :  *        src/backend/optimizer/path/clausesel.c</span>
+<span id="L12"><span class="lineNum">      12</span>              :  *</span>
+<span id="L13"><span class="lineNum">      13</span>              :  *-------------------------------------------------------------------------</span>
+<span id="L14"><span class="lineNum">      14</span>              :  */</span>
+<span id="L15"><span class="lineNum">      15</span>              : #include &quot;postgres.h&quot;</span>
+<span id="L16"><span class="lineNum">      16</span>              : </span>
+<span id="L17"><span class="lineNum">      17</span>              : #include &quot;nodes/makefuncs.h&quot;</span>
+<span id="L18"><span class="lineNum">      18</span>              : #include &quot;nodes/nodeFuncs.h&quot;</span>
+<span id="L19"><span class="lineNum">      19</span>              : #include &quot;optimizer/clauses.h&quot;</span>
+<span id="L20"><span class="lineNum">      20</span>              : #include &quot;optimizer/cost.h&quot;</span>
+<span id="L21"><span class="lineNum">      21</span>              : #include &quot;optimizer/optimizer.h&quot;</span>
+<span id="L22"><span class="lineNum">      22</span>              : #include &quot;optimizer/pathnode.h&quot;</span>
+<span id="L23"><span class="lineNum">      23</span>              : #include &quot;optimizer/plancat.h&quot;</span>
+<span id="L24"><span class="lineNum">      24</span>              : #include &quot;statistics/statistics.h&quot;</span>
+<span id="L25"><span class="lineNum">      25</span>              : #include &quot;utils/fmgroids.h&quot;</span>
+<span id="L26"><span class="lineNum">      26</span>              : #include &quot;utils/lsyscache.h&quot;</span>
+<span id="L27"><span class="lineNum">      27</span>              : #include &quot;utils/selfuncs.h&quot;</span>
+<span id="L28"><span class="lineNum">      28</span>              : </span>
+<span id="L29"><span class="lineNum">      29</span>              : /* source-code-compatibility hacks for pull_varnos() API change */</span>
+<span id="L30"><span class="lineNum">      30</span>              : #define NumRelids(a,b) NumRelids_new(a,b)</span>
+<span id="L31"><span class="lineNum">      31</span>              : </span>
+<span id="L32"><span class="lineNum">      32</span>              : /*</span>
+<span id="L33"><span class="lineNum">      33</span>              :  * Data structure for accumulating info about possible range-query</span>
+<span id="L34"><span class="lineNum">      34</span>              :  * clause pairs in clauselist_selectivity.</span>
+<span id="L35"><span class="lineNum">      35</span>              :  */</span>
+<span id="L36"><span class="lineNum">      36</span>              : typedef struct RangeQueryClause</span>
+<span id="L37"><span class="lineNum">      37</span>              : {</span>
+<span id="L38"><span class="lineNum">      38</span>              :         struct RangeQueryClause *next;  /* next in linked list */</span>
+<span id="L39"><span class="lineNum">      39</span>              :         Node       *var;                        /* The common variable of the clauses */</span>
+<span id="L40"><span class="lineNum">      40</span>              :         bool            have_lobound;   /* found a low-bound clause yet? */</span>
+<span id="L41"><span class="lineNum">      41</span>              :         bool            have_hibound;   /* found a high-bound clause yet? */</span>
+<span id="L42"><span class="lineNum">      42</span>              :         Selectivity lobound;            /* Selectivity of a var &gt; something clause */</span>
+<span id="L43"><span class="lineNum">      43</span>              :         Selectivity hibound;            /* Selectivity of a var &lt; something clause */</span>
+<span id="L44"><span class="lineNum">      44</span>              : } RangeQueryClause;</span>
+<span id="L45"><span class="lineNum">      45</span>              : </span>
+<span id="L46"><span class="lineNum">      46</span>              : static void addRangeClause(RangeQueryClause **rqlist, Node *clause,</span>
+<span id="L47"><span class="lineNum">      47</span>              :                                                    bool varonleft, bool isLTsel, Selectivity s2);</span>
+<span id="L48"><span class="lineNum">      48</span>              : static RelOptInfo *find_single_rel_for_clauses(PlannerInfo *root,</span>
+<span id="L49"><span class="lineNum">      49</span>              :                                                                                            List *clauses);</span>
+<span id="L50"><span class="lineNum">      50</span>              : </span>
+<span id="L51"><span class="lineNum">      51</span>              : /****************************************************************************</span>
+<span id="L52"><span class="lineNum">      52</span>              :  *              ROUTINES TO COMPUTE SELECTIVITIES</span>
+<span id="L53"><span class="lineNum">      53</span>              :  ****************************************************************************/</span>
+<span id="L54"><span class="lineNum">      54</span>              : </span>
+<span id="L55"><span class="lineNum">      55</span>              : /*</span>
+<span id="L56"><span class="lineNum">      56</span>              :  * clauselist_selectivity -</span>
+<span id="L57"><span class="lineNum">      57</span>              :  *        Compute the selectivity of an implicitly-ANDed list of boolean</span>
+<span id="L58"><span class="lineNum">      58</span>              :  *        expression clauses.  The list can be empty, in which case 1.0</span>
+<span id="L59"><span class="lineNum">      59</span>              :  *        must be returned.  List elements may be either RestrictInfos</span>
+<span id="L60"><span class="lineNum">      60</span>              :  *        or bare expression clauses --- the former is preferred since</span>
+<span id="L61"><span class="lineNum">      61</span>              :  *        it allows caching of results.</span>
+<span id="L62"><span class="lineNum">      62</span>              :  *</span>
+<span id="L63"><span class="lineNum">      63</span>              :  * See clause_selectivity() for the meaning of the additional parameters.</span>
+<span id="L64"><span class="lineNum">      64</span>              :  *</span>
+<span id="L65"><span class="lineNum">      65</span>              :  * The basic approach is to apply extended statistics first, on as many</span>
+<span id="L66"><span class="lineNum">      66</span>              :  * clauses as possible, in order to capture cross-column dependencies etc.</span>
+<span id="L67"><span class="lineNum">      67</span>              :  * The remaining clauses are then estimated using regular statistics tracked</span>
+<span id="L68"><span class="lineNum">      68</span>              :  * for individual columns.  This is done by simply passing the clauses to</span>
+<span id="L69"><span class="lineNum">      69</span>              :  * clauselist_selectivity_simple.</span>
+<span id="L70"><span class="lineNum">      70</span>              :  */</span>
+<span id="L71"><span class="lineNum">      71</span>              : Selectivity</span>
+<span id="L72"><span class="lineNum">      72</span> <span class="tlaGNC tlaBgGNC">         597 : clauselist_selectivity(PlannerInfo *root,</span></span>
+<span id="L73"><span class="lineNum">      73</span>              :                                            List *clauses,</span>
+<span id="L74"><span class="lineNum">      74</span>              :                                            int varRelid,</span>
+<span id="L75"><span class="lineNum">      75</span>              :                                            JoinType jointype,</span>
+<span id="L76"><span class="lineNum">      76</span>              :                                            SpecialJoinInfo *sjinfo)</span>
+<span id="L77"><span class="lineNum">      77</span>              : {</span>
+<span id="L78"><span class="lineNum">      78</span> <span class="tlaGNC">         597 :         Selectivity s1 = 1.0;</span></span>
+<span id="L79"><span class="lineNum">      79</span>              :         RelOptInfo *rel;</span>
+<span id="L80"><span class="lineNum">      80</span> <span class="tlaGNC">         597 :         Bitmapset  *estimatedclauses = NULL;</span></span>
+<span id="L81"><span class="lineNum">      81</span>              : </span>
+<span id="L82"><span class="lineNum">      82</span>              :         /*</span>
+<span id="L83"><span class="lineNum">      83</span>              :          * Determine if these clauses reference a single relation.  If so, and if</span>
+<span id="L84"><span class="lineNum">      84</span>              :          * it has extended statistics, try to apply those.</span>
+<span id="L85"><span class="lineNum">      85</span>              :          */</span>
+<span id="L86"><span class="lineNum">      86</span> <span class="tlaGNC">         597 :         rel = find_single_rel_for_clauses(root, clauses);</span></span>
+<span id="L87"><span class="lineNum">      87</span> <span class="tlaGNC">         597 :         if (rel &amp;&amp; rel-&gt;rtekind == RTE_RELATION &amp;&amp; rel-&gt;statlist != NIL)</span></span>
+<span id="L88"><span class="lineNum">      88</span>              :         {</span>
+<span id="L89"><span class="lineNum">      89</span>              :                 /*</span>
+<span id="L90"><span class="lineNum">      90</span>              :                  * Estimate as many clauses as possible using extended statistics.</span>
+<span id="L91"><span class="lineNum">      91</span>              :                  *</span>
+<span id="L92"><span class="lineNum">      92</span>              :                  * 'estimatedclauses' tracks the 0-based list position index of</span>
+<span id="L93"><span class="lineNum">      93</span>              :                  * clauses that we've estimated using extended statistics, and that</span>
+<span id="L94"><span class="lineNum">      94</span>              :                  * should be ignored.</span>
+<span id="L95"><span class="lineNum">      95</span>              :                  */</span>
+<span id="L96"><span class="lineNum">      96</span> <span class="tlaUNC tlaBgUNC">           0 :                 s1 *= statext_clauselist_selectivity(root, clauses, varRelid,</span></span>
+<span id="L97"><span class="lineNum">      97</span>              :                                                                                          jointype, sjinfo, rel,</span>
+<span id="L98"><span class="lineNum">      98</span>              :                                                                                          &amp;estimatedclauses);</span>
+<span id="L99"><span class="lineNum">      99</span>              :         }</span>
+<span id="L100"><span class="lineNum">     100</span>              : </span>
+<span id="L101"><span class="lineNum">     101</span>              :         /*</span>
+<span id="L102"><span class="lineNum">     102</span>              :          * Apply normal selectivity estimates for the remaining clauses, passing</span>
+<span id="L103"><span class="lineNum">     103</span>              :          * 'estimatedclauses' so that it skips already estimated ones.</span>
+<span id="L104"><span class="lineNum">     104</span>              :          */</span>
+<span id="L105"><span class="lineNum">     105</span> <span class="tlaGNC tlaBgGNC">         597 :         return s1 * clauselist_selectivity_simple(root, clauses, varRelid,</span></span>
+<span id="L106"><span class="lineNum">     106</span>              :                                                                                           jointype, sjinfo,</span>
+<span id="L107"><span class="lineNum">     107</span>              :                                                                                           estimatedclauses);</span>
+<span id="L108"><span class="lineNum">     108</span>              : }</span>
+<span id="L109"><span class="lineNum">     109</span>              : </span>
+<span id="L110"><span class="lineNum">     110</span>              : /*</span>
+<span id="L111"><span class="lineNum">     111</span>              :  * clauselist_selectivity_simple -</span>
+<span id="L112"><span class="lineNum">     112</span>              :  *        Compute the selectivity of an implicitly-ANDed list of boolean</span>
+<span id="L113"><span class="lineNum">     113</span>              :  *        expression clauses.  The list can be empty, in which case 1.0</span>
+<span id="L114"><span class="lineNum">     114</span>              :  *        must be returned.  List elements may be either RestrictInfos</span>
+<span id="L115"><span class="lineNum">     115</span>              :  *        or bare expression clauses --- the former is preferred since</span>
+<span id="L116"><span class="lineNum">     116</span>              :  *        it allows caching of results.  The estimatedclauses bitmap tracks</span>
+<span id="L117"><span class="lineNum">     117</span>              :  *        clauses that have already been estimated by other means.</span>
+<span id="L118"><span class="lineNum">     118</span>              :  *</span>
+<span id="L119"><span class="lineNum">     119</span>              :  * See clause_selectivity() for the meaning of the additional parameters.</span>
+<span id="L120"><span class="lineNum">     120</span>              :  *</span>
+<span id="L121"><span class="lineNum">     121</span>              :  * Our basic approach is to take the product of the selectivities of the</span>
+<span id="L122"><span class="lineNum">     122</span>              :  * subclauses.  However, that's only right if the subclauses have independent</span>
+<span id="L123"><span class="lineNum">     123</span>              :  * probabilities, and in reality they are often NOT independent.  So,</span>
+<span id="L124"><span class="lineNum">     124</span>              :  * we want to be smarter where we can.</span>
+<span id="L125"><span class="lineNum">     125</span>              :  *</span>
+<span id="L126"><span class="lineNum">     126</span>              :  * We also recognize &quot;range queries&quot;, such as &quot;x &gt; 34 AND x &lt; 42&quot;.  Clauses</span>
+<span id="L127"><span class="lineNum">     127</span>              :  * are recognized as possible range query components if they are restriction</span>
+<span id="L128"><span class="lineNum">     128</span>              :  * opclauses whose operators have scalarltsel or a related function as their</span>
+<span id="L129"><span class="lineNum">     129</span>              :  * restriction selectivity estimator.  We pair up clauses of this form that</span>
+<span id="L130"><span class="lineNum">     130</span>              :  * refer to the same variable.  An unpairable clause of this kind is simply</span>
+<span id="L131"><span class="lineNum">     131</span>              :  * multiplied into the selectivity product in the normal way.  But when we</span>
+<span id="L132"><span class="lineNum">     132</span>              :  * find a pair, we know that the selectivities represent the relative</span>
+<span id="L133"><span class="lineNum">     133</span>              :  * positions of the low and high bounds within the column's range, so instead</span>
+<span id="L134"><span class="lineNum">     134</span>              :  * of figuring the selectivity as hisel * losel, we can figure it as hisel +</span>
+<span id="L135"><span class="lineNum">     135</span>              :  * losel - 1.  (To visualize this, see that hisel is the fraction of the range</span>
+<span id="L136"><span class="lineNum">     136</span>              :  * below the high bound, while losel is the fraction above the low bound; so</span>
+<span id="L137"><span class="lineNum">     137</span>              :  * hisel can be interpreted directly as a 0..1 value but we need to convert</span>
+<span id="L138"><span class="lineNum">     138</span>              :  * losel to 1-losel before interpreting it as a value.  Then the available</span>
+<span id="L139"><span class="lineNum">     139</span>              :  * range is 1-losel to hisel.  However, this calculation double-excludes</span>
+<span id="L140"><span class="lineNum">     140</span>              :  * nulls, so really we need hisel + losel + null_frac - 1.)</span>
+<span id="L141"><span class="lineNum">     141</span>              :  *</span>
+<span id="L142"><span class="lineNum">     142</span>              :  * If either selectivity is exactly DEFAULT_INEQ_SEL, we forget this equation</span>
+<span id="L143"><span class="lineNum">     143</span>              :  * and instead use DEFAULT_RANGE_INEQ_SEL.  The same applies if the equation</span>
+<span id="L144"><span class="lineNum">     144</span>              :  * yields an impossible (negative) result.</span>
+<span id="L145"><span class="lineNum">     145</span>              :  *</span>
+<span id="L146"><span class="lineNum">     146</span>              :  * A free side-effect is that we can recognize redundant inequalities such</span>
+<span id="L147"><span class="lineNum">     147</span>              :  * as &quot;x &lt; 4 AND x &lt; 5&quot;; only the tighter constraint will be counted.</span>
+<span id="L148"><span class="lineNum">     148</span>              :  *</span>
+<span id="L149"><span class="lineNum">     149</span>              :  * Of course this is all very dependent on the behavior of the inequality</span>
+<span id="L150"><span class="lineNum">     150</span>              :  * selectivity functions; perhaps some day we can generalize the approach.</span>
+<span id="L151"><span class="lineNum">     151</span>              :  */</span>
+<span id="L152"><span class="lineNum">     152</span>              : Selectivity</span>
+<span id="L153"><span class="lineNum">     153</span> <span class="tlaGNC">         597 : clauselist_selectivity_simple(PlannerInfo *root,</span></span>
+<span id="L154"><span class="lineNum">     154</span>              :                                                           List *clauses,</span>
+<span id="L155"><span class="lineNum">     155</span>              :                                                           int varRelid,</span>
+<span id="L156"><span class="lineNum">     156</span>              :                                                           JoinType jointype,</span>
+<span id="L157"><span class="lineNum">     157</span>              :                                                           SpecialJoinInfo *sjinfo,</span>
+<span id="L158"><span class="lineNum">     158</span>              :                                                           Bitmapset *estimatedclauses)</span>
+<span id="L159"><span class="lineNum">     159</span>              : {</span>
+<span id="L160"><span class="lineNum">     160</span> <span class="tlaGNC">         597 :         Selectivity s1 = 1.0;</span></span>
+<span id="L161"><span class="lineNum">     161</span> <span class="tlaGNC">         597 :         RangeQueryClause *rqlist = NULL;</span></span>
+<span id="L162"><span class="lineNum">     162</span>              :         ListCell   *l;</span>
+<span id="L163"><span class="lineNum">     163</span>              :         int                     listidx;</span>
+<span id="L164"><span class="lineNum">     164</span>              : </span>
+<span id="L165"><span class="lineNum">     165</span>              :         /*</span>
+<span id="L166"><span class="lineNum">     166</span>              :          * If there's exactly one clause (and it was not estimated yet), just go</span>
+<span id="L167"><span class="lineNum">     167</span>              :          * directly to clause_selectivity(). None of what we might do below is</span>
+<span id="L168"><span class="lineNum">     168</span>              :          * relevant.</span>
+<span id="L169"><span class="lineNum">     169</span>              :          */</span>
+<span id="L170"><span class="lineNum">     170</span> <span class="tlaGNC">         888 :         if ((list_length(clauses) == 1) &amp;&amp;</span></span>
+<span id="L171"><span class="lineNum">     171</span> <span class="tlaGNC">         291 :                 bms_num_members(estimatedclauses) == 0)</span></span>
+<span id="L172"><span class="lineNum">     172</span> <span class="tlaGNC">         291 :                 return clause_selectivity(root, (Node *) linitial(clauses),</span></span>
+<span id="L173"><span class="lineNum">     173</span>              :                                                                   varRelid, jointype, sjinfo);</span>
+<span id="L174"><span class="lineNum">     174</span>              : </span>
+<span id="L175"><span class="lineNum">     175</span>              :         /*</span>
+<span id="L176"><span class="lineNum">     176</span>              :          * Anything that doesn't look like a potential rangequery clause gets</span>
+<span id="L177"><span class="lineNum">     177</span>              :          * multiplied into s1 and forgotten. Anything that does gets inserted into</span>
+<span id="L178"><span class="lineNum">     178</span>              :          * an rqlist entry.</span>
+<span id="L179"><span class="lineNum">     179</span>              :          */</span>
+<span id="L180"><span class="lineNum">     180</span> <span class="tlaGNC">         306 :         listidx = -1;</span></span>
+<span id="L181"><span class="lineNum">     181</span> <span class="tlaGNC">         459 :         foreach(l, clauses)</span></span>
+<span id="L182"><span class="lineNum">     182</span>              :         {</span>
+<span id="L183"><span class="lineNum">     183</span> <span class="tlaGNC">         153 :                 Node       *clause = (Node *) lfirst(l);</span></span>
+<span id="L184"><span class="lineNum">     184</span>              :                 RestrictInfo *rinfo;</span>
+<span id="L185"><span class="lineNum">     185</span>              :                 Selectivity s2;</span>
+<span id="L186"><span class="lineNum">     186</span>              : </span>
+<span id="L187"><span class="lineNum">     187</span> <span class="tlaGNC">         153 :                 listidx++;</span></span>
+<span id="L188"><span class="lineNum">     188</span>              : </span>
+<span id="L189"><span class="lineNum">     189</span>              :                 /*</span>
+<span id="L190"><span class="lineNum">     190</span>              :                  * Skip this clause if it's already been estimated by some other</span>
+<span id="L191"><span class="lineNum">     191</span>              :                  * statistics above.</span>
+<span id="L192"><span class="lineNum">     192</span>              :                  */</span>
+<span id="L193"><span class="lineNum">     193</span> <span class="tlaGNC">         153 :                 if (bms_is_member(listidx, estimatedclauses))</span></span>
+<span id="L194"><span class="lineNum">     194</span> <span class="tlaUNC tlaBgUNC">           0 :                         continue;</span></span>
+<span id="L195"><span class="lineNum">     195</span>              : </span>
+<span id="L196"><span class="lineNum">     196</span>              :                 /* Always compute the selectivity using clause_selectivity */</span>
+<span id="L197"><span class="lineNum">     197</span> <span class="tlaGNC tlaBgGNC">         153 :                 s2 = clause_selectivity(root, clause, varRelid, jointype, sjinfo);</span></span>
+<span id="L198"><span class="lineNum">     198</span>              : </span>
+<span id="L199"><span class="lineNum">     199</span>              :                 /*</span>
+<span id="L200"><span class="lineNum">     200</span>              :                  * Check for being passed a RestrictInfo.</span>
+<span id="L201"><span class="lineNum">     201</span>              :                  *</span>
+<span id="L202"><span class="lineNum">     202</span>              :                  * If it's a pseudoconstant RestrictInfo, then s2 is either 1.0 or</span>
+<span id="L203"><span class="lineNum">     203</span>              :                  * 0.0; just use that rather than looking for range pairs.</span>
+<span id="L204"><span class="lineNum">     204</span>              :                  */</span>
+<span id="L205"><span class="lineNum">     205</span> <span class="tlaGNC">         153 :                 if (IsA(clause, RestrictInfo))</span></span>
+<span id="L206"><span class="lineNum">     206</span>              :                 {</span>
+<span id="L207"><span class="lineNum">     207</span> <span class="tlaGNC">         153 :                         rinfo = (RestrictInfo *) clause;</span></span>
+<span id="L208"><span class="lineNum">     208</span> <span class="tlaGNC">         153 :                         if (rinfo-&gt;pseudoconstant)</span></span>
+<span id="L209"><span class="lineNum">     209</span>              :                         {</span>
+<span id="L210"><span class="lineNum">     210</span> <span class="tlaUNC tlaBgUNC">           0 :                                 s1 = s1 * s2;</span></span>
+<span id="L211"><span class="lineNum">     211</span> <span class="tlaUNC">           0 :                                 continue;</span></span>
+<span id="L212"><span class="lineNum">     212</span>              :                         }</span>
+<span id="L213"><span class="lineNum">     213</span> <span class="tlaGNC tlaBgGNC">         153 :                         clause = (Node *) rinfo-&gt;clause;</span></span>
+<span id="L214"><span class="lineNum">     214</span>              :                 }</span>
+<span id="L215"><span class="lineNum">     215</span>              :                 else</span>
+<span id="L216"><span class="lineNum">     216</span> <span class="tlaUNC tlaBgUNC">           0 :                         rinfo = NULL;</span></span>
+<span id="L217"><span class="lineNum">     217</span>              : </span>
+<span id="L218"><span class="lineNum">     218</span>              :                 /*</span>
+<span id="L219"><span class="lineNum">     219</span>              :                  * See if it looks like a restriction clause with a pseudoconstant on</span>
+<span id="L220"><span class="lineNum">     220</span>              :                  * one side.  (Anything more complicated than that might not behave in</span>
+<span id="L221"><span class="lineNum">     221</span>              :                  * the simple way we are expecting.)  Most of the tests here can be</span>
+<span id="L222"><span class="lineNum">     222</span>              :                  * done more efficiently with rinfo than without.</span>
+<span id="L223"><span class="lineNum">     223</span>              :                  */</span>
+<span id="L224"><span class="lineNum">     224</span> <span class="tlaGNC tlaBgGNC">         153 :                 if (is_opclause(clause) &amp;&amp; list_length(((OpExpr *) clause)-&gt;args) == 2)</span></span>
+<span id="L225"><span class="lineNum">     225</span>              :                 {</span>
+<span id="L226"><span class="lineNum">     226</span> <span class="tlaGNC">         143 :                         OpExpr     *expr = (OpExpr *) clause;</span></span>
+<span id="L227"><span class="lineNum">     227</span> <span class="tlaGNC">         143 :                         bool            varonleft = true;</span></span>
+<span id="L228"><span class="lineNum">     228</span>              :                         bool            ok;</span>
+<span id="L229"><span class="lineNum">     229</span>              : </span>
+<span id="L230"><span class="lineNum">     230</span> <span class="tlaGNC">         143 :                         if (rinfo)</span></span>
+<span id="L231"><span class="lineNum">     231</span>              :                         {</span>
+<span id="L232"><span class="lineNum">     232</span> <span class="tlaGNC">         252 :                                 ok = (bms_membership(rinfo-&gt;clause_relids) == BMS_SINGLETON) &amp;&amp;</span></span>
+<span id="L233"><span class="lineNum">     233</span> <span class="tlaGNC">         109 :                                         (is_pseudo_constant_clause_relids(lsecond(expr-&gt;args),</span></span>
+<span id="L234"><span class="lineNum">     234</span> <span class="tlaUNC tlaBgUNC">           0 :                                                                                                           rinfo-&gt;right_relids) ||</span></span>
+<span id="L235"><span class="lineNum">     235</span> <span class="tlaUNC">           0 :                                          (varonleft = false,</span></span>
+<span id="L236"><span class="lineNum">     236</span> <span class="tlaUNC">           0 :                                           is_pseudo_constant_clause_relids(linitial(expr-&gt;args),</span></span>
+<span id="L237"><span class="lineNum">     237</span>              :                                                                                                            rinfo-&gt;left_relids)));</span>
+<span id="L238"><span class="lineNum">     238</span>              :                         }</span>
+<span id="L239"><span class="lineNum">     239</span>              :                         else</span>
+<span id="L240"><span class="lineNum">     240</span>              :                         {</span>
+<span id="L241"><span class="lineNum">     241</span> <span class="tlaUNC">           0 :                                 ok = (NumRelids(root, clause) == 1) &amp;&amp;</span></span>
+<span id="L242"><span class="lineNum">     242</span> <span class="tlaUNC">           0 :                                         (is_pseudo_constant_clause(lsecond(expr-&gt;args)) ||</span></span>
+<span id="L243"><span class="lineNum">     243</span> <span class="tlaUNC">           0 :                                          (varonleft = false,</span></span>
+<span id="L244"><span class="lineNum">     244</span> <span class="tlaUNC">           0 :                                           is_pseudo_constant_clause(linitial(expr-&gt;args))));</span></span>
+<span id="L245"><span class="lineNum">     245</span>              :                         }</span>
+<span id="L246"><span class="lineNum">     246</span>              : </span>
+<span id="L247"><span class="lineNum">     247</span> <span class="tlaGNC tlaBgGNC">         143 :                         if (ok)</span></span>
+<span id="L248"><span class="lineNum">     248</span>              :                         {</span>
+<span id="L249"><span class="lineNum">     249</span>              :                                 /*</span>
+<span id="L250"><span class="lineNum">     250</span>              :                                  * If it's not a &quot;&lt;&quot;/&quot;&lt;=&quot;/&quot;&gt;&quot;/&quot;&gt;=&quot; operator, just merge the</span>
+<span id="L251"><span class="lineNum">     251</span>              :                                  * selectivity in generically.  But if it's the right oprrest,</span>
+<span id="L252"><span class="lineNum">     252</span>              :                                  * add the clause to rqlist for later processing.</span>
+<span id="L253"><span class="lineNum">     253</span>              :                                  */</span>
+<span id="L254"><span class="lineNum">     254</span> <span class="tlaGNC">         109 :                                 switch (get_oprrest(expr-&gt;opno))</span></span>
+<span id="L255"><span class="lineNum">     255</span>              :                                 {</span>
+<span id="L256"><span class="lineNum">     256</span> <span class="tlaGNC">           9 :                                         case F_SCALARLTSEL:</span></span>
+<span id="L257"><span class="lineNum">     257</span>              :                                         case F_SCALARLESEL:</span>
+<span id="L258"><span class="lineNum">     258</span> <span class="tlaGNC">           9 :                                                 addRangeClause(&amp;rqlist, clause,</span></span>
+<span id="L259"><span class="lineNum">     259</span>              :                                                                            varonleft, true, s2);</span>
+<span id="L260"><span class="lineNum">     260</span> <span class="tlaGNC">           9 :                                                 break;</span></span>
+<span id="L261"><span class="lineNum">     261</span> <span class="tlaGNC">          11 :                                         case F_SCALARGTSEL:</span></span>
+<span id="L262"><span class="lineNum">     262</span>              :                                         case F_SCALARGESEL:</span>
+<span id="L263"><span class="lineNum">     263</span> <span class="tlaGNC">          11 :                                                 addRangeClause(&amp;rqlist, clause,</span></span>
+<span id="L264"><span class="lineNum">     264</span>              :                                                                            varonleft, false, s2);</span>
+<span id="L265"><span class="lineNum">     265</span> <span class="tlaGNC">          11 :                                                 break;</span></span>
+<span id="L266"><span class="lineNum">     266</span> <span class="tlaGNC">          89 :                                         default:</span></span>
+<span id="L267"><span class="lineNum">     267</span>              :                                                 /* Just merge the selectivity in generically */</span>
+<span id="L268"><span class="lineNum">     268</span> <span class="tlaGNC">          89 :                                                 s1 = s1 * s2;</span></span>
+<span id="L269"><span class="lineNum">     269</span> <span class="tlaGNC">          89 :                                                 break;</span></span>
+<span id="L270"><span class="lineNum">     270</span>              :                                 }</span>
+<span id="L271"><span class="lineNum">     271</span> <span class="tlaGNC">         109 :                                 continue;               /* drop to loop bottom */</span></span>
+<span id="L272"><span class="lineNum">     272</span>              :                         }</span>
+<span id="L273"><span class="lineNum">     273</span>              :                 }</span>
+<span id="L274"><span class="lineNum">     274</span>              : </span>
+<span id="L275"><span class="lineNum">     275</span>              :                 /* Not the right form, so treat it generically. */</span>
+<span id="L276"><span class="lineNum">     276</span> <span class="tlaGNC">          44 :                 s1 = s1 * s2;</span></span>
+<span id="L277"><span class="lineNum">     277</span>              :         }</span>
+<span id="L278"><span class="lineNum">     278</span>              : </span>
+<span id="L279"><span class="lineNum">     279</span>              :         /*</span>
+<span id="L280"><span class="lineNum">     280</span>              :          * Now scan the rangequery pair list.</span>
+<span id="L281"><span class="lineNum">     281</span>              :          */</span>
+<span id="L282"><span class="lineNum">     282</span> <span class="tlaGNC">         317 :         while (rqlist != NULL)</span></span>
+<span id="L283"><span class="lineNum">     283</span>              :         {</span>
+<span id="L284"><span class="lineNum">     284</span>              :                 RangeQueryClause *rqnext;</span>
+<span id="L285"><span class="lineNum">     285</span>              : </span>
+<span id="L286"><span class="lineNum">     286</span> <span class="tlaGNC">          11 :                 if (rqlist-&gt;have_lobound &amp;&amp; rqlist-&gt;have_hibound)</span></span>
+<span id="L287"><span class="lineNum">     287</span> <span class="tlaGNC">           9 :                 {</span></span>
+<span id="L288"><span class="lineNum">     288</span>              :                         /* Successfully matched a pair of range clauses */</span>
+<span id="L289"><span class="lineNum">     289</span>              :                         Selectivity s2;</span>
+<span id="L290"><span class="lineNum">     290</span>              : </span>
+<span id="L291"><span class="lineNum">     291</span>              :                         /*</span>
+<span id="L292"><span class="lineNum">     292</span>              :                          * Exact equality to the default value probably means the</span>
+<span id="L293"><span class="lineNum">     293</span>              :                          * selectivity function punted.  This is not airtight but should</span>
+<span id="L294"><span class="lineNum">     294</span>              :                          * be good enough.</span>
+<span id="L295"><span class="lineNum">     295</span>              :                          */</span>
+<span id="L296"><span class="lineNum">     296</span> <span class="tlaGNC">           9 :                         if (rqlist-&gt;hibound == DEFAULT_INEQ_SEL ||</span></span>
+<span id="L297"><span class="lineNum">     297</span> <span class="tlaUNC tlaBgUNC">           0 :                                 rqlist-&gt;lobound == DEFAULT_INEQ_SEL)</span></span>
+<span id="L298"><span class="lineNum">     298</span>              :                         {</span>
+<span id="L299"><span class="lineNum">     299</span> <span class="tlaGNC tlaBgGNC">           9 :                                 s2 = DEFAULT_RANGE_INEQ_SEL;</span></span>
+<span id="L300"><span class="lineNum">     300</span>              :                         }</span>
+<span id="L301"><span class="lineNum">     301</span>              :                         else</span>
+<span id="L302"><span class="lineNum">     302</span>              :                         {</span>
+<span id="L303"><span class="lineNum">     303</span> <span class="tlaUNC tlaBgUNC">           0 :                                 s2 = rqlist-&gt;hibound + rqlist-&gt;lobound - 1.0;</span></span>
+<span id="L304"><span class="lineNum">     304</span>              : </span>
+<span id="L305"><span class="lineNum">     305</span>              :                                 /* Adjust for double-exclusion of NULLs */</span>
+<span id="L306"><span class="lineNum">     306</span> <span class="tlaUNC">           0 :                                 s2 += nulltestsel(root, IS_NULL, rqlist-&gt;var,</span></span>
+<span id="L307"><span class="lineNum">     307</span>              :                                                                   varRelid, jointype, sjinfo);</span>
+<span id="L308"><span class="lineNum">     308</span>              : </span>
+<span id="L309"><span class="lineNum">     309</span>              :                                 /*</span>
+<span id="L310"><span class="lineNum">     310</span>              :                                  * A zero or slightly negative s2 should be converted into a</span>
+<span id="L311"><span class="lineNum">     311</span>              :                                  * small positive value; we probably are dealing with a very</span>
+<span id="L312"><span class="lineNum">     312</span>              :                                  * tight range and got a bogus result due to roundoff errors.</span>
+<span id="L313"><span class="lineNum">     313</span>              :                                  * However, if s2 is very negative, then we probably have</span>
+<span id="L314"><span class="lineNum">     314</span>              :                                  * default selectivity estimates on one or both sides of the</span>
+<span id="L315"><span class="lineNum">     315</span>              :                                  * range that we failed to recognize above for some reason.</span>
+<span id="L316"><span class="lineNum">     316</span>              :                                  */</span>
+<span id="L317"><span class="lineNum">     317</span> <span class="tlaUNC">           0 :                                 if (s2 &lt;= 0.0)</span></span>
+<span id="L318"><span class="lineNum">     318</span>              :                                 {</span>
+<span id="L319"><span class="lineNum">     319</span> <span class="tlaUNC">           0 :                                         if (s2 &lt; -0.01)</span></span>
+<span id="L320"><span class="lineNum">     320</span>              :                                         {</span>
+<span id="L321"><span class="lineNum">     321</span>              :                                                 /*</span>
+<span id="L322"><span class="lineNum">     322</span>              :                                                  * No data available --- use a default estimate that</span>
+<span id="L323"><span class="lineNum">     323</span>              :                                                  * is small, but not real small.</span>
+<span id="L324"><span class="lineNum">     324</span>              :                                                  */</span>
+<span id="L325"><span class="lineNum">     325</span> <span class="tlaUNC">           0 :                                                 s2 = DEFAULT_RANGE_INEQ_SEL;</span></span>
+<span id="L326"><span class="lineNum">     326</span>              :                                         }</span>
+<span id="L327"><span class="lineNum">     327</span>              :                                         else</span>
+<span id="L328"><span class="lineNum">     328</span>              :                                         {</span>
+<span id="L329"><span class="lineNum">     329</span>              :                                                 /*</span>
+<span id="L330"><span class="lineNum">     330</span>              :                                                  * It's just roundoff error; use a small positive</span>
+<span id="L331"><span class="lineNum">     331</span>              :                                                  * value</span>
+<span id="L332"><span class="lineNum">     332</span>              :                                                  */</span>
+<span id="L333"><span class="lineNum">     333</span> <span class="tlaUNC">           0 :                                                 s2 = 1.0e-10;</span></span>
+<span id="L334"><span class="lineNum">     334</span>              :                                         }</span>
+<span id="L335"><span class="lineNum">     335</span>              :                                 }</span>
+<span id="L336"><span class="lineNum">     336</span>              :                         }</span>
+<span id="L337"><span class="lineNum">     337</span>              :                         /* Merge in the selectivity of the pair of clauses */</span>
+<span id="L338"><span class="lineNum">     338</span> <span class="tlaGNC tlaBgGNC">           9 :                         s1 *= s2;</span></span>
+<span id="L339"><span class="lineNum">     339</span>              :                 }</span>
+<span id="L340"><span class="lineNum">     340</span>              :                 else</span>
+<span id="L341"><span class="lineNum">     341</span>              :                 {</span>
+<span id="L342"><span class="lineNum">     342</span>              :                         /* Only found one of a pair, merge it in generically */</span>
+<span id="L343"><span class="lineNum">     343</span> <span class="tlaGNC">           2 :                         if (rqlist-&gt;have_lobound)</span></span>
+<span id="L344"><span class="lineNum">     344</span> <span class="tlaGNC">           2 :                                 s1 *= rqlist-&gt;lobound;</span></span>
+<span id="L345"><span class="lineNum">     345</span>              :                         else</span>
+<span id="L346"><span class="lineNum">     346</span> <span class="tlaUNC tlaBgUNC">           0 :                                 s1 *= rqlist-&gt;hibound;</span></span>
+<span id="L347"><span class="lineNum">     347</span>              :                 }</span>
+<span id="L348"><span class="lineNum">     348</span>              :                 /* release storage and advance */</span>
+<span id="L349"><span class="lineNum">     349</span> <span class="tlaGNC tlaBgGNC">          11 :                 rqnext = rqlist-&gt;next;</span></span>
+<span id="L350"><span class="lineNum">     350</span> <span class="tlaGNC">          11 :                 pfree(rqlist);</span></span>
+<span id="L351"><span class="lineNum">     351</span> <span class="tlaGNC">          11 :                 rqlist = rqnext;</span></span>
+<span id="L352"><span class="lineNum">     352</span>              :         }</span>
+<span id="L353"><span class="lineNum">     353</span>              : </span>
+<span id="L354"><span class="lineNum">     354</span> <span class="tlaGNC">         306 :         return s1;</span></span>
+<span id="L355"><span class="lineNum">     355</span>              : }</span>
+<span id="L356"><span class="lineNum">     356</span>              : </span>
+<span id="L357"><span class="lineNum">     357</span>              : /*</span>
+<span id="L358"><span class="lineNum">     358</span>              :  * addRangeClause --- add a new range clause for clauselist_selectivity</span>
+<span id="L359"><span class="lineNum">     359</span>              :  *</span>
+<span id="L360"><span class="lineNum">     360</span>              :  * Here is where we try to match up pairs of range-query clauses</span>
+<span id="L361"><span class="lineNum">     361</span>              :  */</span>
+<span id="L362"><span class="lineNum">     362</span>              : static void</span>
+<span id="L363"><span class="lineNum">     363</span> <span class="tlaGNC">          20 : addRangeClause(RangeQueryClause **rqlist, Node *clause,</span></span>
+<span id="L364"><span class="lineNum">     364</span>              :                            bool varonleft, bool isLTsel, Selectivity s2)</span>
+<span id="L365"><span class="lineNum">     365</span>              : {</span>
+<span id="L366"><span class="lineNum">     366</span>              :         RangeQueryClause *rqelem;</span>
+<span id="L367"><span class="lineNum">     367</span>              :         Node       *var;</span>
+<span id="L368"><span class="lineNum">     368</span>              :         bool            is_lobound;</span>
+<span id="L369"><span class="lineNum">     369</span>              : </span>
+<span id="L370"><span class="lineNum">     370</span> <span class="tlaGNC">          20 :         if (varonleft)</span></span>
+<span id="L371"><span class="lineNum">     371</span>              :         {</span>
+<span id="L372"><span class="lineNum">     372</span> <span class="tlaGNC">          20 :                 var = get_leftop((Expr *) clause);</span></span>
+<span id="L373"><span class="lineNum">     373</span> <span class="tlaGNC">          20 :                 is_lobound = !isLTsel;  /* x &lt; something is high bound */</span></span>
+<span id="L374"><span class="lineNum">     374</span>              :         }</span>
+<span id="L375"><span class="lineNum">     375</span>              :         else</span>
+<span id="L376"><span class="lineNum">     376</span>              :         {</span>
+<span id="L377"><span class="lineNum">     377</span> <span class="tlaUNC tlaBgUNC">           0 :                 var = get_rightop((Expr *) clause);</span></span>
+<span id="L378"><span class="lineNum">     378</span> <span class="tlaUNC">           0 :                 is_lobound = isLTsel;   /* something &lt; x is low bound */</span></span>
+<span id="L379"><span class="lineNum">     379</span>              :         }</span>
+<span id="L380"><span class="lineNum">     380</span>              : </span>
+<span id="L381"><span class="lineNum">     381</span> <span class="tlaGNC tlaBgGNC">          20 :         for (rqelem = *rqlist; rqelem; rqelem = rqelem-&gt;next)</span></span>
+<span id="L382"><span class="lineNum">     382</span>              :         {</span>
+<span id="L383"><span class="lineNum">     383</span>              :                 /*</span>
+<span id="L384"><span class="lineNum">     384</span>              :                  * We use full equal() here because the &quot;var&quot; might be a function of</span>
+<span id="L385"><span class="lineNum">     385</span>              :                  * one or more attributes of the same relation...</span>
+<span id="L386"><span class="lineNum">     386</span>              :                  */</span>
+<span id="L387"><span class="lineNum">     387</span> <span class="tlaGNC">           9 :                 if (!equal(var, rqelem-&gt;var))</span></span>
+<span id="L388"><span class="lineNum">     388</span> <span class="tlaUNC tlaBgUNC">           0 :                         continue;</span></span>
+<span id="L389"><span class="lineNum">     389</span>              :                 /* Found the right group to put this clause in */</span>
+<span id="L390"><span class="lineNum">     390</span> <span class="tlaGNC tlaBgGNC">           9 :                 if (is_lobound)</span></span>
+<span id="L391"><span class="lineNum">     391</span>              :                 {</span>
+<span id="L392"><span class="lineNum">     392</span> <span class="tlaUNC tlaBgUNC">           0 :                         if (!rqelem-&gt;have_lobound)</span></span>
+<span id="L393"><span class="lineNum">     393</span>              :                         {</span>
+<span id="L394"><span class="lineNum">     394</span> <span class="tlaUNC">           0 :                                 rqelem-&gt;have_lobound = true;</span></span>
+<span id="L395"><span class="lineNum">     395</span> <span class="tlaUNC">           0 :                                 rqelem-&gt;lobound = s2;</span></span>
+<span id="L396"><span class="lineNum">     396</span>              :                         }</span>
+<span id="L397"><span class="lineNum">     397</span>              :                         else</span>
+<span id="L398"><span class="lineNum">     398</span>              :                         {</span>
+<span id="L399"><span class="lineNum">     399</span>              : </span>
+<span id="L400"><span class="lineNum">     400</span>              :                                 /*------</span>
+<span id="L401"><span class="lineNum">     401</span>              :                                  * We have found two similar clauses, such as</span>
+<span id="L402"><span class="lineNum">     402</span>              :                                  * x &lt; y AND x &lt;= z.</span>
+<span id="L403"><span class="lineNum">     403</span>              :                                  * Keep only the more restrictive one.</span>
+<span id="L404"><span class="lineNum">     404</span>              :                                  *------</span>
+<span id="L405"><span class="lineNum">     405</span>              :                                  */</span>
+<span id="L406"><span class="lineNum">     406</span> <span class="tlaUNC">           0 :                                 if (rqelem-&gt;lobound &gt; s2)</span></span>
+<span id="L407"><span class="lineNum">     407</span> <span class="tlaUNC">           0 :                                         rqelem-&gt;lobound = s2;</span></span>
+<span id="L408"><span class="lineNum">     408</span>              :                         }</span>
+<span id="L409"><span class="lineNum">     409</span>              :                 }</span>
+<span id="L410"><span class="lineNum">     410</span>              :                 else</span>
+<span id="L411"><span class="lineNum">     411</span>              :                 {</span>
+<span id="L412"><span class="lineNum">     412</span> <span class="tlaGNC tlaBgGNC">           9 :                         if (!rqelem-&gt;have_hibound)</span></span>
+<span id="L413"><span class="lineNum">     413</span>              :                         {</span>
+<span id="L414"><span class="lineNum">     414</span> <span class="tlaGNC">           9 :                                 rqelem-&gt;have_hibound = true;</span></span>
+<span id="L415"><span class="lineNum">     415</span> <span class="tlaGNC">           9 :                                 rqelem-&gt;hibound = s2;</span></span>
+<span id="L416"><span class="lineNum">     416</span>              :                         }</span>
+<span id="L417"><span class="lineNum">     417</span>              :                         else</span>
+<span id="L418"><span class="lineNum">     418</span>              :                         {</span>
+<span id="L419"><span class="lineNum">     419</span>              : </span>
+<span id="L420"><span class="lineNum">     420</span>              :                                 /*------</span>
+<span id="L421"><span class="lineNum">     421</span>              :                                  * We have found two similar clauses, such as</span>
+<span id="L422"><span class="lineNum">     422</span>              :                                  * x &gt; y AND x &gt;= z.</span>
+<span id="L423"><span class="lineNum">     423</span>              :                                  * Keep only the more restrictive one.</span>
+<span id="L424"><span class="lineNum">     424</span>              :                                  *------</span>
+<span id="L425"><span class="lineNum">     425</span>              :                                  */</span>
+<span id="L426"><span class="lineNum">     426</span> <span class="tlaUNC tlaBgUNC">           0 :                                 if (rqelem-&gt;hibound &gt; s2)</span></span>
+<span id="L427"><span class="lineNum">     427</span> <span class="tlaUNC">           0 :                                         rqelem-&gt;hibound = s2;</span></span>
+<span id="L428"><span class="lineNum">     428</span>              :                         }</span>
+<span id="L429"><span class="lineNum">     429</span>              :                 }</span>
+<span id="L430"><span class="lineNum">     430</span> <span class="tlaGNC tlaBgGNC">           9 :                 return;</span></span>
+<span id="L431"><span class="lineNum">     431</span>              :         }</span>
+<span id="L432"><span class="lineNum">     432</span>              : </span>
+<span id="L433"><span class="lineNum">     433</span>              :         /* No matching var found, so make a new clause-pair data structure */</span>
+<span id="L434"><span class="lineNum">     434</span> <span class="tlaGNC">          11 :         rqelem = (RangeQueryClause *) palloc(sizeof(RangeQueryClause));</span></span>
+<span id="L435"><span class="lineNum">     435</span> <span class="tlaGNC">          11 :         rqelem-&gt;var = var;</span></span>
+<span id="L436"><span class="lineNum">     436</span> <span class="tlaGNC">          11 :         if (is_lobound)</span></span>
+<span id="L437"><span class="lineNum">     437</span>              :         {</span>
+<span id="L438"><span class="lineNum">     438</span> <span class="tlaGNC">          11 :                 rqelem-&gt;have_lobound = true;</span></span>
+<span id="L439"><span class="lineNum">     439</span> <span class="tlaGNC">          11 :                 rqelem-&gt;have_hibound = false;</span></span>
+<span id="L440"><span class="lineNum">     440</span> <span class="tlaGNC">          11 :                 rqelem-&gt;lobound = s2;</span></span>
+<span id="L441"><span class="lineNum">     441</span>              :         }</span>
+<span id="L442"><span class="lineNum">     442</span>              :         else</span>
+<span id="L443"><span class="lineNum">     443</span>              :         {</span>
+<span id="L444"><span class="lineNum">     444</span> <span class="tlaUNC tlaBgUNC">           0 :                 rqelem-&gt;have_lobound = false;</span></span>
+<span id="L445"><span class="lineNum">     445</span> <span class="tlaUNC">           0 :                 rqelem-&gt;have_hibound = true;</span></span>
+<span id="L446"><span class="lineNum">     446</span> <span class="tlaUNC">           0 :                 rqelem-&gt;hibound = s2;</span></span>
+<span id="L447"><span class="lineNum">     447</span>              :         }</span>
+<span id="L448"><span class="lineNum">     448</span> <span class="tlaGNC tlaBgGNC">          11 :         rqelem-&gt;next = *rqlist;</span></span>
+<span id="L449"><span class="lineNum">     449</span> <span class="tlaGNC">          11 :         *rqlist = rqelem;</span></span>
+<span id="L450"><span class="lineNum">     450</span>              : }</span>
+<span id="L451"><span class="lineNum">     451</span>              : </span>
+<span id="L452"><span class="lineNum">     452</span>              : /*</span>
+<span id="L453"><span class="lineNum">     453</span>              :  * find_single_rel_for_clauses</span>
+<span id="L454"><span class="lineNum">     454</span>              :  *              Examine each clause in 'clauses' and determine if all clauses</span>
+<span id="L455"><span class="lineNum">     455</span>              :  *              reference only a single relation.  If so return that relation,</span>
+<span id="L456"><span class="lineNum">     456</span>              :  *              otherwise return NULL.</span>
+<span id="L457"><span class="lineNum">     457</span>              :  */</span>
+<span id="L458"><span class="lineNum">     458</span>              : static RelOptInfo *</span>
+<span id="L459"><span class="lineNum">     459</span> <span class="tlaGNC">         597 : find_single_rel_for_clauses(PlannerInfo *root, List *clauses)</span></span>
+<span id="L460"><span class="lineNum">     460</span>              : {</span>
+<span id="L461"><span class="lineNum">     461</span> <span class="tlaGNC">         597 :         int                     lastrelid = 0;</span></span>
+<span id="L462"><span class="lineNum">     462</span>              :         ListCell   *l;</span>
+<span id="L463"><span class="lineNum">     463</span>              : </span>
+<span id="L464"><span class="lineNum">     464</span> <span class="tlaGNC">         917 :         foreach(l, clauses)</span></span>
+<span id="L465"><span class="lineNum">     465</span>              :         {</span>
+<span id="L466"><span class="lineNum">     466</span> <span class="tlaGNC">         422 :                 RestrictInfo *rinfo = (RestrictInfo *) lfirst(l);</span></span>
+<span id="L467"><span class="lineNum">     467</span>              :                 int                     relid;</span>
+<span id="L468"><span class="lineNum">     468</span>              : </span>
+<span id="L469"><span class="lineNum">     469</span>              :                 /*</span>
+<span id="L470"><span class="lineNum">     470</span>              :                  * If we have a list of bare clauses rather than RestrictInfos, we</span>
+<span id="L471"><span class="lineNum">     471</span>              :                  * could pull out their relids the hard way with pull_varnos().</span>
+<span id="L472"><span class="lineNum">     472</span>              :                  * However, currently the extended-stats machinery won't do anything</span>
+<span id="L473"><span class="lineNum">     473</span>              :                  * with non-RestrictInfo clauses anyway, so there's no point in</span>
+<span id="L474"><span class="lineNum">     474</span>              :                  * spending extra cycles; just fail if that's what we have.</span>
+<span id="L475"><span class="lineNum">     475</span>              :                  */</span>
+<span id="L476"><span class="lineNum">     476</span> <span class="tlaGNC">         422 :                 if (!IsA(rinfo, RestrictInfo))</span></span>
+<span id="L477"><span class="lineNum">     477</span> <span class="tlaGNC">         102 :                         return NULL;</span></span>
+<span id="L478"><span class="lineNum">     478</span>              : </span>
+<span id="L479"><span class="lineNum">     479</span> <span class="tlaGNC">         421 :                 if (bms_is_empty(rinfo-&gt;clause_relids))</span></span>
+<span id="L480"><span class="lineNum">     480</span> <span class="tlaGNC">           2 :                         continue;                       /* we can ignore variable-free clauses */</span></span>
+<span id="L481"><span class="lineNum">     481</span> <span class="tlaGNC">         419 :                 if (!bms_get_singleton_member(rinfo-&gt;clause_relids, &amp;relid))</span></span>
+<span id="L482"><span class="lineNum">     482</span> <span class="tlaGNC">         101 :                         return NULL;            /* multiple relations in this clause */</span></span>
+<span id="L483"><span class="lineNum">     483</span> <span class="tlaGNC">         318 :                 if (lastrelid == 0)</span></span>
+<span id="L484"><span class="lineNum">     484</span> <span class="tlaGNC">         263 :                         lastrelid = relid;      /* first clause referencing a relation */</span></span>
+<span id="L485"><span class="lineNum">     485</span> <span class="tlaGNC">          55 :                 else if (relid != lastrelid)</span></span>
+<span id="L486"><span class="lineNum">     486</span> <span class="tlaUNC tlaBgUNC">           0 :                         return NULL;            /* relation not same as last one */</span></span>
+<span id="L487"><span class="lineNum">     487</span>              :         }</span>
+<span id="L488"><span class="lineNum">     488</span>              : </span>
+<span id="L489"><span class="lineNum">     489</span> <span class="tlaGNC tlaBgGNC">         495 :         if (lastrelid != 0)</span></span>
+<span id="L490"><span class="lineNum">     490</span> <span class="tlaGNC">         263 :                 return find_base_rel(root, lastrelid);</span></span>
+<span id="L491"><span class="lineNum">     491</span>              : </span>
+<span id="L492"><span class="lineNum">     492</span> <span class="tlaGNC">         232 :         return NULL;                            /* no clauses */</span></span>
+<span id="L493"><span class="lineNum">     493</span>              : }</span>
+<span id="L494"><span class="lineNum">     494</span>              : </span>
+<span id="L495"><span class="lineNum">     495</span>              : /*</span>
+<span id="L496"><span class="lineNum">     496</span>              :  * bms_is_subset_singleton</span>
+<span id="L497"><span class="lineNum">     497</span>              :  *</span>
+<span id="L498"><span class="lineNum">     498</span>              :  * Same result as bms_is_subset(s, bms_make_singleton(x)),</span>
+<span id="L499"><span class="lineNum">     499</span>              :  * but a little faster and doesn't leak memory.</span>
+<span id="L500"><span class="lineNum">     500</span>              :  *</span>
+<span id="L501"><span class="lineNum">     501</span>              :  * Is this of use anywhere else?  If so move to bitmapset.c ...</span>
+<span id="L502"><span class="lineNum">     502</span>              :  */</span>
+<span id="L503"><span class="lineNum">     503</span>              : static bool</span>
+<span id="L504"><span class="lineNum">     504</span> <span class="tlaGNC">         203 : bms_is_subset_singleton(const Bitmapset *s, int x)</span></span>
+<span id="L505"><span class="lineNum">     505</span>              : {</span>
+<span id="L506"><span class="lineNum">     506</span> <span class="tlaGNC">         203 :         switch (bms_membership(s))</span></span>
+<span id="L507"><span class="lineNum">     507</span>              :         {</span>
+<span id="L508"><span class="lineNum">     508</span> <span class="tlaUNC tlaBgUNC">           0 :                 case BMS_EMPTY_SET:</span></span>
+<span id="L509"><span class="lineNum">     509</span> <span class="tlaUNC">           0 :                         return true;</span></span>
+<span id="L510"><span class="lineNum">     510</span> <span class="tlaGNC tlaBgGNC">         171 :                 case BMS_SINGLETON:</span></span>
+<span id="L511"><span class="lineNum">     511</span> <span class="tlaGNC">         171 :                         return bms_is_member(x, s);</span></span>
+<span id="L512"><span class="lineNum">     512</span> <span class="tlaGNC">          32 :                 case BMS_MULTIPLE:</span></span>
+<span id="L513"><span class="lineNum">     513</span> <span class="tlaGNC">          32 :                         return false;</span></span>
+<span id="L514"><span class="lineNum">     514</span>              :         }</span>
+<span id="L515"><span class="lineNum">     515</span>              :         /* can't get here... */</span>
+<span id="L516"><span class="lineNum">     516</span> <span class="tlaUNC tlaBgUNC">           0 :         return false;</span></span>
+<span id="L517"><span class="lineNum">     517</span>              : }</span>
+<span id="L518"><span class="lineNum">     518</span>              : </span>
+<span id="L519"><span class="lineNum">     519</span>              : /*</span>
+<span id="L520"><span class="lineNum">     520</span>              :  * treat_as_join_clause -</span>
+<span id="L521"><span class="lineNum">     521</span>              :  *        Decide whether an operator clause is to be handled by the</span>
+<span id="L522"><span class="lineNum">     522</span>              :  *        restriction or join estimator.  Subroutine for clause_selectivity().</span>
+<span id="L523"><span class="lineNum">     523</span>              :  */</span>
+<span id="L524"><span class="lineNum">     524</span>              : static inline bool</span>
+<span id="L525"><span class="lineNum">     525</span> <span class="tlaGNC tlaBgGNC">         218 : treat_as_join_clause(PlannerInfo *root, Node *clause, RestrictInfo *rinfo,</span></span>
+<span id="L526"><span class="lineNum">     526</span>              :                                          int varRelid, SpecialJoinInfo *sjinfo)</span>
+<span id="L527"><span class="lineNum">     527</span>              : {</span>
+<span id="L528"><span class="lineNum">     528</span> <span class="tlaGNC">         218 :         if (varRelid != 0)</span></span>
+<span id="L529"><span class="lineNum">     529</span>              :         {</span>
+<span id="L530"><span class="lineNum">     530</span>              :                 /*</span>
+<span id="L531"><span class="lineNum">     531</span>              :                  * Caller is forcing restriction mode (eg, because we are examining an</span>
+<span id="L532"><span class="lineNum">     532</span>              :                  * inner indexscan qual).</span>
+<span id="L533"><span class="lineNum">     533</span>              :                  */</span>
+<span id="L534"><span class="lineNum">     534</span> <span class="tlaGNC">          34 :                 return false;</span></span>
+<span id="L535"><span class="lineNum">     535</span>              :         }</span>
+<span id="L536"><span class="lineNum">     536</span> <span class="tlaGNC">         184 :         else if (sjinfo == NULL)</span></span>
+<span id="L537"><span class="lineNum">     537</span>              :         {</span>
+<span id="L538"><span class="lineNum">     538</span>              :                 /*</span>
+<span id="L539"><span class="lineNum">     539</span>              :                  * It must be a restriction clause, since it's being evaluated at a</span>
+<span id="L540"><span class="lineNum">     540</span>              :                  * scan node.</span>
+<span id="L541"><span class="lineNum">     541</span>              :                  */</span>
+<span id="L542"><span class="lineNum">     542</span> <span class="tlaGNC">         134 :                 return false;</span></span>
+<span id="L543"><span class="lineNum">     543</span>              :         }</span>
+<span id="L544"><span class="lineNum">     544</span>              :         else</span>
+<span id="L545"><span class="lineNum">     545</span>              :         {</span>
+<span id="L546"><span class="lineNum">     546</span>              :                 /*</span>
+<span id="L547"><span class="lineNum">     547</span>              :                  * Otherwise, it's a join if there's more than one relation used. We</span>
+<span id="L548"><span class="lineNum">     548</span>              :                  * can optimize this calculation if an rinfo was passed.</span>
+<span id="L549"><span class="lineNum">     549</span>              :                  *</span>
+<span id="L550"><span class="lineNum">     550</span>              :                  * XXX  Since we know the clause is being evaluated at a join, the</span>
+<span id="L551"><span class="lineNum">     551</span>              :                  * only way it could be single-relation is if it was delayed by outer</span>
+<span id="L552"><span class="lineNum">     552</span>              :                  * joins.  Although we can make use of the restriction qual estimators</span>
+<span id="L553"><span class="lineNum">     553</span>              :                  * anyway, it seems likely that we ought to account for the</span>
+<span id="L554"><span class="lineNum">     554</span>              :                  * probability of injected nulls somehow.</span>
+<span id="L555"><span class="lineNum">     555</span>              :                  */</span>
+<span id="L556"><span class="lineNum">     556</span> <span class="tlaGNC">          50 :                 if (rinfo)</span></span>
+<span id="L557"><span class="lineNum">     557</span> <span class="tlaGNC">          50 :                         return (bms_membership(rinfo-&gt;clause_relids) == BMS_MULTIPLE);</span></span>
+<span id="L558"><span class="lineNum">     558</span>              :                 else</span>
+<span id="L559"><span class="lineNum">     559</span> <span class="tlaUNC tlaBgUNC">           0 :                         return (NumRelids(root, clause) &gt; 1);</span></span>
+<span id="L560"><span class="lineNum">     560</span>              :         }</span>
+<span id="L561"><span class="lineNum">     561</span>              : }</span>
+<span id="L562"><span class="lineNum">     562</span>              : </span>
+<span id="L563"><span class="lineNum">     563</span>              : </span>
+<span id="L564"><span class="lineNum">     564</span>              : /*</span>
+<span id="L565"><span class="lineNum">     565</span>              :  * clause_selectivity -</span>
+<span id="L566"><span class="lineNum">     566</span>              :  *        Compute the selectivity of a general boolean expression clause.</span>
+<span id="L567"><span class="lineNum">     567</span>              :  *</span>
+<span id="L568"><span class="lineNum">     568</span>              :  * The clause can be either a RestrictInfo or a plain expression.  If it's</span>
+<span id="L569"><span class="lineNum">     569</span>              :  * a RestrictInfo, we try to cache the selectivity for possible re-use,</span>
+<span id="L570"><span class="lineNum">     570</span>              :  * so passing RestrictInfos is preferred.</span>
+<span id="L571"><span class="lineNum">     571</span>              :  *</span>
+<span id="L572"><span class="lineNum">     572</span>              :  * varRelid is either 0 or a rangetable index.</span>
+<span id="L573"><span class="lineNum">     573</span>              :  *</span>
+<span id="L574"><span class="lineNum">     574</span>              :  * When varRelid is not 0, only variables belonging to that relation are</span>
+<span id="L575"><span class="lineNum">     575</span>              :  * considered in computing selectivity; other vars are treated as constants</span>
+<span id="L576"><span class="lineNum">     576</span>              :  * of unknown values.  This is appropriate for estimating the selectivity of</span>
+<span id="L577"><span class="lineNum">     577</span>              :  * a join clause that is being used as a restriction clause in a scan of a</span>
+<span id="L578"><span class="lineNum">     578</span>              :  * nestloop join's inner relation --- varRelid should then be the ID of the</span>
+<span id="L579"><span class="lineNum">     579</span>              :  * inner relation.</span>
+<span id="L580"><span class="lineNum">     580</span>              :  *</span>
+<span id="L581"><span class="lineNum">     581</span>              :  * When varRelid is 0, all variables are treated as variables.  This</span>
+<span id="L582"><span class="lineNum">     582</span>              :  * is appropriate for ordinary join clauses and restriction clauses.</span>
+<span id="L583"><span class="lineNum">     583</span>              :  *</span>
+<span id="L584"><span class="lineNum">     584</span>              :  * jointype is the join type, if the clause is a join clause.  Pass JOIN_INNER</span>
+<span id="L585"><span class="lineNum">     585</span>              :  * if the clause isn't a join clause.</span>
+<span id="L586"><span class="lineNum">     586</span>              :  *</span>
+<span id="L587"><span class="lineNum">     587</span>              :  * sjinfo is NULL for a non-join clause, otherwise it provides additional</span>
+<span id="L588"><span class="lineNum">     588</span>              :  * context information about the join being performed.  There are some</span>
+<span id="L589"><span class="lineNum">     589</span>              :  * special cases:</span>
+<span id="L590"><span class="lineNum">     590</span>              :  *      1. For a special (not INNER) join, sjinfo is always a member of</span>
+<span id="L591"><span class="lineNum">     591</span>              :  *         root-&gt;join_info_list.</span>
+<span id="L592"><span class="lineNum">     592</span>              :  *      2. For an INNER join, sjinfo is just a transient struct, and only the</span>
+<span id="L593"><span class="lineNum">     593</span>              :  *         relids and jointype fields in it can be trusted.</span>
+<span id="L594"><span class="lineNum">     594</span>              :  * It is possible for jointype to be different from sjinfo-&gt;jointype.</span>
+<span id="L595"><span class="lineNum">     595</span>              :  * This indicates we are considering a variant join: either with</span>
+<span id="L596"><span class="lineNum">     596</span>              :  * the LHS and RHS switched, or with one input unique-ified.</span>
+<span id="L597"><span class="lineNum">     597</span>              :  *</span>
+<span id="L598"><span class="lineNum">     598</span>              :  * Note: when passing nonzero varRelid, it's normally appropriate to set</span>
+<span id="L599"><span class="lineNum">     599</span>              :  * jointype == JOIN_INNER, sjinfo == NULL, even if the clause is really a</span>
+<span id="L600"><span class="lineNum">     600</span>              :  * join clause; because we aren't treating it as a join clause.</span>
+<span id="L601"><span class="lineNum">     601</span>              :  */</span>
+<span id="L602"><span class="lineNum">     602</span>              : Selectivity</span>
+<span id="L603"><span class="lineNum">     603</span> <span class="tlaGNC tlaBgGNC">         515 : clause_selectivity(PlannerInfo *root,</span></span>
+<span id="L604"><span class="lineNum">     604</span>              :                                    Node *clause,</span>
+<span id="L605"><span class="lineNum">     605</span>              :                                    int varRelid,</span>
+<span id="L606"><span class="lineNum">     606</span>              :                                    JoinType jointype,</span>
+<span id="L607"><span class="lineNum">     607</span>              :                                    SpecialJoinInfo *sjinfo)</span>
+<span id="L608"><span class="lineNum">     608</span>              : {</span>
+<span id="L609"><span class="lineNum">     609</span> <span class="tlaGNC">         515 :         Selectivity s1 = 0.5;           /* default for any unhandled clause type */</span></span>
+<span id="L610"><span class="lineNum">     610</span> <span class="tlaGNC">         515 :         RestrictInfo *rinfo = NULL;</span></span>
+<span id="L611"><span class="lineNum">     611</span> <span class="tlaGNC">         515 :         bool            cacheable = false;</span></span>
+<span id="L612"><span class="lineNum">     612</span>              : </span>
+<span id="L613"><span class="lineNum">     613</span> <span class="tlaGNC">         515 :         if (clause == NULL)                     /* can this still happen? */</span></span>
+<span id="L614"><span class="lineNum">     614</span> <span class="tlaUNC tlaBgUNC">           0 :                 return s1;</span></span>
+<span id="L615"><span class="lineNum">     615</span>              : </span>
+<span id="L616"><span class="lineNum">     616</span> <span class="tlaGNC tlaBgGNC">         515 :         if (IsA(clause, RestrictInfo))</span></span>
+<span id="L617"><span class="lineNum">     617</span>              :         {</span>
+<span id="L618"><span class="lineNum">     618</span> <span class="tlaGNC">         514 :                 rinfo = (RestrictInfo *) clause;</span></span>
+<span id="L619"><span class="lineNum">     619</span>              : </span>
+<span id="L620"><span class="lineNum">     620</span>              :                 /*</span>
+<span id="L621"><span class="lineNum">     621</span>              :                  * If the clause is marked pseudoconstant, then it will be used as a</span>
+<span id="L622"><span class="lineNum">     622</span>              :                  * gating qual and should not affect selectivity estimates; hence</span>
+<span id="L623"><span class="lineNum">     623</span>              :                  * return 1.0.  The only exception is that a constant FALSE may be</span>
+<span id="L624"><span class="lineNum">     624</span>              :                  * taken as having selectivity 0.0, since it will surely mean no rows</span>
+<span id="L625"><span class="lineNum">     625</span>              :                  * out of the plan.  This case is simple enough that we need not</span>
+<span id="L626"><span class="lineNum">     626</span>              :                  * bother caching the result.</span>
+<span id="L627"><span class="lineNum">     627</span>              :                  */</span>
+<span id="L628"><span class="lineNum">     628</span> <span class="tlaGNC">         514 :                 if (rinfo-&gt;pseudoconstant)</span></span>
+<span id="L629"><span class="lineNum">     629</span>              :                 {</span>
+<span id="L630"><span class="lineNum">     630</span> <span class="tlaGNC">           2 :                         if (!IsA(rinfo-&gt;clause, Const))</span></span>
+<span id="L631"><span class="lineNum">     631</span> <span class="tlaGNC">           2 :                                 return (Selectivity) 1.0;</span></span>
+<span id="L632"><span class="lineNum">     632</span>              :                 }</span>
+<span id="L633"><span class="lineNum">     633</span>              : </span>
+<span id="L634"><span class="lineNum">     634</span>              :                 /*</span>
+<span id="L635"><span class="lineNum">     635</span>              :                  * If the clause is marked redundant, always return 1.0.</span>
+<span id="L636"><span class="lineNum">     636</span>              :                  */</span>
+<span id="L637"><span class="lineNum">     637</span> <span class="tlaGNC">         512 :                 if (rinfo-&gt;norm_selec &gt; 1)</span></span>
+<span id="L638"><span class="lineNum">     638</span> <span class="tlaUNC tlaBgUNC">           0 :                         return (Selectivity) 1.0;</span></span>
+<span id="L639"><span class="lineNum">     639</span>              : </span>
+<span id="L640"><span class="lineNum">     640</span>              :                 /*</span>
+<span id="L641"><span class="lineNum">     641</span>              :                  * If possible, cache the result of the selectivity calculation for</span>
+<span id="L642"><span class="lineNum">     642</span>              :                  * the clause.  We can cache if varRelid is zero or the clause</span>
+<span id="L643"><span class="lineNum">     643</span>              :                  * contains only vars of that relid --- otherwise varRelid will affect</span>
+<span id="L644"><span class="lineNum">     644</span>              :                  * the result, so mustn't cache.  Outer join quals might be examined</span>
+<span id="L645"><span class="lineNum">     645</span>              :                  * with either their join's actual jointype or JOIN_INNER, so we need</span>
+<span id="L646"><span class="lineNum">     646</span>              :                  * two cache variables to remember both cases.  Note: we assume the</span>
+<span id="L647"><span class="lineNum">     647</span>              :                  * result won't change if we are switching the input relations or</span>
+<span id="L648"><span class="lineNum">     648</span>              :                  * considering a unique-ified case, so we only need one cache variable</span>
+<span id="L649"><span class="lineNum">     649</span>              :                  * for all non-JOIN_INNER cases.</span>
+<span id="L650"><span class="lineNum">     650</span>              :                  */</span>
+<span id="L651"><span class="lineNum">     651</span> <span class="tlaGNC tlaBgGNC">         715 :                 if (varRelid == 0 ||</span></span>
+<span id="L652"><span class="lineNum">     652</span> <span class="tlaGNC">         203 :                         bms_is_subset_singleton(rinfo-&gt;clause_relids, varRelid))</span></span>
+<span id="L653"><span class="lineNum">     653</span>              :                 {</span>
+<span id="L654"><span class="lineNum">     654</span>              :                         /* Cacheable --- do we already have the result? */</span>
+<span id="L655"><span class="lineNum">     655</span> <span class="tlaGNC">         480 :                         if (jointype == JOIN_INNER)</span></span>
+<span id="L656"><span class="lineNum">     656</span>              :                         {</span>
+<span id="L657"><span class="lineNum">     657</span> <span class="tlaGNC">         435 :                                 if (rinfo-&gt;norm_selec &gt;= 0)</span></span>
+<span id="L658"><span class="lineNum">     658</span> <span class="tlaGNC">         248 :                                         return rinfo-&gt;norm_selec;</span></span>
+<span id="L659"><span class="lineNum">     659</span>              :                         }</span>
+<span id="L660"><span class="lineNum">     660</span>              :                         else</span>
+<span id="L661"><span class="lineNum">     661</span>              :                         {</span>
+<span id="L662"><span class="lineNum">     662</span> <span class="tlaGNC">          45 :                                 if (rinfo-&gt;outer_selec &gt;= 0)</span></span>
+<span id="L663"><span class="lineNum">     663</span> <span class="tlaGNC">          21 :                                         return rinfo-&gt;outer_selec;</span></span>
+<span id="L664"><span class="lineNum">     664</span>              :                         }</span>
+<span id="L665"><span class="lineNum">     665</span> <span class="tlaGNC">         211 :                         cacheable = true;</span></span>
+<span id="L666"><span class="lineNum">     666</span>              :                 }</span>
+<span id="L667"><span class="lineNum">     667</span>              : </span>
+<span id="L668"><span class="lineNum">     668</span>              :                 /*</span>
+<span id="L669"><span class="lineNum">     669</span>              :                  * Proceed with examination of contained clause.  If the clause is an</span>
+<span id="L670"><span class="lineNum">     670</span>              :                  * OR-clause, we want to look at the variant with sub-RestrictInfos,</span>
+<span id="L671"><span class="lineNum">     671</span>              :                  * so that per-subclause selectivities can be cached.</span>
+<span id="L672"><span class="lineNum">     672</span>              :                  */</span>
+<span id="L673"><span class="lineNum">     673</span> <span class="tlaGNC">         243 :                 if (rinfo-&gt;orclause)</span></span>
+<span id="L674"><span class="lineNum">     674</span> <span class="tlaGNC">           1 :                         clause = (Node *) rinfo-&gt;orclause;</span></span>
+<span id="L675"><span class="lineNum">     675</span>              :                 else</span>
+<span id="L676"><span class="lineNum">     676</span> <span class="tlaGNC">         242 :                         clause = (Node *) rinfo-&gt;clause;</span></span>
+<span id="L677"><span class="lineNum">     677</span>              :         }</span>
+<span id="L678"><span class="lineNum">     678</span>              : </span>
+<span id="L679"><span class="lineNum">     679</span> <span class="tlaGNC">         244 :         if (IsA(clause, Var))</span></span>
+<span id="L680"><span class="lineNum">     680</span>              :         {</span>
+<span id="L681"><span class="lineNum">     681</span> <span class="tlaUNC tlaBgUNC">           0 :                 Var                *var = (Var *) clause;</span></span>
+<span id="L682"><span class="lineNum">     682</span>              : </span>
+<span id="L683"><span class="lineNum">     683</span>              :                 /*</span>
+<span id="L684"><span class="lineNum">     684</span>              :                  * We probably shouldn't ever see an uplevel Var here, but if we do,</span>
+<span id="L685"><span class="lineNum">     685</span>              :                  * return the default selectivity...</span>
+<span id="L686"><span class="lineNum">     686</span>              :                  */</span>
+<span id="L687"><span class="lineNum">     687</span> <span class="tlaUNC">           0 :                 if (var-&gt;varlevelsup == 0 &amp;&amp;</span></span>
+<span id="L688"><span class="lineNum">     688</span> <span class="tlaUNC">           0 :                         (varRelid == 0 || varRelid == (int) var-&gt;varno))</span></span>
+<span id="L689"><span class="lineNum">     689</span>              :                 {</span>
+<span id="L690"><span class="lineNum">     690</span>              :                         /* Use the restriction selectivity function for a bool Var */</span>
+<span id="L691"><span class="lineNum">     691</span> <span class="tlaUNC">           0 :                         s1 = boolvarsel(root, (Node *) var, varRelid);</span></span>
+<span id="L692"><span class="lineNum">     692</span>              :                 }</span>
+<span id="L693"><span class="lineNum">     693</span>              :         }</span>
+<span id="L694"><span class="lineNum">     694</span> <span class="tlaGNC tlaBgGNC">         244 :         else if (IsA(clause, Const))</span></span>
+<span id="L695"><span class="lineNum">     695</span>              :         {</span>
+<span id="L696"><span class="lineNum">     696</span>              :                 /* bool constant is pretty easy... */</span>
+<span id="L697"><span class="lineNum">     697</span> <span class="tlaUNC tlaBgUNC">           0 :                 Const      *con = (Const *) clause;</span></span>
+<span id="L698"><span class="lineNum">     698</span>              : </span>
+<span id="L699"><span class="lineNum">     699</span> <span class="tlaUNC">           0 :                 s1 = con-&gt;constisnull ? 0.0 :</span></span>
+<span id="L700"><span class="lineNum">     700</span> <span class="tlaUNC">           0 :                         DatumGetBool(con-&gt;constvalue) ? 1.0 : 0.0;</span></span>
+<span id="L701"><span class="lineNum">     701</span>              :         }</span>
+<span id="L702"><span class="lineNum">     702</span> <span class="tlaGNC tlaBgGNC">         244 :         else if (IsA(clause, Param))</span></span>
+<span id="L703"><span class="lineNum">     703</span>              :         {</span>
+<span id="L704"><span class="lineNum">     704</span>              :                 /* see if we can replace the Param */</span>
+<span id="L705"><span class="lineNum">     705</span> <span class="tlaUNC tlaBgUNC">           0 :                 Node       *subst = estimate_expression_value(root, clause);</span></span>
+<span id="L706"><span class="lineNum">     706</span>              : </span>
+<span id="L707"><span class="lineNum">     707</span> <span class="tlaUNC">           0 :                 if (IsA(subst, Const))</span></span>
+<span id="L708"><span class="lineNum">     708</span>              :                 {</span>
+<span id="L709"><span class="lineNum">     709</span>              :                         /* bool constant is pretty easy... */</span>
+<span id="L710"><span class="lineNum">     710</span> <span class="tlaUNC">           0 :                         Const      *con = (Const *) subst;</span></span>
+<span id="L711"><span class="lineNum">     711</span>              : </span>
+<span id="L712"><span class="lineNum">     712</span> <span class="tlaUNC">           0 :                         s1 = con-&gt;constisnull ? 0.0 :</span></span>
+<span id="L713"><span class="lineNum">     713</span> <span class="tlaUNC">           0 :                                 DatumGetBool(con-&gt;constvalue) ? 1.0 : 0.0;</span></span>
+<span id="L714"><span class="lineNum">     714</span>              :                 }</span>
+<span id="L715"><span class="lineNum">     715</span>              :                 else</span>
+<span id="L716"><span class="lineNum">     716</span>              :                 {</span>
+<span id="L717"><span class="lineNum">     717</span>              :                         /* XXX any way to do better than default? */</span>
+<span id="L718"><span class="lineNum">     718</span>              :                 }</span>
+<span id="L719"><span class="lineNum">     719</span>              :         }</span>
+<span id="L720"><span class="lineNum">     720</span> <span class="tlaGNC tlaBgGNC">         244 :         else if (is_notclause(clause))</span></span>
+<span id="L721"><span class="lineNum">     721</span>              :         {</span>
+<span id="L722"><span class="lineNum">     722</span>              :                 /* inverse of the selectivity of the underlying clause */</span>
+<span id="L723"><span class="lineNum">     723</span> <span class="tlaUNC tlaBgUNC">           0 :                 s1 = 1.0 - clause_selectivity(root,</span></span>
+<span id="L724"><span class="lineNum">     724</span> <span class="tlaUNC">           0 :                                                                           (Node *) get_notclausearg((Expr *) clause),</span></span>
+<span id="L725"><span class="lineNum">     725</span>              :                                                                           varRelid,</span>
+<span id="L726"><span class="lineNum">     726</span>              :                                                                           jointype,</span>
+<span id="L727"><span class="lineNum">     727</span>              :                                                                           sjinfo);</span>
+<span id="L728"><span class="lineNum">     728</span>              :         }</span>
+<span id="L729"><span class="lineNum">     729</span> <span class="tlaGNC tlaBgGNC">         244 :         else if (is_andclause(clause))</span></span>
+<span id="L730"><span class="lineNum">     730</span>              :         {</span>
+<span id="L731"><span class="lineNum">     731</span>              :                 /* share code with clauselist_selectivity() */</span>
+<span id="L732"><span class="lineNum">     732</span> <span class="tlaUNC tlaBgUNC">           0 :                 s1 = clauselist_selectivity(root,</span></span>
+<span id="L733"><span class="lineNum">     733</span>              :                                                                         ((BoolExpr *) clause)-&gt;args,</span>
+<span id="L734"><span class="lineNum">     734</span>              :                                                                         varRelid,</span>
+<span id="L735"><span class="lineNum">     735</span>              :                                                                         jointype,</span>
+<span id="L736"><span class="lineNum">     736</span>              :                                                                         sjinfo);</span>
+<span id="L737"><span class="lineNum">     737</span>              :         }</span>
+<span id="L738"><span class="lineNum">     738</span> <span class="tlaGNC tlaBgGNC">         244 :         else if (is_orclause(clause))</span></span>
+<span id="L739"><span class="lineNum">     739</span>              :         {</span>
+<span id="L740"><span class="lineNum">     740</span>              :                 /*</span>
+<span id="L741"><span class="lineNum">     741</span>              :                  * Selectivities for an OR clause are computed as s1+s2 - s1*s2 to</span>
+<span id="L742"><span class="lineNum">     742</span>              :                  * account for the probable overlap of selected tuple sets.</span>
+<span id="L743"><span class="lineNum">     743</span>              :                  *</span>
+<span id="L744"><span class="lineNum">     744</span>              :                  * XXX is this too conservative?</span>
+<span id="L745"><span class="lineNum">     745</span>              :                  */</span>
+<span id="L746"><span class="lineNum">     746</span>              :                 ListCell   *arg;</span>
+<span id="L747"><span class="lineNum">     747</span>              : </span>
+<span id="L748"><span class="lineNum">     748</span> <span class="tlaGNC">           1 :                 s1 = 0.0;</span></span>
+<span id="L749"><span class="lineNum">     749</span> <span class="tlaGNC">           3 :                 foreach(arg, ((BoolExpr *) clause)-&gt;args)</span></span>
+<span id="L750"><span class="lineNum">     750</span>              :                 {</span>
+<span id="L751"><span class="lineNum">     751</span> <span class="tlaGNC">           2 :                         Selectivity s2 = clause_selectivity(root,</span></span>
+<span id="L752"><span class="lineNum">     752</span> <span class="tlaGNC">           2 :                                                                                                 (Node *) lfirst(arg),</span></span>
+<span id="L753"><span class="lineNum">     753</span>              :                                                                                                 varRelid,</span>
+<span id="L754"><span class="lineNum">     754</span>              :                                                                                                 jointype,</span>
+<span id="L755"><span class="lineNum">     755</span>              :                                                                                                 sjinfo);</span>
+<span id="L756"><span class="lineNum">     756</span>              : </span>
+<span id="L757"><span class="lineNum">     757</span> <span class="tlaGNC">           2 :                         s1 = s1 + s2 - s1 * s2;</span></span>
+<span id="L758"><span class="lineNum">     758</span>              :                 }</span>
+<span id="L759"><span class="lineNum">     759</span>              :         }</span>
+<span id="L760"><span class="lineNum">     760</span> <span class="tlaGNC">         243 :         else if (is_opclause(clause) || IsA(clause, DistinctExpr))</span></span>
+<span id="L761"><span class="lineNum">     761</span> <span class="tlaGNC">         215 :         {</span></span>
+<span id="L762"><span class="lineNum">     762</span> <span class="tlaGNC">         215 :                 OpExpr     *opclause = (OpExpr *) clause;</span></span>
+<span id="L763"><span class="lineNum">     763</span> <span class="tlaGNC">         215 :                 Oid                     opno = opclause-&gt;opno;</span></span>
+<span id="L764"><span class="lineNum">     764</span>              : </span>
+<span id="L765"><span class="lineNum">     765</span> <span class="tlaGNC">         215 :                 if (treat_as_join_clause(root, clause, rinfo, varRelid, sjinfo))</span></span>
+<span id="L766"><span class="lineNum">     766</span>              :                 {</span>
+<span id="L767"><span class="lineNum">     767</span>              :                         /* Estimate selectivity for a join clause. */</span>
+<span id="L768"><span class="lineNum">     768</span> <span class="tlaGNC">          50 :                         s1 = join_selectivity(root, opno,</span></span>
+<span id="L769"><span class="lineNum">     769</span>              :                                                                   opclause-&gt;args,</span>
+<span id="L770"><span class="lineNum">     770</span>              :                                                                   opclause-&gt;inputcollid,</span>
+<span id="L771"><span class="lineNum">     771</span>              :                                                                   jointype,</span>
+<span id="L772"><span class="lineNum">     772</span>              :                                                                   sjinfo);</span>
+<span id="L773"><span class="lineNum">     773</span>              :                 }</span>
+<span id="L774"><span class="lineNum">     774</span>              :                 else</span>
+<span id="L775"><span class="lineNum">     775</span>              :                 {</span>
+<span id="L776"><span class="lineNum">     776</span>              :                         /* Estimate selectivity for a restriction clause. */</span>
+<span id="L777"><span class="lineNum">     777</span> <span class="tlaGNC">         165 :                         s1 = restriction_selectivity(root, opno,</span></span>
+<span id="L778"><span class="lineNum">     778</span>              :                                                                                  opclause-&gt;args,</span>
+<span id="L779"><span class="lineNum">     779</span>              :                                                                                  opclause-&gt;inputcollid,</span>
+<span id="L780"><span class="lineNum">     780</span>              :                                                                                  varRelid);</span>
+<span id="L781"><span class="lineNum">     781</span>              :                 }</span>
+<span id="L782"><span class="lineNum">     782</span>              : </span>
+<span id="L783"><span class="lineNum">     783</span>              :                 /*</span>
+<span id="L784"><span class="lineNum">     784</span>              :                  * DistinctExpr has the same representation as OpExpr, but the</span>
+<span id="L785"><span class="lineNum">     785</span>              :                  * contained operator is &quot;=&quot; not &quot;&lt;&gt;&quot;, so we must negate the result.</span>
+<span id="L786"><span class="lineNum">     786</span>              :                  * This estimation method doesn't give the right behavior for nulls,</span>
+<span id="L787"><span class="lineNum">     787</span>              :                  * but it's better than doing nothing.</span>
+<span id="L788"><span class="lineNum">     788</span>              :                  */</span>
+<span id="L789"><span class="lineNum">     789</span> <span class="tlaGNC">         215 :                 if (IsA(clause, DistinctExpr))</span></span>
+<span id="L790"><span class="lineNum">     790</span> <span class="tlaUNC tlaBgUNC">           0 :                         s1 = 1.0 - s1;</span></span>
+<span id="L791"><span class="lineNum">     791</span>              :         }</span>
+<span id="L792"><span class="lineNum">     792</span> <span class="tlaGNC tlaBgGNC">          28 :         else if (is_funcclause(clause))</span></span>
+<span id="L793"><span class="lineNum">     793</span>              :         {</span>
+<span id="L794"><span class="lineNum">     794</span> <span class="tlaUNC tlaBgUNC">           0 :                 FuncExpr   *funcclause = (FuncExpr *) clause;</span></span>
+<span id="L795"><span class="lineNum">     795</span>              : </span>
+<span id="L796"><span class="lineNum">     796</span>              :                 /* Try to get an estimate from the support function, if any */</span>
+<span id="L797"><span class="lineNum">     797</span> <span class="tlaUNC">           0 :                 s1 = function_selectivity(root,</span></span>
+<span id="L798"><span class="lineNum">     798</span>              :                                                                   funcclause-&gt;funcid,</span>
+<span id="L799"><span class="lineNum">     799</span>              :                                                                   funcclause-&gt;args,</span>
+<span id="L800"><span class="lineNum">     800</span>              :                                                                   funcclause-&gt;inputcollid,</span>
+<span id="L801"><span class="lineNum">     801</span> <span class="tlaUNC">           0 :                                                                   treat_as_join_clause(root, clause, rinfo,</span></span>
+<span id="L802"><span class="lineNum">     802</span>              :                                                                                                            varRelid, sjinfo),</span>
+<span id="L803"><span class="lineNum">     803</span>              :                                                                   varRelid,</span>
+<span id="L804"><span class="lineNum">     804</span>              :                                                                   jointype,</span>
+<span id="L805"><span class="lineNum">     805</span>              :                                                                   sjinfo);</span>
+<span id="L806"><span class="lineNum">     806</span>              :         }</span>
+<span id="L807"><span class="lineNum">     807</span> <span class="tlaGNC tlaBgGNC">          28 :         else if (IsA(clause, ScalarArrayOpExpr))</span></span>
+<span id="L808"><span class="lineNum">     808</span>              :         {</span>
+<span id="L809"><span class="lineNum">     809</span>              :                 /* Use node specific selectivity calculation function */</span>
+<span id="L810"><span class="lineNum">     810</span> <span class="tlaGNC">           3 :                 s1 = scalararraysel(root,</span></span>
+<span id="L811"><span class="lineNum">     811</span>              :                                                         (ScalarArrayOpExpr *) clause,</span>
+<span id="L812"><span class="lineNum">     812</span> <span class="tlaGNC">           3 :                                                         treat_as_join_clause(root, clause, rinfo,</span></span>
+<span id="L813"><span class="lineNum">     813</span>              :                                                                                                  varRelid, sjinfo),</span>
+<span id="L814"><span class="lineNum">     814</span>              :                                                         varRelid,</span>
+<span id="L815"><span class="lineNum">     815</span>              :                                                         jointype,</span>
+<span id="L816"><span class="lineNum">     816</span>              :                                                         sjinfo);</span>
+<span id="L817"><span class="lineNum">     817</span>              :         }</span>
+<span id="L818"><span class="lineNum">     818</span> <span class="tlaGNC">          25 :         else if (IsA(clause, RowCompareExpr))</span></span>
+<span id="L819"><span class="lineNum">     819</span>              :         {</span>
+<span id="L820"><span class="lineNum">     820</span>              :                 /* Use node specific selectivity calculation function */</span>
+<span id="L821"><span class="lineNum">     821</span> <span class="tlaUNC tlaBgUNC">           0 :                 s1 = rowcomparesel(root,</span></span>
+<span id="L822"><span class="lineNum">     822</span>              :                                                    (RowCompareExpr *) clause,</span>
+<span id="L823"><span class="lineNum">     823</span>              :                                                    varRelid,</span>
+<span id="L824"><span class="lineNum">     824</span>              :                                                    jointype,</span>
+<span id="L825"><span class="lineNum">     825</span>              :                                                    sjinfo);</span>
+<span id="L826"><span class="lineNum">     826</span>              :         }</span>
+<span id="L827"><span class="lineNum">     827</span> <span class="tlaGNC tlaBgGNC">          25 :         else if (IsA(clause, NullTest))</span></span>
+<span id="L828"><span class="lineNum">     828</span>              :         {</span>
+<span id="L829"><span class="lineNum">     829</span>              :                 /* Use node specific selectivity calculation function */</span>
+<span id="L830"><span class="lineNum">     830</span> <span class="tlaGNC">          23 :                 s1 = nulltestsel(root,</span></span>
+<span id="L831"><span class="lineNum">     831</span>              :                                                  ((NullTest *) clause)-&gt;nulltesttype,</span>
+<span id="L832"><span class="lineNum">     832</span> <span class="tlaGNC">          23 :                                                  (Node *) ((NullTest *) clause)-&gt;arg,</span></span>
+<span id="L833"><span class="lineNum">     833</span>              :                                                  varRelid,</span>
+<span id="L834"><span class="lineNum">     834</span>              :                                                  jointype,</span>
+<span id="L835"><span class="lineNum">     835</span>              :                                                  sjinfo);</span>
+<span id="L836"><span class="lineNum">     836</span>              :         }</span>
+<span id="L837"><span class="lineNum">     837</span> <span class="tlaGNC">           2 :         else if (IsA(clause, BooleanTest))</span></span>
+<span id="L838"><span class="lineNum">     838</span>              :         {</span>
+<span id="L839"><span class="lineNum">     839</span>              :                 /* Use node specific selectivity calculation function */</span>
+<span id="L840"><span class="lineNum">     840</span> <span class="tlaUNC tlaBgUNC">           0 :                 s1 = booltestsel(root,</span></span>
+<span id="L841"><span class="lineNum">     841</span>              :                                                  ((BooleanTest *) clause)-&gt;booltesttype,</span>
+<span id="L842"><span class="lineNum">     842</span> <span class="tlaUNC">           0 :                                                  (Node *) ((BooleanTest *) clause)-&gt;arg,</span></span>
+<span id="L843"><span class="lineNum">     843</span>              :                                                  varRelid,</span>
+<span id="L844"><span class="lineNum">     844</span>              :                                                  jointype,</span>
+<span id="L845"><span class="lineNum">     845</span>              :                                                  sjinfo);</span>
+<span id="L846"><span class="lineNum">     846</span>              :         }</span>
+<span id="L847"><span class="lineNum">     847</span> <span class="tlaGNC tlaBgGNC">           2 :         else if (IsA(clause, CurrentOfExpr))</span></span>
+<span id="L848"><span class="lineNum">     848</span>              :         {</span>
+<span id="L849"><span class="lineNum">     849</span>              :                 /* CURRENT OF selects at most one row of its table */</span>
+<span id="L850"><span class="lineNum">     850</span> <span class="tlaUNC tlaBgUNC">           0 :                 CurrentOfExpr *cexpr = (CurrentOfExpr *) clause;</span></span>
+<span id="L851"><span class="lineNum">     851</span> <span class="tlaUNC">           0 :                 RelOptInfo *crel = find_base_rel(root, cexpr-&gt;cvarno);</span></span>
+<span id="L852"><span class="lineNum">     852</span>              : </span>
+<span id="L853"><span class="lineNum">     853</span> <span class="tlaUNC">           0 :                 if (crel-&gt;tuples &gt; 0)</span></span>
+<span id="L854"><span class="lineNum">     854</span> <span class="tlaUNC">           0 :                         s1 = 1.0 / crel-&gt;tuples;</span></span>
+<span id="L855"><span class="lineNum">     855</span>              :         }</span>
+<span id="L856"><span class="lineNum">     856</span> <span class="tlaGNC tlaBgGNC">           2 :         else if (IsA(clause, RelabelType))</span></span>
+<span id="L857"><span class="lineNum">     857</span>              :         {</span>
+<span id="L858"><span class="lineNum">     858</span>              :                 /* Not sure this case is needed, but it can't hurt */</span>
+<span id="L859"><span class="lineNum">     859</span> <span class="tlaUNC tlaBgUNC">           0 :                 s1 = clause_selectivity(root,</span></span>
+<span id="L860"><span class="lineNum">     860</span> <span class="tlaUNC">           0 :                                                                 (Node *) ((RelabelType *) clause)-&gt;arg,</span></span>
+<span id="L861"><span class="lineNum">     861</span>              :                                                                 varRelid,</span>
+<span id="L862"><span class="lineNum">     862</span>              :                                                                 jointype,</span>
+<span id="L863"><span class="lineNum">     863</span>              :                                                                 sjinfo);</span>
+<span id="L864"><span class="lineNum">     864</span>              :         }</span>
+<span id="L865"><span class="lineNum">     865</span> <span class="tlaGNC tlaBgGNC">           2 :         else if (IsA(clause, CoerceToDomain))</span></span>
+<span id="L866"><span class="lineNum">     866</span>              :         {</span>
+<span id="L867"><span class="lineNum">     867</span>              :                 /* Not sure this case is needed, but it can't hurt */</span>
+<span id="L868"><span class="lineNum">     868</span> <span class="tlaUNC tlaBgUNC">           0 :                 s1 = clause_selectivity(root,</span></span>
+<span id="L869"><span class="lineNum">     869</span> <span class="tlaUNC">           0 :                                                                 (Node *) ((CoerceToDomain *) clause)-&gt;arg,</span></span>
+<span id="L870"><span class="lineNum">     870</span>              :                                                                 varRelid,</span>
+<span id="L871"><span class="lineNum">     871</span>              :                                                                 jointype,</span>
+<span id="L872"><span class="lineNum">     872</span>              :                                                                 sjinfo);</span>
+<span id="L873"><span class="lineNum">     873</span>              :         }</span>
+<span id="L874"><span class="lineNum">     874</span>              :         else</span>
+<span id="L875"><span class="lineNum">     875</span>              :         {</span>
+<span id="L876"><span class="lineNum">     876</span>              :                 /*</span>
+<span id="L877"><span class="lineNum">     877</span>              :                  * For anything else, see if we can consider it as a boolean variable.</span>
+<span id="L878"><span class="lineNum">     878</span>              :                  * This only works if it's an immutable expression in Vars of a single</span>
+<span id="L879"><span class="lineNum">     879</span>              :                  * relation; but there's no point in us checking that here because</span>
+<span id="L880"><span class="lineNum">     880</span>              :                  * boolvarsel() will do it internally, and return a suitable default</span>
+<span id="L881"><span class="lineNum">     881</span>              :                  * selectivity if not.</span>
+<span id="L882"><span class="lineNum">     882</span>              :                  */</span>
+<span id="L883"><span class="lineNum">     883</span> <span class="tlaGNC tlaBgGNC">           2 :                 s1 = boolvarsel(root, clause, varRelid);</span></span>
+<span id="L884"><span class="lineNum">     884</span>              :         }</span>
+<span id="L885"><span class="lineNum">     885</span>              : </span>
+<span id="L886"><span class="lineNum">     886</span>              :         /* Cache the result if possible */</span>
+<span id="L887"><span class="lineNum">     887</span> <span class="tlaGNC">         244 :         if (cacheable)</span></span>
+<span id="L888"><span class="lineNum">     888</span>              :         {</span>
+<span id="L889"><span class="lineNum">     889</span> <span class="tlaGNC">         211 :                 if (jointype == JOIN_INNER)</span></span>
+<span id="L890"><span class="lineNum">     890</span> <span class="tlaGNC">         187 :                         rinfo-&gt;norm_selec = s1;</span></span>
+<span id="L891"><span class="lineNum">     891</span>              :                 else</span>
+<span id="L892"><span class="lineNum">     892</span> <span class="tlaGNC">          24 :                         rinfo-&gt;outer_selec = s1;</span></span>
+<span id="L893"><span class="lineNum">     893</span>              :         }</span>
+<span id="L894"><span class="lineNum">     894</span>              : </span>
+<span id="L895"><span class="lineNum">     895</span>              : #ifdef SELECTIVITY_DEBUG</span>
+<span id="L896"><span class="lineNum">     896</span>              :         elog(DEBUG4, &quot;clause_selectivity: s1 %f&quot;, s1);</span>
+<span id="L897"><span class="lineNum">     897</span>              : #endif                                                  /* SELECTIVITY_DEBUG */</span>
+<span id="L898"><span class="lineNum">     898</span>              : </span>
+<span id="L899"><span class="lineNum">     899</span> <span class="tlaGNC">         244 :         return s1;</span></span>
+<span id="L900"><span class="lineNum">     900</span>              : }</span>
+        </pre>
+              </td>
+            </tr>
+          </table>
+          <br>
+
+          <table width="100%" border=0 cellspacing=0 cellpadding=0>
+            <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+            <tr><td class="versionInfo">Generated by: <a href="https://github.com//linux-test-project/lcov" target="_parent">LCOV version 2.0-1</a></td></tr>
+          </table>
+          <br>
+
+</body>
+</html>

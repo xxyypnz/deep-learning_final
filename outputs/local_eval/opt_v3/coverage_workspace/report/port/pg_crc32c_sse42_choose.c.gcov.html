@@ -1,0 +1,140 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - coverage_filtered.info - port/pg_crc32c_sse42_choose.c</title>
+  <link rel="stylesheet" type="text/css" href="../gcov.css">
+</head>
+
+<body>
+
+          <table width="100%" border=0 cellspacing=0 cellpadding=0>
+            <tr><td class="title">LCOV - code coverage report</td></tr>
+            <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+
+            <tr>
+              <td width="100%">
+                <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="10%" class="headerValue"><a href="../index.html">top level</a> - <a href="index.html">port</a> - pg_crc32c_sse42_choose.c<span style="font-size: 80%;"> (source / <a href="pg_crc32c_sse42_choose.c.func-c.html">functions</a>)</span></td>
+            <td width="5%"></td>
+            <td width="5%"></td>
+            <td width="5%" class="headerCovTableHead">Coverage</td>
+            <td width="5%" class="headerCovTableHead" title="Covered + Uncovered code">Total</td>
+            <td width="5%" class="headerCovTableHead" title="Exercised code only">Hit</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">coverage_filtered.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntryMed">88.9&nbsp;%</td>
+            <td class="headerCovTableEntry">9</td>
+            <td class="headerCovTableEntry">8</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test Date:</td>
+            <td class="headerValue">2026-06-04 06:01:07</td>
+            <td></td>
+            <td class="headerItem">Functions:</td>
+            <td class="headerCovTableEntryHi">100.0&nbsp;%</td>
+            <td class="headerCovTableEntry">2</td>
+            <td class="headerCovTableEntry">2</td>
+          </tr>
+                  <tr><td><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+                </table>
+              </td>
+            </tr>
+
+            <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+          </table>
+
+          <table cellpadding=0 cellspacing=0 border=0>
+            <tr>
+              <td><br></td>
+            </tr>
+            <tr>
+              <td>
+<pre class="sourceHeading">            Line data    Source code</pre>
+<pre class="source">
+<span id="L1"><span class="lineNum">       1</span>              : /*-------------------------------------------------------------------------</span>
+<span id="L2"><span class="lineNum">       2</span>              :  *</span>
+<span id="L3"><span class="lineNum">       3</span>              :  * pg_crc32c_sse42_choose.c</span>
+<span id="L4"><span class="lineNum">       4</span>              :  *        Choose between Intel SSE 4.2 and software CRC-32C implementation.</span>
+<span id="L5"><span class="lineNum">       5</span>              :  *</span>
+<span id="L6"><span class="lineNum">       6</span>              :  * On first call, checks if the CPU we're running on supports Intel SSE</span>
+<span id="L7"><span class="lineNum">       7</span>              :  * 4.2. If it does, use the special SSE instructions for CRC-32C</span>
+<span id="L8"><span class="lineNum">       8</span>              :  * computation. Otherwise, fall back to the pure software implementation</span>
+<span id="L9"><span class="lineNum">       9</span>              :  * (slicing-by-8).</span>
+<span id="L10"><span class="lineNum">      10</span>              :  *</span>
+<span id="L11"><span class="lineNum">      11</span>              :  * Portions Copyright (c) 1996-2020, PostgreSQL Global Development Group</span>
+<span id="L12"><span class="lineNum">      12</span>              :  * Portions Copyright (c) 1994, Regents of the University of California</span>
+<span id="L13"><span class="lineNum">      13</span>              :  *</span>
+<span id="L14"><span class="lineNum">      14</span>              :  *</span>
+<span id="L15"><span class="lineNum">      15</span>              :  * IDENTIFICATION</span>
+<span id="L16"><span class="lineNum">      16</span>              :  *        src/port/pg_crc32c_sse42_choose.c</span>
+<span id="L17"><span class="lineNum">      17</span>              :  *</span>
+<span id="L18"><span class="lineNum">      18</span>              :  *-------------------------------------------------------------------------</span>
+<span id="L19"><span class="lineNum">      19</span>              :  */</span>
+<span id="L20"><span class="lineNum">      20</span>              : </span>
+<span id="L21"><span class="lineNum">      21</span>              : #include &quot;c.h&quot;</span>
+<span id="L22"><span class="lineNum">      22</span>              : </span>
+<span id="L23"><span class="lineNum">      23</span>              : #ifdef HAVE__GET_CPUID</span>
+<span id="L24"><span class="lineNum">      24</span>              : #include &lt;cpuid.h&gt;</span>
+<span id="L25"><span class="lineNum">      25</span>              : #endif</span>
+<span id="L26"><span class="lineNum">      26</span>              : </span>
+<span id="L27"><span class="lineNum">      27</span>              : #ifdef HAVE__CPUID</span>
+<span id="L28"><span class="lineNum">      28</span>              : #include &lt;intrin.h&gt;</span>
+<span id="L29"><span class="lineNum">      29</span>              : #endif</span>
+<span id="L30"><span class="lineNum">      30</span>              : </span>
+<span id="L31"><span class="lineNum">      31</span>              : #include &quot;port/pg_crc32c.h&quot;</span>
+<span id="L32"><span class="lineNum">      32</span>              : </span>
+<span id="L33"><span class="lineNum">      33</span>              : static bool</span>
+<span id="L34"><span class="lineNum">      34</span> <span class="tlaGNC tlaBgGNC">           3 : pg_crc32c_sse42_available(void)</span></span>
+<span id="L35"><span class="lineNum">      35</span>              : {</span>
+<span id="L36"><span class="lineNum">      36</span> <span class="tlaGNC">           3 :         unsigned int exx[4] = {0, 0, 0, 0};</span></span>
+<span id="L37"><span class="lineNum">      37</span>              : </span>
+<span id="L38"><span class="lineNum">      38</span>              : #if defined(HAVE__GET_CPUID)</span>
+<span id="L39"><span class="lineNum">      39</span> <span class="tlaGNC">           3 :         __get_cpuid(1, &amp;exx[0], &amp;exx[1], &amp;exx[2], &amp;exx[3]);</span></span>
+<span id="L40"><span class="lineNum">      40</span>              : #elif defined(HAVE__CPUID)</span>
+<span id="L41"><span class="lineNum">      41</span>              :         __cpuid(exx, 1);</span>
+<span id="L42"><span class="lineNum">      42</span>              : #else</span>
+<span id="L43"><span class="lineNum">      43</span>              : #error cpuid instruction not available</span>
+<span id="L44"><span class="lineNum">      44</span>              : #endif</span>
+<span id="L45"><span class="lineNum">      45</span>              : </span>
+<span id="L46"><span class="lineNum">      46</span> <span class="tlaGNC">           3 :         return (exx[2] &amp; (1 &lt;&lt; 20)) != 0;     /* SSE 4.2 */</span></span>
+<span id="L47"><span class="lineNum">      47</span>              : }</span>
+<span id="L48"><span class="lineNum">      48</span>              : </span>
+<span id="L49"><span class="lineNum">      49</span>              : /*</span>
+<span id="L50"><span class="lineNum">      50</span>              :  * This gets called on the first call. It replaces the function pointer</span>
+<span id="L51"><span class="lineNum">      51</span>              :  * so that subsequent calls are routed directly to the chosen implementation.</span>
+<span id="L52"><span class="lineNum">      52</span>              :  */</span>
+<span id="L53"><span class="lineNum">      53</span>              : static pg_crc32c</span>
+<span id="L54"><span class="lineNum">      54</span> <span class="tlaGNC">           3 : pg_comp_crc32c_choose(pg_crc32c crc, const void *data, size_t len)</span></span>
+<span id="L55"><span class="lineNum">      55</span>              : {</span>
+<span id="L56"><span class="lineNum">      56</span> <span class="tlaGNC">           3 :         if (pg_crc32c_sse42_available())</span></span>
+<span id="L57"><span class="lineNum">      57</span> <span class="tlaGNC">           3 :                 pg_comp_crc32c = pg_comp_crc32c_sse42;</span></span>
+<span id="L58"><span class="lineNum">      58</span>              :         else</span>
+<span id="L59"><span class="lineNum">      59</span> <span class="tlaUNC tlaBgUNC">           0 :                 pg_comp_crc32c = pg_comp_crc32c_sb8;</span></span>
+<span id="L60"><span class="lineNum">      60</span>              : </span>
+<span id="L61"><span class="lineNum">      61</span> <span class="tlaGNC tlaBgGNC">           3 :         return pg_comp_crc32c(crc, data, len);</span></span>
+<span id="L62"><span class="lineNum">      62</span>              : }</span>
+<span id="L63"><span class="lineNum">      63</span>              : </span>
+<span id="L64"><span class="lineNum">      64</span>              : pg_crc32c       (*pg_comp_crc32c) (pg_crc32c crc, const void *data, size_t len) = pg_comp_crc32c_choose;</span>
+        </pre>
+              </td>
+            </tr>
+          </table>
+          <br>
+
+          <table width="100%" border=0 cellspacing=0 cellpadding=0>
+            <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+            <tr><td class="versionInfo">Generated by: <a href="https://github.com//linux-test-project/lcov" target="_parent">LCOV version 2.0-1</a></td></tr>
+          </table>
+          <br>
+
+</body>
+</html>

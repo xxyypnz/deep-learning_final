@@ -1,0 +1,315 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - coverage_filtered.info - include/access/gist.h</title>
+  <link rel="stylesheet" type="text/css" href="../../gcov.css">
+</head>
+
+<body>
+
+          <table width="100%" border=0 cellspacing=0 cellpadding=0>
+            <tr><td class="title">LCOV - code coverage report</td></tr>
+            <tr><td class="ruler"><img src="../../glass.png" width=3 height=3 alt=""></td></tr>
+
+            <tr>
+              <td width="100%">
+                <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="10%" class="headerValue"><a href="../../index.html">top level</a> - <a href="index.html">include/access</a> - gist.h<span style="font-size: 80%;"> (source / <a href="gist.h.func-c.html">functions</a>)</span></td>
+            <td width="5%"></td>
+            <td width="5%"></td>
+            <td width="5%" class="headerCovTableHead">Coverage</td>
+            <td width="5%" class="headerCovTableHead" title="Covered + Uncovered code">Total</td>
+            <td width="5%" class="headerCovTableHead" title="Exercised code only">Hit</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">coverage_filtered.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntryLo">0.0&nbsp;%</td>
+            <td class="headerCovTableEntry">9</td>
+            <td class="headerCovTableEntry">0</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test Date:</td>
+            <td class="headerValue">2026-06-04 05:41:24</td>
+            <td></td>
+            <td class="headerItem">Functions:</td>
+            <td class="headerCovTableEntryLo">0.0&nbsp;%</td>
+            <td class="headerCovTableEntry">2</td>
+            <td class="headerCovTableEntry">0</td>
+          </tr>
+                  <tr><td><img src="../../glass.png" width=3 height=3 alt=""></td></tr>
+                </table>
+              </td>
+            </tr>
+
+            <tr><td class="ruler"><img src="../../glass.png" width=3 height=3 alt=""></td></tr>
+          </table>
+
+          <table cellpadding=0 cellspacing=0 border=0>
+            <tr>
+              <td><br></td>
+            </tr>
+            <tr>
+              <td>
+<pre class="sourceHeading">            Line data    Source code</pre>
+<pre class="source">
+<span id="L1"><span class="lineNum">       1</span>              : /*-------------------------------------------------------------------------</span>
+<span id="L2"><span class="lineNum">       2</span>              :  *</span>
+<span id="L3"><span class="lineNum">       3</span>              :  * gist.h</span>
+<span id="L4"><span class="lineNum">       4</span>              :  *        The public API for GiST indexes. This API is exposed to</span>
+<span id="L5"><span class="lineNum">       5</span>              :  *        individuals implementing GiST indexes, so backward-incompatible</span>
+<span id="L6"><span class="lineNum">       6</span>              :  *        changes should be made with care.</span>
+<span id="L7"><span class="lineNum">       7</span>              :  *</span>
+<span id="L8"><span class="lineNum">       8</span>              :  *</span>
+<span id="L9"><span class="lineNum">       9</span>              :  * Portions Copyright (c) 1996-2020, PostgreSQL Global Development Group</span>
+<span id="L10"><span class="lineNum">      10</span>              :  * Portions Copyright (c) 1994, Regents of the University of California</span>
+<span id="L11"><span class="lineNum">      11</span>              :  *</span>
+<span id="L12"><span class="lineNum">      12</span>              :  * src/include/access/gist.h</span>
+<span id="L13"><span class="lineNum">      13</span>              :  *</span>
+<span id="L14"><span class="lineNum">      14</span>              :  *-------------------------------------------------------------------------</span>
+<span id="L15"><span class="lineNum">      15</span>              :  */</span>
+<span id="L16"><span class="lineNum">      16</span>              : #ifndef GIST_H</span>
+<span id="L17"><span class="lineNum">      17</span>              : #define GIST_H</span>
+<span id="L18"><span class="lineNum">      18</span>              : </span>
+<span id="L19"><span class="lineNum">      19</span>              : #include &quot;access/itup.h&quot;</span>
+<span id="L20"><span class="lineNum">      20</span>              : #include &quot;access/transam.h&quot;</span>
+<span id="L21"><span class="lineNum">      21</span>              : #include &quot;access/xlog.h&quot;</span>
+<span id="L22"><span class="lineNum">      22</span>              : #include &quot;access/xlogdefs.h&quot;</span>
+<span id="L23"><span class="lineNum">      23</span>              : #include &quot;storage/block.h&quot;</span>
+<span id="L24"><span class="lineNum">      24</span>              : #include &quot;storage/bufpage.h&quot;</span>
+<span id="L25"><span class="lineNum">      25</span>              : #include &quot;utils/relcache.h&quot;</span>
+<span id="L26"><span class="lineNum">      26</span>              : </span>
+<span id="L27"><span class="lineNum">      27</span>              : /*</span>
+<span id="L28"><span class="lineNum">      28</span>              :  * amproc indexes for GiST indexes.</span>
+<span id="L29"><span class="lineNum">      29</span>              :  */</span>
+<span id="L30"><span class="lineNum">      30</span>              : #define GIST_CONSISTENT_PROC                    1</span>
+<span id="L31"><span class="lineNum">      31</span>              : #define GIST_UNION_PROC                                 2</span>
+<span id="L32"><span class="lineNum">      32</span>              : #define GIST_COMPRESS_PROC                              3</span>
+<span id="L33"><span class="lineNum">      33</span>              : #define GIST_DECOMPRESS_PROC                    4</span>
+<span id="L34"><span class="lineNum">      34</span>              : #define GIST_PENALTY_PROC                               5</span>
+<span id="L35"><span class="lineNum">      35</span>              : #define GIST_PICKSPLIT_PROC                             6</span>
+<span id="L36"><span class="lineNum">      36</span>              : #define GIST_EQUAL_PROC                                 7</span>
+<span id="L37"><span class="lineNum">      37</span>              : #define GIST_DISTANCE_PROC                              8</span>
+<span id="L38"><span class="lineNum">      38</span>              : #define GIST_FETCH_PROC                                 9</span>
+<span id="L39"><span class="lineNum">      39</span>              : #define GIST_OPTIONS_PROC                               10</span>
+<span id="L40"><span class="lineNum">      40</span>              : #define GISTNProcs                                              10</span>
+<span id="L41"><span class="lineNum">      41</span>              : </span>
+<span id="L42"><span class="lineNum">      42</span>              : /*</span>
+<span id="L43"><span class="lineNum">      43</span>              :  * Page opaque data in a GiST index page.</span>
+<span id="L44"><span class="lineNum">      44</span>              :  */</span>
+<span id="L45"><span class="lineNum">      45</span>              : #define F_LEAF                          (1 &lt;&lt; 0)  /* leaf page */</span>
+<span id="L46"><span class="lineNum">      46</span>              : #define F_DELETED                       (1 &lt;&lt; 1)  /* the page has been deleted */</span>
+<span id="L47"><span class="lineNum">      47</span>              : #define F_TUPLES_DELETED        (1 &lt;&lt; 2)  /* some tuples on the page were</span>
+<span id="L48"><span class="lineNum">      48</span>              :                                                                                  * deleted */</span>
+<span id="L49"><span class="lineNum">      49</span>              : #define F_FOLLOW_RIGHT          (1 &lt;&lt; 3)  /* page to the right has no downlink */</span>
+<span id="L50"><span class="lineNum">      50</span>              : #define F_HAS_GARBAGE           (1 &lt;&lt; 4)  /* some tuples on the page are dead,</span>
+<span id="L51"><span class="lineNum">      51</span>              :                                                                                  * but not deleted yet */</span>
+<span id="L52"><span class="lineNum">      52</span>              : </span>
+<span id="L53"><span class="lineNum">      53</span>              : typedef XLogRecPtr GistNSN;</span>
+<span id="L54"><span class="lineNum">      54</span>              : </span>
+<span id="L55"><span class="lineNum">      55</span>              : /*</span>
+<span id="L56"><span class="lineNum">      56</span>              :  * A bogus LSN / NSN value used during index build. Must be smaller than any</span>
+<span id="L57"><span class="lineNum">      57</span>              :  * real or fake unlogged LSN, so that after an index build finishes, all the</span>
+<span id="L58"><span class="lineNum">      58</span>              :  * splits are considered completed.</span>
+<span id="L59"><span class="lineNum">      59</span>              :  */</span>
+<span id="L60"><span class="lineNum">      60</span>              : #define GistBuildLSN    ((XLogRecPtr) 1)</span>
+<span id="L61"><span class="lineNum">      61</span>              : </span>
+<span id="L62"><span class="lineNum">      62</span>              : /*</span>
+<span id="L63"><span class="lineNum">      63</span>              :  * For on-disk compatibility with pre-9.3 servers, NSN is stored as two</span>
+<span id="L64"><span class="lineNum">      64</span>              :  * 32-bit fields on disk, same as LSNs.</span>
+<span id="L65"><span class="lineNum">      65</span>              :  */</span>
+<span id="L66"><span class="lineNum">      66</span>              : typedef PageXLogRecPtr PageGistNSN;</span>
+<span id="L67"><span class="lineNum">      67</span>              : </span>
+<span id="L68"><span class="lineNum">      68</span>              : typedef struct GISTPageOpaqueData</span>
+<span id="L69"><span class="lineNum">      69</span>              : {</span>
+<span id="L70"><span class="lineNum">      70</span>              :         PageGistNSN nsn;                        /* this value must change on page split */</span>
+<span id="L71"><span class="lineNum">      71</span>              :         BlockNumber rightlink;          /* next page if any */</span>
+<span id="L72"><span class="lineNum">      72</span>              :         uint16          flags;                  /* see bit definitions above */</span>
+<span id="L73"><span class="lineNum">      73</span>              :         uint16          gist_page_id;   /* for identification of GiST indexes */</span>
+<span id="L74"><span class="lineNum">      74</span>              : } GISTPageOpaqueData;</span>
+<span id="L75"><span class="lineNum">      75</span>              : </span>
+<span id="L76"><span class="lineNum">      76</span>              : typedef GISTPageOpaqueData *GISTPageOpaque;</span>
+<span id="L77"><span class="lineNum">      77</span>              : </span>
+<span id="L78"><span class="lineNum">      78</span>              : /*</span>
+<span id="L79"><span class="lineNum">      79</span>              :  * Maximum possible sizes for GiST index tuple and index key.  Calculation is</span>
+<span id="L80"><span class="lineNum">      80</span>              :  * based on assumption that GiST page should fit at least 4 tuples.  In theory,</span>
+<span id="L81"><span class="lineNum">      81</span>              :  * GiST index can be functional when page can fit 3 tuples.  But that seems</span>
+<span id="L82"><span class="lineNum">      82</span>              :  * rather inefficent, so we use a bit conservative estimate.</span>
+<span id="L83"><span class="lineNum">      83</span>              :  *</span>
+<span id="L84"><span class="lineNum">      84</span>              :  * The maximum size of index key is true for unicolumn index.  Therefore, this</span>
+<span id="L85"><span class="lineNum">      85</span>              :  * estimation should be used to figure out which maximum size of GiST index key</span>
+<span id="L86"><span class="lineNum">      86</span>              :  * makes sense at all.  For multicolumn indexes, user might be able to tune</span>
+<span id="L87"><span class="lineNum">      87</span>              :  * key size using opclass parameters.</span>
+<span id="L88"><span class="lineNum">      88</span>              :  */</span>
+<span id="L89"><span class="lineNum">      89</span>              : #define GISTMaxIndexTupleSize   \</span>
+<span id="L90"><span class="lineNum">      90</span>              :         MAXALIGN_DOWN((BLCKSZ - SizeOfPageHeaderData - sizeof(GISTPageOpaqueData)) / \</span>
+<span id="L91"><span class="lineNum">      91</span>              :                                   4 - sizeof(ItemIdData))</span>
+<span id="L92"><span class="lineNum">      92</span>              : </span>
+<span id="L93"><span class="lineNum">      93</span>              : #define GISTMaxIndexKeySize     \</span>
+<span id="L94"><span class="lineNum">      94</span>              :         (GISTMaxIndexTupleSize - MAXALIGN(sizeof(IndexTupleData)))</span>
+<span id="L95"><span class="lineNum">      95</span>              : </span>
+<span id="L96"><span class="lineNum">      96</span>              : /*</span>
+<span id="L97"><span class="lineNum">      97</span>              :  * The page ID is for the convenience of pg_filedump and similar utilities,</span>
+<span id="L98"><span class="lineNum">      98</span>              :  * which otherwise would have a hard time telling pages of different index</span>
+<span id="L99"><span class="lineNum">      99</span>              :  * types apart.  It should be the last 2 bytes on the page.  This is more or</span>
+<span id="L100"><span class="lineNum">     100</span>              :  * less &quot;free&quot; due to alignment considerations.</span>
+<span id="L101"><span class="lineNum">     101</span>              :  */</span>
+<span id="L102"><span class="lineNum">     102</span>              : #define GIST_PAGE_ID            0xFF81</span>
+<span id="L103"><span class="lineNum">     103</span>              : </span>
+<span id="L104"><span class="lineNum">     104</span>              : /*</span>
+<span id="L105"><span class="lineNum">     105</span>              :  * This is the Split Vector to be returned by the PickSplit method.</span>
+<span id="L106"><span class="lineNum">     106</span>              :  * PickSplit should fill the indexes of tuples to go to the left side into</span>
+<span id="L107"><span class="lineNum">     107</span>              :  * spl_left[], and those to go to the right into spl_right[] (note the method</span>
+<span id="L108"><span class="lineNum">     108</span>              :  * is responsible for palloc'ing both of these arrays!).  The tuple counts</span>
+<span id="L109"><span class="lineNum">     109</span>              :  * go into spl_nleft/spl_nright, and spl_ldatum/spl_rdatum must be set to</span>
+<span id="L110"><span class="lineNum">     110</span>              :  * the union keys for each side.</span>
+<span id="L111"><span class="lineNum">     111</span>              :  *</span>
+<span id="L112"><span class="lineNum">     112</span>              :  * If spl_ldatum_exists and spl_rdatum_exists are true, then we are performing</span>
+<span id="L113"><span class="lineNum">     113</span>              :  * a &quot;secondary split&quot; using a non-first index column.  In this case some</span>
+<span id="L114"><span class="lineNum">     114</span>              :  * decisions have already been made about a page split, and the set of tuples</span>
+<span id="L115"><span class="lineNum">     115</span>              :  * being passed to PickSplit is just the tuples about which we are undecided.</span>
+<span id="L116"><span class="lineNum">     116</span>              :  * spl_ldatum/spl_rdatum then contain the union keys for the tuples already</span>
+<span id="L117"><span class="lineNum">     117</span>              :  * chosen to go left or right.  Ideally the PickSplit method should take those</span>
+<span id="L118"><span class="lineNum">     118</span>              :  * keys into account while deciding what to do with the remaining tuples, ie</span>
+<span id="L119"><span class="lineNum">     119</span>              :  * it should try to &quot;build out&quot; from those unions so as to minimally expand</span>
+<span id="L120"><span class="lineNum">     120</span>              :  * them.  If it does so, it should union the given tuples' keys into the</span>
+<span id="L121"><span class="lineNum">     121</span>              :  * existing spl_ldatum/spl_rdatum values rather than just setting those values</span>
+<span id="L122"><span class="lineNum">     122</span>              :  * from scratch, and then set spl_ldatum_exists/spl_rdatum_exists to false to</span>
+<span id="L123"><span class="lineNum">     123</span>              :  * show it has done this.</span>
+<span id="L124"><span class="lineNum">     124</span>              :  *</span>
+<span id="L125"><span class="lineNum">     125</span>              :  * If the PickSplit method fails to clear spl_ldatum_exists/spl_rdatum_exists,</span>
+<span id="L126"><span class="lineNum">     126</span>              :  * the core GiST code will make its own decision about how to merge the</span>
+<span id="L127"><span class="lineNum">     127</span>              :  * secondary-split results with the previously-chosen tuples, and will then</span>
+<span id="L128"><span class="lineNum">     128</span>              :  * recompute the union keys from scratch.  This is a workable though often not</span>
+<span id="L129"><span class="lineNum">     129</span>              :  * optimal approach.</span>
+<span id="L130"><span class="lineNum">     130</span>              :  */</span>
+<span id="L131"><span class="lineNum">     131</span>              : typedef struct GIST_SPLITVEC</span>
+<span id="L132"><span class="lineNum">     132</span>              : {</span>
+<span id="L133"><span class="lineNum">     133</span>              :         OffsetNumber *spl_left;         /* array of entries that go left */</span>
+<span id="L134"><span class="lineNum">     134</span>              :         int                     spl_nleft;              /* size of this array */</span>
+<span id="L135"><span class="lineNum">     135</span>              :         Datum           spl_ldatum;             /* Union of keys in spl_left */</span>
+<span id="L136"><span class="lineNum">     136</span>              :         bool            spl_ldatum_exists;      /* true, if spl_ldatum already exists. */</span>
+<span id="L137"><span class="lineNum">     137</span>              : </span>
+<span id="L138"><span class="lineNum">     138</span>              :         OffsetNumber *spl_right;        /* array of entries that go right */</span>
+<span id="L139"><span class="lineNum">     139</span>              :         int                     spl_nright;             /* size of the array */</span>
+<span id="L140"><span class="lineNum">     140</span>              :         Datum           spl_rdatum;             /* Union of keys in spl_right */</span>
+<span id="L141"><span class="lineNum">     141</span>              :         bool            spl_rdatum_exists;      /* true, if spl_rdatum already exists. */</span>
+<span id="L142"><span class="lineNum">     142</span>              : } GIST_SPLITVEC;</span>
+<span id="L143"><span class="lineNum">     143</span>              : </span>
+<span id="L144"><span class="lineNum">     144</span>              : /*</span>
+<span id="L145"><span class="lineNum">     145</span>              :  * An entry on a GiST node.  Contains the key, as well as its own</span>
+<span id="L146"><span class="lineNum">     146</span>              :  * location (rel,page,offset) which can supply the matching pointer.</span>
+<span id="L147"><span class="lineNum">     147</span>              :  * leafkey is a flag to tell us if the entry is in a leaf node.</span>
+<span id="L148"><span class="lineNum">     148</span>              :  */</span>
+<span id="L149"><span class="lineNum">     149</span>              : typedef struct GISTENTRY</span>
+<span id="L150"><span class="lineNum">     150</span>              : {</span>
+<span id="L151"><span class="lineNum">     151</span>              :         Datum           key;</span>
+<span id="L152"><span class="lineNum">     152</span>              :         Relation        rel;</span>
+<span id="L153"><span class="lineNum">     153</span>              :         Page            page;</span>
+<span id="L154"><span class="lineNum">     154</span>              :         OffsetNumber offset;</span>
+<span id="L155"><span class="lineNum">     155</span>              :         bool            leafkey;</span>
+<span id="L156"><span class="lineNum">     156</span>              : } GISTENTRY;</span>
+<span id="L157"><span class="lineNum">     157</span>              : </span>
+<span id="L158"><span class="lineNum">     158</span>              : #define GistPageGetOpaque(page) ( (GISTPageOpaque) PageGetSpecialPointer(page) )</span>
+<span id="L159"><span class="lineNum">     159</span>              : </span>
+<span id="L160"><span class="lineNum">     160</span>              : #define GistPageIsLeaf(page)    ( GistPageGetOpaque(page)-&gt;flags &amp; F_LEAF)</span>
+<span id="L161"><span class="lineNum">     161</span>              : #define GIST_LEAF(entry) (GistPageIsLeaf((entry)-&gt;page))</span>
+<span id="L162"><span class="lineNum">     162</span>              : </span>
+<span id="L163"><span class="lineNum">     163</span>              : #define GistPageIsDeleted(page) ( GistPageGetOpaque(page)-&gt;flags &amp; F_DELETED)</span>
+<span id="L164"><span class="lineNum">     164</span>              : </span>
+<span id="L165"><span class="lineNum">     165</span>              : #define GistTuplesDeleted(page) ( GistPageGetOpaque(page)-&gt;flags &amp; F_TUPLES_DELETED)</span>
+<span id="L166"><span class="lineNum">     166</span>              : #define GistMarkTuplesDeleted(page) ( GistPageGetOpaque(page)-&gt;flags |= F_TUPLES_DELETED)</span>
+<span id="L167"><span class="lineNum">     167</span>              : #define GistClearTuplesDeleted(page)    ( GistPageGetOpaque(page)-&gt;flags &amp;= ~F_TUPLES_DELETED)</span>
+<span id="L168"><span class="lineNum">     168</span>              : </span>
+<span id="L169"><span class="lineNum">     169</span>              : #define GistPageHasGarbage(page) ( GistPageGetOpaque(page)-&gt;flags &amp; F_HAS_GARBAGE)</span>
+<span id="L170"><span class="lineNum">     170</span>              : #define GistMarkPageHasGarbage(page) ( GistPageGetOpaque(page)-&gt;flags |= F_HAS_GARBAGE)</span>
+<span id="L171"><span class="lineNum">     171</span>              : #define GistClearPageHasGarbage(page)   ( GistPageGetOpaque(page)-&gt;flags &amp;= ~F_HAS_GARBAGE)</span>
+<span id="L172"><span class="lineNum">     172</span>              : </span>
+<span id="L173"><span class="lineNum">     173</span>              : #define GistFollowRight(page) ( GistPageGetOpaque(page)-&gt;flags &amp; F_FOLLOW_RIGHT)</span>
+<span id="L174"><span class="lineNum">     174</span>              : #define GistMarkFollowRight(page) ( GistPageGetOpaque(page)-&gt;flags |= F_FOLLOW_RIGHT)</span>
+<span id="L175"><span class="lineNum">     175</span>              : #define GistClearFollowRight(page)      ( GistPageGetOpaque(page)-&gt;flags &amp;= ~F_FOLLOW_RIGHT)</span>
+<span id="L176"><span class="lineNum">     176</span>              : </span>
+<span id="L177"><span class="lineNum">     177</span>              : #define GistPageGetNSN(page) ( PageXLogRecPtrGet(GistPageGetOpaque(page)-&gt;nsn))</span>
+<span id="L178"><span class="lineNum">     178</span>              : #define GistPageSetNSN(page, val) ( PageXLogRecPtrSet(GistPageGetOpaque(page)-&gt;nsn, val))</span>
+<span id="L179"><span class="lineNum">     179</span>              : </span>
+<span id="L180"><span class="lineNum">     180</span>              : </span>
+<span id="L181"><span class="lineNum">     181</span>              : /*</span>
+<span id="L182"><span class="lineNum">     182</span>              :  * On a deleted page, we store this struct. A deleted page doesn't contain any</span>
+<span id="L183"><span class="lineNum">     183</span>              :  * tuples, so we don't use the normal page layout with line pointers. Instead,</span>
+<span id="L184"><span class="lineNum">     184</span>              :  * this struct is stored right after the standard page header. pd_lower points</span>
+<span id="L185"><span class="lineNum">     185</span>              :  * to the end of this struct. If we add fields to this struct in the future, we</span>
+<span id="L186"><span class="lineNum">     186</span>              :  * can distinguish the old and new formats by pd_lower.</span>
+<span id="L187"><span class="lineNum">     187</span>              :  */</span>
+<span id="L188"><span class="lineNum">     188</span>              : typedef struct GISTDeletedPageContents</span>
+<span id="L189"><span class="lineNum">     189</span>              : {</span>
+<span id="L190"><span class="lineNum">     190</span>              :         /* last xid which could see the page in a scan */</span>
+<span id="L191"><span class="lineNum">     191</span>              :         FullTransactionId deleteXid;</span>
+<span id="L192"><span class="lineNum">     192</span>              : } GISTDeletedPageContents;</span>
+<span id="L193"><span class="lineNum">     193</span>              : </span>
+<span id="L194"><span class="lineNum">     194</span>              : static inline void</span>
+<span id="L195"><span class="lineNum">     195</span> <span class="tlaUNC tlaBgUNC">           0 : GistPageSetDeleted(Page page, FullTransactionId deletexid)</span></span>
+<span id="L196"><span class="lineNum">     196</span>              : {</span>
+<span id="L197"><span class="lineNum">     197</span>              :         Assert(PageIsEmpty(page));</span>
+<span id="L198"><span class="lineNum">     198</span>              : </span>
+<span id="L199"><span class="lineNum">     199</span> <span class="tlaUNC">           0 :         GistPageGetOpaque(page)-&gt;flags |= F_DELETED;</span></span>
+<span id="L200"><span class="lineNum">     200</span> <span class="tlaUNC">           0 :         ((PageHeader) page)-&gt;pd_lower = MAXALIGN(SizeOfPageHeaderData) + sizeof(GISTDeletedPageContents);</span></span>
+<span id="L201"><span class="lineNum">     201</span>              : </span>
+<span id="L202"><span class="lineNum">     202</span> <span class="tlaUNC">           0 :         ((GISTDeletedPageContents *) PageGetContents(page))-&gt;deleteXid = deletexid;</span></span>
+<span id="L203"><span class="lineNum">     203</span> <span class="tlaUNC">           0 : }</span></span>
+<span id="L204"><span class="lineNum">     204</span>              : </span>
+<span id="L205"><span class="lineNum">     205</span>              : static inline FullTransactionId</span>
+<span id="L206"><span class="lineNum">     206</span> <span class="tlaUNC">           0 : GistPageGetDeleteXid(Page page)</span></span>
+<span id="L207"><span class="lineNum">     207</span>              : {</span>
+<span id="L208"><span class="lineNum">     208</span>              :         Assert(GistPageIsDeleted(page));</span>
+<span id="L209"><span class="lineNum">     209</span>              : </span>
+<span id="L210"><span class="lineNum">     210</span>              :         /* Is the deleteXid field present? */</span>
+<span id="L211"><span class="lineNum">     211</span> <span class="tlaUNC">           0 :         if (((PageHeader) page)-&gt;pd_lower &gt;= MAXALIGN(SizeOfPageHeaderData) +</span></span>
+<span id="L212"><span class="lineNum">     212</span>              :                 offsetof(GISTDeletedPageContents, deleteXid) + sizeof(FullTransactionId))</span>
+<span id="L213"><span class="lineNum">     213</span>              :         {</span>
+<span id="L214"><span class="lineNum">     214</span> <span class="tlaUNC">           0 :                 return ((GISTDeletedPageContents *) PageGetContents(page))-&gt;deleteXid;</span></span>
+<span id="L215"><span class="lineNum">     215</span>              :         }</span>
+<span id="L216"><span class="lineNum">     216</span>              :         else</span>
+<span id="L217"><span class="lineNum">     217</span> <span class="tlaUNC">           0 :                 return FullTransactionIdFromEpochAndXid(0, FirstNormalTransactionId);</span></span>
+<span id="L218"><span class="lineNum">     218</span>              : }</span>
+<span id="L219"><span class="lineNum">     219</span>              : </span>
+<span id="L220"><span class="lineNum">     220</span>              : /*</span>
+<span id="L221"><span class="lineNum">     221</span>              :  * Vector of GISTENTRY structs; user-defined methods union and picksplit</span>
+<span id="L222"><span class="lineNum">     222</span>              :  * take it as one of their arguments</span>
+<span id="L223"><span class="lineNum">     223</span>              :  */</span>
+<span id="L224"><span class="lineNum">     224</span>              : typedef struct</span>
+<span id="L225"><span class="lineNum">     225</span>              : {</span>
+<span id="L226"><span class="lineNum">     226</span>              :         int32           n;                              /* number of elements */</span>
+<span id="L227"><span class="lineNum">     227</span>              :         GISTENTRY       vector[FLEXIBLE_ARRAY_MEMBER];</span>
+<span id="L228"><span class="lineNum">     228</span>              : } GistEntryVector;</span>
+<span id="L229"><span class="lineNum">     229</span>              : </span>
+<span id="L230"><span class="lineNum">     230</span>              : #define GEVHDRSZ        (offsetof(GistEntryVector, vector))</span>
+<span id="L231"><span class="lineNum">     231</span>              : </span>
+<span id="L232"><span class="lineNum">     232</span>              : /*</span>
+<span id="L233"><span class="lineNum">     233</span>              :  * macro to initialize a GISTENTRY</span>
+<span id="L234"><span class="lineNum">     234</span>              :  */</span>
+<span id="L235"><span class="lineNum">     235</span>              : #define gistentryinit(e, k, r, pg, o, l) \</span>
+<span id="L236"><span class="lineNum">     236</span>              :         do { (e).key = (k); (e).rel = (r); (e).page = (pg); \</span>
+<span id="L237"><span class="lineNum">     237</span>              :                  (e).offset = (o); (e).leafkey = (l); } while (0)</span>
+<span id="L238"><span class="lineNum">     238</span>              : </span>
+<span id="L239"><span class="lineNum">     239</span>              : #endif                                                  /* GIST_H */</span>
+        </pre>
+              </td>
+            </tr>
+          </table>
+          <br>
+
+          <table width="100%" border=0 cellspacing=0 cellpadding=0>
+            <tr><td class="ruler"><img src="../../glass.png" width=3 height=3 alt=""></td></tr>
+            <tr><td class="versionInfo">Generated by: <a href="https://github.com//linux-test-project/lcov" target="_parent">LCOV version 2.0-1</a></td></tr>
+          </table>
+          <br>
+
+</body>
+</html>

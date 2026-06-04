@@ -1,0 +1,968 @@
+{
+  "summary": {
+    "n_items": 50,
+    "total_meaningful_added": 460,
+    "total_matched": 200,
+    "total_not_found": 2,
+    "total_covered": 119,
+    "global_recall": 0.4348,
+    "global_precision": 0.595,
+    "global_precision_excl_ctrl": 0.6138,
+    "global_precision_excl_not_found": 0.601
+  },
+  "commits": [
+    {
+      "id": 101,
+      "subject": "pgsql: Print the correct aliases for DML target tables in ruleutils.",
+      "covered": 17,
+      "denominator": 27,
+      "uncovered_count": 10,
+      "precision_excl_not_found": 0.6296,
+      "uncovered_lines": [
+        {
+          "file": "src/backend/utils/adt/ruleutils.c",
+          "line_no": 466,
+          "code": "deparse_context *context);",
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/utils/adt/ruleutils.c",
+          "line_no": 10510,
+          "code": "static void",
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/utils/adt/ruleutils.c",
+          "line_no": 10512,
+          "code": "deparse_context *context)",
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/utils/adt/ruleutils.c",
+          "line_no": 10527,
+          "code": "printalias = true;",
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/utils/adt/ruleutils.c",
+          "line_no": 10537,
+          "code": "printalias = true;",
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/utils/adt/ruleutils.c",
+          "line_no": 10547,
+          "code": "printalias = true;",
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/utils/adt/ruleutils.c",
+          "line_no": 10553,
+          "code": "printalias = true;",
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/utils/adt/ruleutils.c",
+          "line_no": 10563,
+          "code": "printalias = true;",
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/utils/adt/ruleutils.c",
+          "line_no": 10568,
+          "code": "use_as ? \" AS \" : \" \",",
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/utils/adt/ruleutils.c",
+          "line_no": 10569,
+          "code": "quote_identifier(refname));",
+          "match_type": "exact"
+        }
+      ]
+    },
+    {
+      "id": 144,
+      "subject": "pgsql: Move code around in StartupXLOG().",
+      "covered": 1,
+      "denominator": 11,
+      "uncovered_count": 10,
+      "precision_excl_not_found": 0.0909,
+      "uncovered_lines": [
+        {
+          "file": "src/backend/access/transam/xlog.c",
+          "line_no": 7189,
+          "code": "for (rmid = 0; rmid <= RM_MAX_ID; rmid++)",
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/access/transam/xlog.c",
+          "line_no": 7191,
+          "code": "if (RmgrTable[rmid].rm_startup != NULL)",
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/access/transam/xlog.c",
+          "line_no": 7192,
+          "code": "RmgrTable[rmid].rm_startup();",
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/access/transam/xlog.c",
+          "line_no": 7573,
+          "code": "ResetUnloggedRelations(UNLOGGED_RELATION_INIT);",
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/access/transam/xlog.c",
+          "line_no": 5710,
+          "code": "if (standby_signal_file_found)",
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/access/transam/xlog.c",
+          "line_no": 5711,
+          "code": "durable_unlink(STANDBY_SIGNAL_FILE, FATAL);",
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/access/transam/xlog.c",
+          "line_no": 5713,
+          "code": "if (recovery_signal_file_found)",
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/access/transam/xlog.c",
+          "line_no": 5714,
+          "code": "durable_unlink(RECOVERY_SIGNAL_FILE, FATAL);",
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/access/transam/xlog.c",
+          "line_no": 5716,
+          "code": "ereport(LOG,",
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/access/transam/xlog.c",
+          "line_no": 5717,
+          "code": "(errmsg(\"archive recovery complete\")));",
+          "match_type": "exact"
+        }
+      ]
+    },
+    {
+      "id": 120,
+      "subject": "pgsql: Yet further fixes for multi-row VALUES lists for updatable views",
+      "covered": 9,
+      "denominator": 14,
+      "uncovered_count": 5,
+      "precision_excl_not_found": 0.6429,
+      "uncovered_lines": [
+        {
+          "file": "src/backend/rewrite/rewriteHandler.c",
+          "line_no": 1316,
+          "code": "Assert(parsetree->commandType == CMD_INSERT);",
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/rewrite/rewriteHandler.c",
+          "line_no": 1317,
+          "code": "Assert(rte->rtekind == RTE_VALUES);",
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/rewrite/rewriteHandler.c",
+          "line_no": 1504,
+          "code": "def->typeMod,",
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/rewrite/rewriteHandler.c",
+          "line_no": 1505,
+          "code": "def->collation));",
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/rewrite/rewriteHandler.c",
+          "line_no": 1507,
+          "code": "else",
+          "match_type": "exact"
+        }
+      ]
+    },
+    {
+      "id": 109,
+      "subject": "pgsql: Fix broken MemoizePath support in reparameterize_path().",
+      "covered": 0,
+      "denominator": 4,
+      "uncovered_count": 4,
+      "precision_excl_not_found": 0.0,
+      "uncovered_lines": [
+        {
+          "file": "src/backend/optimizer/util/pathnode.c",
+          "line_no": 3857,
+          "code": "spath = reparameterize_path(root, spath,",
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/optimizer/util/pathnode.c",
+          "line_no": 3858,
+          "code": "required_outer,",
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/optimizer/util/pathnode.c",
+          "line_no": 3859,
+          "code": "loop_count);",
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/optimizer/util/pathnode.c",
+          "line_no": 3860,
+          "code": "if (spath == NULL)",
+          "match_type": "exact"
+        }
+      ]
+    },
+    {
+      "id": 118,
+      "subject": "pgsql: Reject non-ON-SELECT rules that are named \"_RETURN\".",
+      "covered": 2,
+      "denominator": 6,
+      "uncovered_count": 4,
+      "precision_excl_not_found": 0.3333,
+      "uncovered_lines": [
+        {
+          "file": "src/backend/rewrite/rewriteDefine.c",
+          "line_no": 549,
+          "code": "(errcode(ERRCODE_INVALID_OBJECT_DEFINITION),",
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/rewrite/rewriteDefine.c",
+          "line_no": 550,
+          "code": "errmsg(\"non-view rule for \\\"%s\\\" must not be named \\\"%s\\\"\",",
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/rewrite/rewriteDefine.c",
+          "line_no": 551,
+          "code": "RelationGetRelationName(event_relation),",
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/rewrite/rewriteDefine.c",
+          "line_no": 552,
+          "code": "ViewSelectRuleName)));",
+          "match_type": "exact"
+        }
+      ]
+    },
+    {
+      "id": 123,
+      "subject": "pgsql: Avoid improbable PANIC during heap_update, redux.",
+      "covered": 2,
+      "denominator": 6,
+      "uncovered_count": 4,
+      "precision_excl_not_found": 0.3333,
+      "uncovered_lines": [
+        {
+          "file": "src/backend/access/heap/hio.c",
+          "line_no": 656,
+          "code": "otherBlock, targetBlock, vmbuffer_other,",
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/access/heap/hio.c",
+          "line_no": 657,
+          "code": "vmbuffer);",
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/access/heap/hio.c",
+          "line_no": 668,
+          "code": "UnlockReleaseBuffer(buffer);",
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/access/heap/hio.c",
+          "line_no": 670,
+          "code": "goto loop;",
+          "match_type": "exact"
+        }
+      ]
+    },
+    {
+      "id": 125,
+      "subject": "pgsql: Fix race condition where heap_delete() fails to pin VM page.",
+      "covered": 5,
+      "denominator": 9,
+      "uncovered_count": 4,
+      "precision_excl_not_found": 0.5556,
+      "uncovered_lines": [
+        {
+          "file": "src/backend/access/heap/heapam.c",
+          "line_no": 2515,
+          "code": "Assert(ItemIdIsNormal(lp));",
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/access/heap/heapam.c",
+          "line_no": 2522,
+          "code": "l1:",
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/access/heap/heapam.c",
+          "line_no": 2598,
+          "code": "if ((vmbuffer == InvalidBuffer && PageIsAllVisible(page)) ||",
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/access/heap/heapam.c",
+          "line_no": 2599,
+          "code": "xmax_infomask_changed(tp.t_data->t_infomask, infomask) ||",
+          "match_type": "exact"
+        }
+      ]
+    },
+    {
+      "id": 140,
+      "subject": "pgsql: Prevent access to no-longer-pinned buffer in heapam_tuple_lock()",
+      "covered": 1,
+      "denominator": 5,
+      "uncovered_count": 4,
+      "precision_excl_not_found": 0.2,
+      "uncovered_lines": [
+        {
+          "file": "src/backend/access/heap/heapam.c",
+          "line_no": 1418,
+          "code": "bool",
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/access/heap/heapam.c",
+          "line_no": 1507,
+          "code": "if (keep_buf)",
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/access/heap/heapam.c",
+          "line_no": 1509,
+          "code": "else",
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/access/heap/heapam.c",
+          "line_no": 1511,
+          "code": "ReleaseBuffer(buffer);",
+          "match_type": "exact"
+        }
+      ]
+    },
+    {
+      "id": 116,
+      "subject": "pgsql: Avoid crash after function syntax error in a replication worker.",
+      "covered": 2,
+      "denominator": 5,
+      "uncovered_count": 3,
+      "precision_excl_not_found": 0.4,
+      "uncovered_lines": [
+        {
+          "file": "src/backend/catalog/pg_proc.c",
+          "line_no": 998,
+          "code": "origerrposition);",
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/catalog/pg_proc.c",
+          "line_no": 1000,
+          "code": "else",
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/catalog/pg_proc.c",
+          "line_no": 1006,
+          "code": "newerrposition = -1;",
+          "match_type": "exact"
+        }
+      ]
+    },
+    {
+      "id": 127,
+      "subject": "pgsql: Choose FK name correctly during partition attachment",
+      "covered": 6,
+      "denominator": 9,
+      "uncovered_count": 3,
+      "precision_excl_not_found": 0.6667,
+      "uncovered_lines": [
+        {
+          "file": "src/backend/commands/tablecmds.c",
+          "line_no": 9922,
+          "code": "RelationGetRelid(partRel),",
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/commands/tablecmds.c",
+          "line_no": 9927,
+          "code": "\"fkey\",",
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/commands/tablecmds.c",
+          "line_no": 9929,
+          "code": "else",
+          "match_type": "exact"
+        }
+      ]
+    },
+    {
+      "id": 143,
+      "subject": "pgsql: Fix risk of deadlock failure while dropping a partitioned index.",
+      "covered": 7,
+      "denominator": 10,
+      "uncovered_count": 3,
+      "precision_excl_not_found": 0.7,
+      "uncovered_lines": [
+        {
+          "file": "src/backend/commands/tablecmds.c",
+          "line_no": 1406,
+          "code": "state.heap_lockmode,",
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/commands/tablecmds.c",
+          "line_no": 1407,
+          "code": "NULL);",
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/commands/tablecmds.c",
+          "line_no": 1496,
+          "code": "state->expected_relkind);",
+          "match_type": "exact"
+        }
+      ]
+    },
+    {
+      "id": 111,
+      "subject": "pgsql: Make multixact error message more explicit",
+      "covered": 0,
+      "denominator": 2,
+      "uncovered_count": 2,
+      "precision_excl_not_found": 0.0,
+      "uncovered_lines": [
+        {
+          "file": "src/backend/access/transam/multixact.c",
+          "line_no": 784,
+          "code": "elog(ERROR, \"new multixact has more than one updating member: %s\",",
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/access/transam/multixact.c",
+          "line_no": 785,
+          "code": "mxid_to_string(InvalidMultiXactId, nmembers, members));",
+          "match_type": "exact"
+        }
+      ]
+    },
+    {
+      "id": 122,
+      "subject": "pgsql: Remove uses of MemoryContextContains in nodeAgg.c and nodeWindow",
+      "covered": 1,
+      "denominator": 3,
+      "uncovered_count": 2,
+      "precision_excl_not_found": 0.3333,
+      "uncovered_lines": [
+        {
+          "file": "src/backend/executor/nodeAgg.c",
+          "line_no": 1114,
+          "code": "pergroupstate->transValueIsNull,",
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/executor/nodeAgg.c",
+          "line_no": 1115,
+          "code": "pertrans->transtypeLen);",
+          "match_type": "exact"
+        }
+      ]
+    },
+    {
+      "id": 129,
+      "subject": "pgsql: Avoid misbehavior when hash_table_bytes < bucket_size.",
+      "covered": 2,
+      "denominator": 4,
+      "uncovered_count": 2,
+      "precision_excl_not_found": 0.5,
+      "uncovered_lines": [
+        {
+          "file": "src/backend/executor/nodeHash.c",
+          "line_no": 843,
+          "code": "sbuckets = 1;",
+          "match_type": "fuzzy"
+        },
+        {
+          "file": "src/backend/executor/nodeHash.c",
+          "line_no": 844,
+          "code": "else",
+          "match_type": "exact"
+        }
+      ]
+    },
+    {
+      "id": 130,
+      "subject": "pgsql: Add missing fields to _outConstraint()",
+      "covered": 0,
+      "denominator": 2,
+      "uncovered_count": 2,
+      "precision_excl_not_found": 0.0,
+      "uncovered_lines": [
+        {
+          "file": "src/backend/nodes/outfuncs.c",
+          "line_no": 3558,
+          "code": "WRITE_BOOL_FIELD(skip_validation);",
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/nodes/outfuncs.c",
+          "line_no": 3559,
+          "code": "WRITE_BOOL_FIELD(initially_valid);",
+          "match_type": "exact"
+        }
+      ]
+    },
+    {
+      "id": 133,
+      "subject": "pgsql: Implement List support for TransactionId",
+      "covered": 2,
+      "denominator": 4,
+      "uncovered_count": 2,
+      "precision_excl_not_found": 0.5,
+      "uncovered_lines": [
+        {
+          "file": "src/backend/nodes/list.c",
+          "line_no": 673,
+          "code": "bool",
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/nodes/list.c",
+          "line_no": 679,
+          "code": "check_list_invariants(list);",
+          "match_type": "exact"
+        }
+      ]
+    },
+    {
+      "id": 145,
+      "subject": "pgsql: Fix memory leak in IndexScan node with reordering",
+      "covered": 0,
+      "denominator": 2,
+      "uncovered_count": 2,
+      "precision_excl_not_found": 0.0,
+      "uncovered_lines": [
+        {
+          "file": "src/backend/executor/nodeIndexscan.c",
+          "line_no": 580,
+          "code": "tuple = reorderqueue_pop(node);",
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/executor/nodeIndexscan.c",
+          "line_no": 581,
+          "code": "heap_freetuple(tuple);",
+          "match_type": "exact"
+        }
+      ]
+    },
+    {
+      "id": 146,
+      "subject": "pgsql: Test, don't just Assert, that mergejoin's inputs are in order.",
+      "covered": 0,
+      "denominator": 2,
+      "uncovered_count": 2,
+      "precision_excl_not_found": 0.0,
+      "uncovered_lines": [
+        {
+          "file": "src/backend/executor/nodeMergejoin.c",
+          "line_no": 898,
+          "code": "else",
+          "match_type": "fuzzy"
+        },
+        {
+          "file": "src/backend/executor/nodeMergejoin.c",
+          "line_no": 899,
+          "code": "elog(ERROR, \"mergejoin input data is out of order\");",
+          "match_type": "exact"
+        }
+      ]
+    },
+    {
+      "id": 108,
+      "subject": "pgsql: Avoid O(N^2) cost when pulling up lots of UNION ALL subqueries.",
+      "covered": 1,
+      "denominator": 2,
+      "uncovered_count": 1,
+      "precision_excl_not_found": 0.5,
+      "uncovered_lines": [
+        {
+          "file": "src/backend/optimizer/prep/prepjointree.c",
+          "line_no": 3543,
+          "code": "varno, subrelids);",
+          "match_type": "exact"
+        }
+      ]
+    },
+    {
+      "id": 112,
+      "subject": "pgsql: Simplify WARNING messages from skipped vacuum/analyze on a table",
+      "covered": 1,
+      "denominator": 2,
+      "uncovered_count": 1,
+      "precision_excl_not_found": 0.5,
+      "uncovered_lines": [
+        {
+          "file": "src/backend/commands/vacuum.c",
+          "line_no": 571,
+          "code": "relname)));",
+          "match_type": "exact"
+        }
+      ]
+    },
+    {
+      "id": 113,
+      "subject": "pgsql: YA attempt at taming worst-case behavior of get_actual_variable_",
+      "covered": 4,
+      "denominator": 5,
+      "uncovered_count": 1,
+      "precision_excl_not_found": 0.8,
+      "uncovered_lines": [
+        {
+          "file": "src/backend/utils/adt/selfuncs.c",
+          "line_no": 5969,
+          "code": "break;",
+          "match_type": "exact"
+        }
+      ]
+    },
+    {
+      "id": 114,
+      "subject": "pgsql: Fix cleanup lock acquisition in SPLIT_ALLOCATE_PAGE replay.",
+      "covered": 0,
+      "denominator": 1,
+      "uncovered_count": 1,
+      "precision_excl_not_found": 0.0,
+      "uncovered_lines": [
+        {
+          "file": "src/backend/access/hash/hash_xlog.c",
+          "line_no": 356,
+          "code": "&newbuf);",
+          "match_type": "exact"
+        }
+      ]
+    },
+    {
+      "id": 115,
+      "subject": "pgsql: Fix theoretical torn page hazard.",
+      "covered": 0,
+      "denominator": 1,
+      "uncovered_count": 1,
+      "precision_excl_not_found": 0.0,
+      "uncovered_lines": [
+        {
+          "file": "src/backend/access/heap/heapam.c",
+          "line_no": 8400,
+          "code": "if (XLogHintBitIsNeeded())",
+          "match_type": "exact"
+        }
+      ]
+    },
+    {
+      "id": 126,
+      "subject": "pgsql: Future-proof the recursion inside ExecShutdownNode().",
+      "covered": 0,
+      "denominator": 1,
+      "uncovered_count": 1,
+      "precision_excl_not_found": 0.0,
+      "uncovered_lines": [
+        {
+          "file": "src/backend/executor/execProcnode.c",
+          "line_no": 757,
+          "code": "static bool",
+          "match_type": "exact"
+        }
+      ]
+    },
+    {
+      "id": 135,
+      "subject": "pgsql: Show 'AS \"?column?\"' explicitly when it's important.",
+      "covered": 4,
+      "denominator": 5,
+      "uncovered_count": 1,
+      "precision_excl_not_found": 0.8,
+      "uncovered_lines": [
+        {
+          "file": "src/backend/utils/adt/ruleutils.c",
+          "line_no": 5270,
+          "code": "colNamesVisible);",
+          "match_type": "exact"
+        }
+      ]
+    },
+    {
+      "id": 136,
+      "subject": "pgsql: Fix DDL deparse of CREATE OPERATOR CLASS",
+      "covered": 4,
+      "denominator": 5,
+      "uncovered_count": 1,
+      "precision_excl_not_found": 0.8,
+      "uncovered_lines": [
+        {
+          "file": "src/backend/commands/opclasscmds.c",
+          "line_no": 322,
+          "code": "(Node *) stmt);",
+          "match_type": "exact"
+        }
+      ]
+    },
+    {
+      "id": 138,
+      "subject": "pgsql: In REFRESH MATERIALIZED VIEW, set user ID before running user co",
+      "covered": 3,
+      "denominator": 4,
+      "uncovered_count": 1,
+      "precision_excl_not_found": 0.75,
+      "uncovered_lines": [
+        {
+          "file": "src/backend/commands/matview.c",
+          "line_no": 179,
+          "code": "save_sec_context | SECURITY_RESTRICTED_OPERATION);",
+          "match_type": "exact"
+        }
+      ]
+    },
+    {
+      "id": 148,
+      "subject": "pgsql: Fix one-off bug causing missing commit timestamps for subtransac",
+      "covered": 2,
+      "denominator": 3,
+      "uncovered_count": 1,
+      "precision_excl_not_found": 0.6667,
+      "uncovered_lines": [
+        {
+          "file": "src/backend/access/transam/commit_ts.c",
+          "line_no": 189,
+          "code": "for (;;)",
+          "match_type": "exact"
+        }
+      ]
+    },
+    {
+      "id": 149,
+      "subject": "pgsql: Fix ruleutils.c's dumping of whole-row Vars in more contexts.",
+      "covered": 6,
+      "denominator": 7,
+      "uncovered_count": 1,
+      "precision_excl_not_found": 0.8571,
+      "uncovered_lines": [
+        {
+          "file": "src/backend/utils/adt/ruleutils.c",
+          "line_no": 9231,
+          "code": "static void",
+          "match_type": "exact"
+        }
+      ]
+    },
+    {
+      "id": 102,
+      "subject": "pgsql: Fix thinkos in have_unsafe_outer_join_ref; reduce to Assert chec",
+      "covered": 0,
+      "denominator": 0,
+      "uncovered_count": 0,
+      "precision_excl_not_found": 0.0,
+      "uncovered_lines": []
+    },
+    {
+      "id": 103,
+      "subject": "pgsql: Allow REPLICA IDENTITY to be set on an index that's not (yet) va",
+      "covered": 0,
+      "denominator": 0,
+      "uncovered_count": 0,
+      "precision_excl_not_found": 0.0,
+      "uncovered_lines": []
+    },
+    {
+      "id": 104,
+      "subject": "pgsql: Keep perl style checker happy",
+      "covered": 0,
+      "denominator": 0,
+      "uncovered_count": 0,
+      "precision_excl_not_found": 0.0,
+      "uncovered_lines": []
+    },
+    {
+      "id": 105,
+      "subject": "pgsql: Make new GENERATED-expressions code more bulletproof.",
+      "covered": 1,
+      "denominator": 1,
+      "uncovered_count": 0,
+      "precision_excl_not_found": 1.0,
+      "uncovered_lines": []
+    },
+    {
+      "id": 106,
+      "subject": "pgsql: Avoid reference to nonexistent array element in ExecInitAgg().",
+      "covered": 2,
+      "denominator": 2,
+      "uncovered_count": 0,
+      "precision_excl_not_found": 1.0,
+      "uncovered_lines": []
+    },
+    {
+      "id": 107,
+      "subject": "pgsql: Add some recursion and looping defenses in prepjointree.c.",
+      "covered": 2,
+      "denominator": 2,
+      "uncovered_count": 0,
+      "precision_excl_not_found": 1.0,
+      "uncovered_lines": []
+    },
+    {
+      "id": 110,
+      "subject": "pgsql: Remove bogus Assert and dead code in remove_useless_results_recu",
+      "covered": 0,
+      "denominator": 0,
+      "uncovered_count": 0,
+      "precision_excl_not_found": 0.0,
+      "uncovered_lines": []
+    },
+    {
+      "id": 117,
+      "subject": "pgsql: Create FKs properly when attaching table as partition",
+      "covered": 17,
+      "denominator": 17,
+      "uncovered_count": 0,
+      "precision_excl_not_found": 1.0,
+      "uncovered_lines": []
+    },
+    {
+      "id": 119,
+      "subject": "pgsql: Fix EXPLAIN of SEARCH BREADTH FIRST with a constant initial valu",
+      "covered": 0,
+      "denominator": 0,
+      "uncovered_count": 0,
+      "precision_excl_not_found": 0.0,
+      "uncovered_lines": []
+    },
+    {
+      "id": 121,
+      "subject": "pgsql: Fix self-referencing foreign keys with partitioned tables",
+      "covered": 4,
+      "denominator": 4,
+      "uncovered_count": 0,
+      "precision_excl_not_found": 1.0,
+      "uncovered_lines": []
+    },
+    {
+      "id": 124,
+      "subject": "pgsql: Fix thinko in comment.",
+      "covered": 0,
+      "denominator": 0,
+      "uncovered_count": 0,
+      "precision_excl_not_found": 0.0,
+      "uncovered_lines": []
+    },
+    {
+      "id": 128,
+      "subject": "pgsql: Fix subtly-incorrect matching of parent and child partitioned in",
+      "covered": 2,
+      "denominator": 2,
+      "uncovered_count": 0,
+      "precision_excl_not_found": 1.0,
+      "uncovered_lines": []
+    },
+    {
+      "id": 131,
+      "subject": "pgsql: Add CHECK_FOR_INTERRUPTS in ExecInsert's speculative insertion l",
+      "covered": 0,
+      "denominator": 0,
+      "uncovered_count": 0,
+      "precision_excl_not_found": 0.0,
+      "uncovered_lines": []
+    },
+    {
+      "id": 132,
+      "subject": "pgsql: Fix alias matching in transformLockingClause().",
+      "covered": 2,
+      "denominator": 2,
+      "uncovered_count": 0,
+      "precision_excl_not_found": 1.0,
+      "uncovered_lines": []
+    },
+    {
+      "id": 134,
+      "subject": "pgsql: Fix visibility check when XID is committed in CLOG but not in pr",
+      "covered": 0,
+      "denominator": 0,
+      "uncovered_count": 0,
+      "precision_excl_not_found": 0.0,
+      "uncovered_lines": []
+    },
+    {
+      "id": 137,
+      "subject": "pgsql: Fix core dump in transformValuesClause when there are no columns",
+      "covered": 2,
+      "denominator": 2,
+      "uncovered_count": 0,
+      "precision_excl_not_found": 1.0,
+      "uncovered_lines": []
+    },
+    {
+      "id": 139,
+      "subject": "pgsql: Avoid invalid array reference in transformAlterTableStmt().",
+      "covered": 1,
+      "denominator": 1,
+      "uncovered_count": 0,
+      "precision_excl_not_found": 1.0,
+      "uncovered_lines": []
+    },
+    {
+      "id": 141,
+      "subject": "pgsql: Revert \"Rewrite some RI code to avoid using SPI\"",
+      "covered": 0,
+      "denominator": 0,
+      "uncovered_count": 0,
+      "precision_excl_not_found": 0.0,
+      "uncovered_lines": []
+    },
+    {
+      "id": 142,
+      "subject": "pgsql: Add public ruleutils.c entry point to deparse a Query.",
+      "covered": 2,
+      "denominator": 2,
+      "uncovered_count": 0,
+      "precision_excl_not_found": 1.0,
+      "uncovered_lines": []
+    },
+    {
+      "id": 147,
+      "subject": "pgsql: Flush table's relcache during ALTER TABLE ADD PRIMARY KEY USING",
+      "covered": 2,
+      "denominator": 2,
+      "uncovered_count": 0,
+      "precision_excl_not_found": 1.0,
+      "uncovered_lines": []
+    },
+    {
+      "id": 150,
+      "subject": "pgsql: Prevent altering partitioned table's rowtype, if it's used elsew",
+      "covered": 0,
+      "denominator": 0,
+      "uncovered_count": 0,
+      "precision_excl_not_found": 0.0,
+      "uncovered_lines": []
+    }
+  ]
+}

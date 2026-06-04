@@ -1,0 +1,81 @@
+2026-06-04 05:57:32.054 UTC [35922] LOG:  starting PostgreSQL 13.23 on x86_64-pc-linux-gnu, compiled by gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0, 64-bit
+2026-06-04 05:57:32.055 UTC [35922] LOG:  listening on Unix socket "/tmp/pgcov-55432/.s.PGSQL.55432"
+2026-06-04 05:57:32.063 UTC [35923] LOG:  database system was shut down at 2026-06-04 05:57:30 UTC
+2026-06-04 05:57:32.119 UTC [35922] LOG:  database system is ready to accept connections
+2026-06-04 05:57:35.512 UTC [36000] ERROR:  cannot refer to NEW within WITH query
+2026-06-04 05:57:35.512 UTC [36000] STATEMENT:  CREATE RULE ruleutils_upd_r AS ON UPDATE TO ruleutils_upd_v DO INSTEAD
+	  WITH ruleutils_upd_t AS (SELECT NEW.id AS id)
+	  UPDATE ruleutils_upd_t AS target_alias SET val = 'updated' WHERE target_alias.id IN (SELECT id FROM ruleutils_upd_t);
+2026-06-04 05:57:35.765 UTC [36000] ERROR:  syntax error at or near ")" at character 53
+2026-06-04 05:57:35.765 UTC [36000] STATEMENT:  SELECT a, count(*) FROM r106_t2 GROUP BY ROLLUP(a, ());
+2026-06-04 05:57:36.018 UTC [36000] WARNING:  there is already a transaction in progress
+2026-06-04 05:57:36.026 UTC [36000] WARNING:  there is already a transaction in progress
+2026-06-04 05:57:36.027 UTC [36000] WARNING:  there is already a transaction in progress
+2026-06-04 05:57:36.040 UTC [36000] WARNING:  there is already a transaction in progress
+2026-06-04 05:57:36.068 UTC [36000] WARNING:  skipping "test_vacuum_perm" --- only table or database owner can vacuum it
+2026-06-04 05:57:36.083 UTC [36000] WARNING:  skipping "test_analyze_perm" --- only table or database owner can analyze it
+2026-06-04 05:57:36.091 UTC [36000] WARNING:  skipping "test_vacuum_analyze_perm" --- only table or database owner can vacuum it
+2026-06-04 05:57:36.095 UTC [36000] WARNING:  skipping "pg_class" --- only superuser or database owner can vacuum it
+2026-06-04 05:57:36.097 UTC [36000] WARNING:  skipping "pg_class" --- only superuser or database owner can analyze it
+2026-06-04 05:57:36.439 UTC [36000] ERROR:  syntax error at end of input at character 77
+2026-06-04 05:57:36.439 UTC [36000] STATEMENT:  CREATE FUNCTION test_bad_sql_func() RETURNS int LANGUAGE sql AS $$ SELECT + $$;
+2026-06-04 05:57:36.440 UTC [36000] ERROR:  missing expression at or near ";" at character 89
+2026-06-04 05:57:36.440 UTC [36000] STATEMENT:  CREATE FUNCTION test_bad_plpgsql_func() RETURNS int LANGUAGE plpgsql AS $$ BEGIN RETURN ; END $$;
+2026-06-04 05:57:36.440 UTC [36000] ERROR:  missing expression at or near "THEN" at character 16
+2026-06-04 05:57:36.440 UTC [36000] STATEMENT:  DO $$ BEGIN IF THEN RAISE NOTICE 'bad'; END IF; END $$;
+2026-06-04 05:57:36.454 UTC [36000] ERROR:  "fk_part_child" is already a partition
+2026-06-04 05:57:36.454 UTC [36000] STATEMENT:  ALTER TABLE fk_part_parent ATTACH PARTITION fk_part_child FOR VALUES FROM (1) TO (10);
+2026-06-04 05:57:36.513 UTC [36000] ERROR:  non-view rule for "test_t1" must not be named "_RETURN"
+2026-06-04 05:57:36.513 UTC [36000] STATEMENT:  CREATE OR REPLACE RULE "_RETURN" AS ON INSERT TO test_t1 DO INSTEAD NOTHING;
+2026-06-04 05:57:36.517 UTC [36000] ERROR:  non-view rule for "test_v2" must not be named "_RETURN"
+2026-06-04 05:57:36.517 UTC [36000] STATEMENT:  CREATE OR REPLACE RULE "_RETURN" AS ON INSERT TO test_v2 DO INSTEAD NOTHING;
+2026-06-04 05:57:36.526 UTC [36000] ERROR:  non-view rule for "r118_insert" must not be named "_RETURN"
+2026-06-04 05:57:36.526 UTC [36000] STATEMENT:  CREATE RULE "_RETURN" AS ON INSERT TO r118_insert DO ALSO SELECT 1;
+2026-06-04 05:57:36.529 UTC [36000] ERROR:  non-view rule for "r118_update" must not be named "_RETURN"
+2026-06-04 05:57:36.529 UTC [36000] STATEMENT:  CREATE RULE "_RETURN" AS ON UPDATE TO r118_update DO ALSO SELECT 1;
+2026-06-04 05:57:36.533 UTC [36000] ERROR:  non-view rule for "r118_delete" must not be named "_RETURN"
+2026-06-04 05:57:36.533 UTC [36000] STATEMENT:  CREATE RULE "_RETURN" AS ON DELETE TO r118_delete DO ALSO SELECT 1;
+2026-06-04 05:57:36.582 UTC [36000] ERROR:  DEFAULT is not allowed in this context at character 86
+2026-06-04 05:57:36.582 UTC [36000] STATEMENT:  CREATE RULE rw120_also_select AS ON INSERT TO rw120_v DO ALSO SELECT * FROM (VALUES (DEFAULT, DEFAULT), (3, DEFAULT)) AS x(a,b);
+2026-06-04 05:57:36.643 UTC [36000] ERROR:  no partition of relation "test_part_multi" found for row
+2026-06-04 05:57:36.643 UTC [36000] DETAIL:  Partition key of the failing row contains (id) = (100).
+2026-06-04 05:57:36.643 UTC [36000] STATEMENT:  INSERT INTO test_part_multi (id, ref_id) VALUES (100, NULL);
+2026-06-04 05:57:36.643 UTC [36000] ERROR:  no partition of relation "test_part_multi" found for row
+2026-06-04 05:57:36.643 UTC [36000] DETAIL:  Partition key of the failing row contains (id) = (200).
+2026-06-04 05:57:36.643 UTC [36000] STATEMENT:  INSERT INTO test_part_multi (id, ref_id) VALUES (200, 100);
+2026-06-04 05:57:36.672 UTC [36000] ERROR:  cannot attach index "r121_self_1_uidx" as a partition of index "r121_self_pkey"
+2026-06-04 05:57:36.672 UTC [36000] DETAIL:  Another index is already attached for partition "r121_self_1".
+2026-06-04 05:57:36.672 UTC [36000] STATEMENT:  ALTER INDEX r121_self_pkey ATTACH PARTITION r121_self_1_uidx;
+2026-06-04 05:57:37.031 UTC [36000] ERROR:  check constraint "ck_invalid" of relation "test_check_invalid" is violated by some row
+2026-06-04 05:57:37.031 UTC [36000] STATEMENT:  ALTER TABLE test_check_invalid VALIDATE CONSTRAINT ck_invalid;
+2026-06-04 05:57:37.035 UTC [36000] ERROR:  syntax error at or near "ALTER" at character 30
+2026-06-04 05:57:37.035 UTC [36000] STATEMENT:  EXPLAIN (VERBOSE, COSTS OFF) ALTER TABLE r130_t ADD CONSTRAINT r130_check CHECK (a > 0) NOT VALID;
+2026-06-04 05:57:37.041 UTC [36000] ERROR:  relation "unnamed_join" in FOR UPDATE clause not found in FROM clause at character 56
+2026-06-04 05:57:37.041 UTC [36000] STATEMENT:  SELECT * FROM lock_a JOIN lock_b ON true FOR UPDATE OF unnamed_join;
+2026-06-04 05:57:37.059 UTC [36000] ERROR:  logical decoding requires wal_level >= logical
+2026-06-04 05:57:37.059 UTC [36000] STATEMENT:  SELECT pg_create_logical_replication_slot('test_slot', 'pgoutput');
+2026-06-04 05:57:37.060 UTC [36000] ERROR:  replication slot "test_slot" does not exist
+2026-06-04 05:57:37.060 UTC [36000] STATEMENT:  SELECT pg_drop_replication_slot('test_slot');
+2026-06-04 05:57:37.064 UTC [36000] ERROR:  logical decoding requires wal_level >= logical
+2026-06-04 05:57:37.064 UTC [36000] STATEMENT:  SELECT pg_create_logical_replication_slot('test_slot2', 'pgoutput');
+2026-06-04 05:57:37.064 UTC [36000] ERROR:  replication slot "test_slot2" does not exist
+2026-06-04 05:57:37.064 UTC [36000] STATEMENT:  SELECT pg_drop_replication_slot('test_slot2');
+2026-06-04 05:57:37.069 UTC [36000] ERROR:  logical decoding requires wal_level >= logical
+2026-06-04 05:57:37.069 UTC [36000] STATEMENT:  SELECT pg_create_logical_replication_slot('test_slot3', 'pgoutput');
+2026-06-04 05:57:37.070 UTC [36000] ERROR:  replication slot "test_slot3" does not exist
+2026-06-04 05:57:37.070 UTC [36000] STATEMENT:  SELECT pg_drop_replication_slot('test_slot3');
+2026-06-04 05:57:37.129 UTC [36000] ERROR:  subquery must return only one column at character 24
+2026-06-04 05:57:37.129 UTC [36000] STATEMENT:  SELECT * FROM (VALUES ((SELECT * FROM zero_col_tab))) AS v;
+2026-06-04 05:57:37.245 UTC [36000] ERROR:  column "oid" of relation "test_alter_sys_attr" does not exist
+2026-06-04 05:57:37.245 UTC [36000] STATEMENT:  ALTER TABLE test_alter_sys_attr ALTER COLUMN oid TYPE bigint;
+2026-06-04 05:57:37.256 UTC [36000] ERROR:  column "nonexistent" of relation "test_alter_nonexist" does not exist
+2026-06-04 05:57:37.256 UTC [36000] STATEMENT:  ALTER TABLE test_alter_nonexist ALTER COLUMN nonexistent TYPE text;
+2026-06-04 05:57:37.335 UTC [36000] ERROR:  cannot drop partitioned index "idx_parent2" concurrently
+2026-06-04 05:57:37.335 UTC [36000] STATEMENT:  DROP INDEX CONCURRENTLY idx_parent2;
+2026-06-04 05:57:37.549 UTC [36000] ERROR:  multiple primary keys for table "test_t3" are not allowed
+2026-06-04 05:57:37.549 UTC [36000] STATEMENT:  ALTER TABLE test_t3 ADD PRIMARY KEY USING INDEX idx_t3;
+2026-06-04 05:57:37.753 UTC [35922] LOG:  received fast shutdown request
+2026-06-04 05:57:37.764 UTC [35922] LOG:  aborting any active transactions
+2026-06-04 05:57:37.927 UTC [35922] LOG:  background worker "logical replication launcher" (PID 35929) exited with exit code 1
+2026-06-04 05:57:37.940 UTC [35924] LOG:  shutting down
+2026-06-04 05:57:38.117 UTC [35922] LOG:  database system is shut down

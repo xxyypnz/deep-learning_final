@@ -1,0 +1,4153 @@
+\pset pager off
+Pager usage is off.
+SET statement_timeout = 5000;
+SET
+SET lock_timeout = 1000;
+SET
+SET idle_in_transaction_session_timeout = 5000;
+SET
+-- ===== Test Case 1 (commit 101) =====
+-- Setup
+DROP TABLE IF EXISTS test_t1 CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:8: NOTICE:  table "test_t1" does not exist, skipping
+DROP TABLE
+CREATE TABLE test_t1 (id INT);
+CREATE TABLE
+INSERT INTO test_t1 VALUES (1);
+INSERT 0 1
+-- Execution
+WITH test_t1 AS (SELECT 2 AS id)
+INSERT INTO test_t1 (id) SELECT id FROM test_t1;
+INSERT 0 1
+-- Teardown
+DROP TABLE IF EXISTS test_t1 CASCADE;
+DROP TABLE
+-- ===== Test Case 2 (commit 101) =====
+-- Setup
+DROP TABLE IF EXISTS test_t2 CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:21: NOTICE:  table "test_t2" does not exist, skipping
+DROP TABLE
+CREATE TABLE test_t2 (id INT);
+CREATE TABLE
+INSERT INTO test_t2 VALUES (1);
+INSERT 0 1
+-- Execution
+WITH test_t2 AS (SELECT 2 AS id)
+UPDATE test_t2 SET id = (SELECT id FROM test_t2) WHERE id = 1;
+UPDATE 1
+-- Teardown
+DROP TABLE IF EXISTS test_t2 CASCADE;
+DROP TABLE
+-- ===== Test Case 3 (commit 101) =====
+-- Setup
+DROP TABLE IF EXISTS test_t3 CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:34: NOTICE:  table "test_t3" does not exist, skipping
+DROP TABLE
+CREATE TABLE test_t3 (id INT);
+CREATE TABLE
+INSERT INTO test_t3 VALUES (1);
+INSERT 0 1
+-- Execution
+WITH test_t3 AS (SELECT 2 AS id)
+DELETE FROM test_t3 WHERE id = (SELECT id FROM test_t3);
+DELETE 0
+-- Teardown
+DROP TABLE IF EXISTS test_t3 CASCADE;
+DROP TABLE
+-- ===== Test Case 4 (commit 101) =====
+DROP VIEW IF EXISTS ruleutils_ins_v CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:46: NOTICE:  view "ruleutils_ins_v" does not exist, skipping
+DROP VIEW
+DROP TABLE IF EXISTS ruleutils_ins_t CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:47: NOTICE:  table "ruleutils_ins_t" does not exist, skipping
+DROP TABLE
+CREATE TABLE ruleutils_ins_t (id int, val text);
+CREATE TABLE
+CREATE VIEW ruleutils_ins_v AS SELECT * FROM ruleutils_ins_t;
+CREATE VIEW
+CREATE RULE ruleutils_ins_r AS ON INSERT TO ruleutils_ins_v DO INSTEAD
+  WITH ruleutils_ins_t AS (SELECT 1 AS id, 'x'::text AS val)
+  INSERT INTO ruleutils_ins_t AS target_alias SELECT id, val FROM ruleutils_ins_t;
+CREATE RULE
+SELECT pg_get_ruledef(oid, true) FROM pg_rewrite WHERE ev_class='ruleutils_ins_v'::regclass AND rulename='ruleutils_ins_r';
+                                   pg_get_ruledef                                   
+------------------------------------------------------------------------------------
+ CREATE RULE ruleutils_ins_r AS                                                    +
+     ON INSERT TO ruleutils_ins_v DO INSTEAD  WITH ruleutils_ins_t AS (            +
+          SELECT 1 AS id,                                                          +
+             'x'::text AS val                                                      +
+         )                                                                         +
+  INSERT INTO ruleutils_ins_t AS target_alias (id, val)  SELECT ruleutils_ins_t.id,+
+             ruleutils_ins_t.val                                                   +
+            FROM ruleutils_ins_t;
+(1 row)
+
+DROP VIEW IF EXISTS ruleutils_ins_v CASCADE;
+DROP VIEW
+DROP TABLE IF EXISTS ruleutils_ins_t CASCADE;
+DROP TABLE
+-- ===== Test Case 5 (commit 101) =====
+DROP VIEW IF EXISTS ruleutils_upd_v CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:58: NOTICE:  view "ruleutils_upd_v" does not exist, skipping
+DROP VIEW
+DROP TABLE IF EXISTS ruleutils_upd_t CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:59: NOTICE:  table "ruleutils_upd_t" does not exist, skipping
+DROP TABLE
+CREATE TABLE ruleutils_upd_t (id int, val text);
+CREATE TABLE
+CREATE VIEW ruleutils_upd_v AS SELECT * FROM ruleutils_upd_t;
+CREATE VIEW
+CREATE RULE ruleutils_upd_r AS ON UPDATE TO ruleutils_upd_v DO INSTEAD
+  WITH ruleutils_upd_t AS (SELECT NEW.id AS id)
+  UPDATE ruleutils_upd_t AS target_alias SET val = 'updated' WHERE target_alias.id IN (SELECT id FROM ruleutils_upd_t);
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:64: ERROR:  cannot refer to NEW within WITH query
+SELECT pg_get_ruledef(oid, true) FROM pg_rewrite WHERE ev_class='ruleutils_upd_v'::regclass AND rulename='ruleutils_upd_r';
+ pg_get_ruledef 
+----------------
+(0 rows)
+
+DROP VIEW IF EXISTS ruleutils_upd_v CASCADE;
+DROP VIEW
+DROP TABLE IF EXISTS ruleutils_upd_t CASCADE;
+DROP TABLE
+-- ===== Test Case 6 (commit 101) =====
+DROP VIEW IF EXISTS ruleutils_del_v CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:70: NOTICE:  view "ruleutils_del_v" does not exist, skipping
+DROP VIEW
+DROP TABLE IF EXISTS ruleutils_del_t CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:71: NOTICE:  table "ruleutils_del_t" does not exist, skipping
+DROP TABLE
+DROP TABLE IF EXISTS ruleutils_aux CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:72: NOTICE:  table "ruleutils_aux" does not exist, skipping
+DROP TABLE
+CREATE TABLE ruleutils_del_t (id int);
+CREATE TABLE
+CREATE TABLE ruleutils_aux (id int);
+CREATE TABLE
+CREATE VIEW ruleutils_del_v AS SELECT * FROM ruleutils_del_t;
+CREATE VIEW
+CREATE RULE ruleutils_del_r AS ON DELETE TO ruleutils_del_v DO INSTEAD
+  DELETE FROM ruleutils_del_t AS target_alias USING ruleutils_aux AS ruleutils_del_t WHERE target_alias.id = ruleutils_del_t.id;
+CREATE RULE
+SELECT pg_get_ruledef(oid, true) FROM pg_rewrite WHERE ev_class='ruleutils_del_v'::regclass AND rulename='ruleutils_del_r';
+                                    pg_get_ruledef                                     
+---------------------------------------------------------------------------------------
+ CREATE RULE ruleutils_del_r AS                                                       +
+     ON DELETE TO ruleutils_del_v DO INSTEAD  DELETE FROM ruleutils_del_t target_alias+
+    USING ruleutils_aux ruleutils_del_t                                               +
+   WHERE target_alias.id = ruleutils_del_t.id;
+(1 row)
+
+DROP VIEW IF EXISTS ruleutils_del_v CASCADE;
+DROP VIEW
+DROP TABLE IF EXISTS ruleutils_del_t CASCADE;
+DROP TABLE
+DROP TABLE IF EXISTS ruleutils_aux CASCADE;
+DROP TABLE
+-- ===== Test Case 7 (commit 101) =====
+DROP VIEW IF EXISTS ruleutils_alias_v CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:84: NOTICE:  view "ruleutils_alias_v" does not exist, skipping
+DROP VIEW
+DROP FUNCTION IF EXISTS ruleutils_srf() CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:85: NOTICE:  function ruleutils_srf() does not exist, skipping
+DROP FUNCTION
+CREATE FUNCTION ruleutils_srf() RETURNS TABLE(a int, b text) LANGUAGE sql AS $$ SELECT 1, 'x'::text $$;
+CREATE FUNCTION
+CREATE VIEW ruleutils_alias_v AS
+WITH cte_alias AS (SELECT 1 AS c)
+SELECT f.a, sq.x, vals.y, cte_alias.c
+FROM ruleutils_srf() f,
+     (SELECT 2 AS x) sq,
+     (VALUES (3)) vals(y),
+     cte_alias;
+CREATE VIEW
+SELECT pg_get_viewdef('ruleutils_alias_v'::regclass, true);
+          pg_get_viewdef          
+----------------------------------
+  WITH cte_alias AS (            +
+          SELECT 1 AS c          +
+         )                       +
+  SELECT f.a,                    +
+     sq.x,                       +
+     vals.y,                     +
+     cte_alias.c                 +
+    FROM ruleutils_srf() f(a, b),+
+     ( SELECT 2 AS x) sq,        +
+     ( VALUES (3)) vals(y),      +
+     cte_alias;
+(1 row)
+
+DROP VIEW IF EXISTS ruleutils_alias_v CASCADE;
+DROP VIEW
+DROP FUNCTION IF EXISTS ruleutils_srf() CASCADE;
+DROP FUNCTION
+-- ===== Test Case 8 (commit 101) =====
+DROP TABLE IF EXISTS foo101 CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:99: NOTICE:  table "foo101" does not exist, skipping
+DROP TABLE
+CREATE TABLE foo101 (f1 text DEFAULT 'test', f2 int DEFAULT 42, f3 int DEFAULT 7);
+CREATE TABLE
+INSERT INTO foo101 AS bar DEFAULT VALUES RETURNING *;
+  f1  | f2 | f3 
+------+----+----
+ test | 42 |  7
+(1 row)
+
+INSERT 0 1
+INSERT INTO foo101 AS bar DEFAULT VALUES RETURNING bar.*;
+  f1  | f2 | f3 
+------+----+----
+ test | 42 |  7
+(1 row)
+
+INSERT 0 1
+INSERT INTO foo101 AS bar DEFAULT VALUES RETURNING bar.f3;
+ f3 
+----
+  7
+(1 row)
+
+INSERT 0 1
+DROP TABLE IF EXISTS foo101 CASCADE;
+DROP TABLE
+-- ===== Test Case 9 (commit 102) =====
+SELECT 1;
+ ?column? 
+----------
+        1
+(1 row)
+
+-- ===== Test Case 10 (commit 103) =====
+SELECT 1;
+ ?column? 
+----------
+        1
+(1 row)
+
+-- ===== Test Case 11 (commit 104) =====
+-- Setup: Create a minimal catalog definition file to trigger genbki.pl
+DROP TABLE IF EXISTS test_genbki CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:114: NOTICE:  table "test_genbki" does not exist, skipping
+DROP TABLE
+CREATE TABLE test_genbki (id INT PRIMARY KEY, name TEXT);
+CREATE TABLE
+-- Execution: Run genbki.pl indirectly via a dummy catalog build (simulate by calling the script with minimal input)
+-- Note: genbki.pl is typically invoked during 'make' in src/backend/catalog. We simulate by running it with a simple .dat file.
+-- Create a temporary .dat file and run genbki.pl
+COPY (SELECT 'test'::text) TO '/tmp/test_genbki.dat';
+COPY 1
+\! perl src/backend/catalog/genbki.pl -I src/include/catalog /tmp/test_genbki.dat 2>&1
+--set-version must be specified.
+-- Teardown: Clean up temporary files and table
+DROP TABLE IF EXISTS test_genbki CASCADE;
+DROP TABLE
+\! rm -f /tmp/test_genbki.dat
+-- ===== Test Case 12 (commit 104) =====
+-- Setup: Create an empty temporary file
+\! touch /tmp/test_empty.dat
+-- Execution: Run genbki.pl with empty input
+\! perl src/backend/catalog/genbki.pl -I src/include/catalog /tmp/test_empty.dat 2>&1
+--set-version must be specified.
+-- Teardown: Clean up
+\! rm -f /tmp/test_empty.dat
+-- ===== Test Case 13 (commit 104) =====
+-- Setup: No file created
+-- Execution: Run genbki.pl with a non-existent file
+\! perl src/backend/catalog/genbki.pl -I src/include/catalog /tmp/nonexistent.dat 2>&1
+--set-version must be specified.
+-- Teardown: No cleanup needed
+-- ===== Test Case 14 (commit 105) =====
+-- Setup
+DROP TABLE IF EXISTS test_gen_trigger CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:147: NOTICE:  table "test_gen_trigger" does not exist, skipping
+DROP TABLE
+CREATE TABLE test_gen_trigger (
+    id INT PRIMARY KEY,
+    a INT,
+    b INT GENERATED ALWAYS AS (a * 2) STORED
+);
+CREATE TABLE
+CREATE OR REPLACE FUNCTION test_trigger_func() RETURNS TRIGGER AS $$
+BEGIN
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+CREATE FUNCTION
+CREATE TRIGGER test_trigger BEFORE UPDATE ON test_gen_trigger FOR EACH ROW EXECUTE FUNCTION test_trigger_func();
+CREATE TRIGGER
+INSERT INTO test_gen_trigger VALUES (1, 5);
+INSERT 0 1
+-- Execution: UPDATE triggers the trigger, which calls ExecGetExtraUpdatedCols before ExecInitStoredGenerated
+UPDATE test_gen_trigger SET a = 10 WHERE id = 1;
+UPDATE 1
+-- Teardown
+DROP TABLE IF EXISTS test_gen_trigger CASCADE;
+DROP TABLE
+DROP FUNCTION IF EXISTS test_trigger_func;
+DROP FUNCTION
+-- ===== Test Case 15 (commit 105) =====
+-- Setup
+DROP TABLE IF EXISTS test_gen_logical CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:170: NOTICE:  table "test_gen_logical" does not exist, skipping
+DROP TABLE
+CREATE TABLE test_gen_logical (
+    id INT PRIMARY KEY,
+    x INT,
+    y INT GENERATED ALWAYS AS (x + 1) STORED
+);
+CREATE TABLE
+CREATE OR REPLACE FUNCTION test_logical_trigger() RETURNS TRIGGER AS $$
+BEGIN
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+CREATE FUNCTION
+CREATE TRIGGER test_logical_trig BEFORE UPDATE ON test_gen_logical FOR EACH ROW EXECUTE FUNCTION test_logical_trigger();
+CREATE TRIGGER
+INSERT INTO test_gen_logical VALUES (1, 100);
+INSERT 0 1
+-- Execution: UPDATE triggers the trigger, which calls ExecGetExtraUpdatedCols before generated columns are initialized
+UPDATE test_gen_logical SET x = 200 WHERE id = 1;
+UPDATE 1
+-- Teardown
+DROP TABLE IF EXISTS test_gen_logical CASCADE;
+DROP TABLE
+DROP FUNCTION IF EXISTS test_logical_trigger;
+DROP FUNCTION
+-- ===== Test Case 16 (commit 105) =====
+-- Setup
+DROP TABLE IF EXISTS test_gen_multi CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:193: NOTICE:  table "test_gen_multi" does not exist, skipping
+DROP TABLE
+CREATE TABLE test_gen_multi (
+    id INT PRIMARY KEY,
+    val1 INT,
+    val2 INT GENERATED ALWAYS AS (val1 * 3) STORED,
+    val3 INT GENERATED ALWAYS AS (val1 + 10) STORED
+);
+CREATE TABLE
+CREATE OR REPLACE FUNCTION test_multi_trigger() RETURNS TRIGGER AS $$
+BEGIN
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+CREATE FUNCTION
+CREATE TRIGGER test_multi_trig BEFORE UPDATE ON test_gen_multi FOR EACH ROW EXECUTE FUNCTION test_multi_trigger();
+CREATE TRIGGER
+INSERT INTO test_gen_multi VALUES (1, 5);
+INSERT 0 1
+-- Execution: UPDATE triggers the trigger, which calls ExecGetExtraUpdatedCols before generated columns are initialized
+UPDATE test_gen_multi SET val1 = 7 WHERE id = 1;
+UPDATE 1
+-- Teardown
+DROP TABLE IF EXISTS test_gen_multi CASCADE;
+DROP TABLE
+DROP FUNCTION IF EXISTS test_multi_trigger;
+DROP FUNCTION
+-- ===== Test Case 17 (commit 106) =====
+-- Setup
+DROP TABLE IF EXISTS test_empty_gs CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:217: NOTICE:  table "test_empty_gs" does not exist, skipping
+DROP TABLE
+CREATE TABLE test_empty_gs (a int, b int);
+CREATE TABLE
+INSERT INTO test_empty_gs VALUES (1, 10), (2, 20), (3, 30);
+INSERT 0 3
+-- Execution: Use GROUP BY () to create an empty grouping set
+SELECT COUNT(*) FROM test_empty_gs GROUP BY ();
+ count 
+-------
+     3
+(1 row)
+
+-- Teardown
+DROP TABLE IF EXISTS test_empty_gs CASCADE;
+DROP TABLE
+-- ===== Test Case 18 (commit 106) =====
+-- Setup
+DROP TABLE IF EXISTS test_mixed_gs CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:229: NOTICE:  table "test_mixed_gs" does not exist, skipping
+DROP TABLE
+CREATE TABLE test_mixed_gs (x int, y int);
+CREATE TABLE
+INSERT INTO test_mixed_gs VALUES (1, 100), (2, 200), (1, 300);
+INSERT 0 3
+-- Execution: GROUPING SETS with empty set and a non-empty set
+SELECT x, COUNT(*) FROM test_mixed_gs GROUP BY GROUPING SETS ((), (x));
+ x | count 
+---+-------
+   |     3
+ 2 |     1
+ 1 |     2
+(3 rows)
+
+-- Teardown
+DROP TABLE IF EXISTS test_mixed_gs CASCADE;
+DROP TABLE
+-- ===== Test Case 19 (commit 106) =====
+-- Setup
+DROP TABLE IF EXISTS test_having_gs CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:241: NOTICE:  table "test_having_gs" does not exist, skipping
+DROP TABLE
+CREATE TABLE test_having_gs (id int, val int);
+CREATE TABLE
+INSERT INTO test_having_gs VALUES (1, 5), (2, 10), (3, 15);
+INSERT 0 3
+-- Execution: Empty grouping set with HAVING
+SELECT COUNT(*), SUM(val) FROM test_having_gs GROUP BY () HAVING COUNT(*) > 0;
+ count | sum 
+-------+-----
+     3 |  30
+(1 row)
+
+-- Teardown
+DROP TABLE IF EXISTS test_having_gs CASCADE;
+DROP TABLE
+-- ===== Test Case 20 (commit 106) =====
+DROP TABLE IF EXISTS gstest3 CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:252: NOTICE:  table "gstest3" does not exist, skipping
+DROP TABLE
+CREATE TABLE gstest3 (a int, b int, c int);
+CREATE TABLE
+INSERT INTO gstest3 SELECT g%3, g%5, g FROM generate_series(1,30) g;
+INSERT 0 30
+CREATE INDEX gstest3_idx ON gstest3(a,b);
+CREATE INDEX
+BEGIN;
+BEGIN
+SET LOCAL enable_hashagg = false;
+SET
+EXPLAIN (COSTS OFF) SELECT a, b, count(*), max(a), max(b) FROM gstest3 GROUP BY GROUPING SETS(a, b,()) ORDER BY a, b;
+              QUERY PLAN               
+---------------------------------------
+ Sort
+   Sort Key: a, b
+   ->  GroupAggregate
+         Group Key: a
+         Group Key: ()
+         Sort Key: b
+           Group Key: b
+         ->  Sort
+               Sort Key: a
+               ->  Seq Scan on gstest3
+(10 rows)
+
+SELECT a, b, count(*), max(a), max(b) FROM gstest3 GROUP BY GROUPING SETS(a, b,()) ORDER BY a, b;
+ a | b | count | max | max 
+---+---+-------+-----+-----
+ 0 |   |    10 |   0 |   4
+ 1 |   |    10 |   1 |   4
+ 2 |   |    10 |   2 |   4
+   | 0 |     6 |   2 |   0
+   | 1 |     6 |   2 |   1
+   | 2 |     6 |   2 |   2
+   | 3 |     6 |   2 |   3
+   | 4 |     6 |   2 |   4
+   |   |    30 |   2 |   4
+(9 rows)
+
+SET LOCAL enable_seqscan = false;
+SET
+EXPLAIN (COSTS OFF) SELECT a, b, count(*), max(a), max(b) FROM gstest3 GROUP BY GROUPING SETS(a, b,()) ORDER BY a, b;
+                        QUERY PLAN                        
+----------------------------------------------------------
+ Sort
+   Sort Key: a, b
+   ->  GroupAggregate
+         Group Key: a
+         Group Key: ()
+         Sort Key: b
+           Group Key: b
+         ->  Index Only Scan using gstest3_idx on gstest3
+(8 rows)
+
+SELECT a, b, count(*), max(a), max(b) FROM gstest3 GROUP BY GROUPING SETS(a, b,()) ORDER BY a, b;
+ a | b | count | max | max 
+---+---+-------+-----+-----
+ 0 |   |    10 |   0 |   4
+ 1 |   |    10 |   1 |   4
+ 2 |   |    10 |   2 |   4
+   | 0 |     6 |   2 |   0
+   | 1 |     6 |   2 |   1
+   | 2 |     6 |   2 |   2
+   | 3 |     6 |   2 |   3
+   | 4 |     6 |   2 |   4
+   |   |    30 |   2 |   4
+(9 rows)
+
+COMMIT;
+COMMIT
+DROP TABLE IF EXISTS gstest3 CASCADE;
+DROP TABLE
+-- ===== Test Case 21 (commit 107) =====
+-- Setup
+DROP TABLE IF EXISTS test_t1 CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:268: NOTICE:  table "test_t1" does not exist, skipping
+DROP TABLE
+CREATE TABLE test_t1 (id INT);
+CREATE TABLE
+INSERT INTO test_t1 VALUES (1);
+INSERT 0 1
+DROP TABLE IF EXISTS test_t2 CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:271: NOTICE:  table "test_t2" does not exist, skipping
+DROP TABLE
+CREATE TABLE test_t2 (id INT);
+CREATE TABLE
+INSERT INTO test_t2 VALUES (1);
+INSERT 0 1
+-- Execution: Deeply nested EXISTS subqueries to trigger recursion in pull_up_sublinks_jointree_recurse
+SELECT * FROM test_t1 WHERE EXISTS (SELECT 1 FROM test_t2 WHERE EXISTS (SELECT 1 FROM test_t1 WHERE test_t1.id = test_t2.id));
+ id 
+----
+  1
+(1 row)
+
+-- Teardown
+DROP TABLE IF EXISTS test_t1 CASCADE;
+DROP TABLE
+DROP TABLE IF EXISTS test_t2 CASCADE;
+DROP TABLE
+-- ===== Test Case 22 (commit 107) =====
+-- Setup
+DROP TABLE IF EXISTS test_t1 CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:284: NOTICE:  table "test_t1" does not exist, skipping
+DROP TABLE
+CREATE TABLE test_t1 (id INT);
+CREATE TABLE
+INSERT INTO test_t1 VALUES (1);
+INSERT 0 1
+DROP TABLE IF EXISTS test_t2 CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:287: NOTICE:  table "test_t2" does not exist, skipping
+DROP TABLE
+CREATE TABLE test_t2 (id INT);
+CREATE TABLE
+INSERT INTO test_t2 VALUES (1);
+INSERT 0 1
+-- Execution: Deeply nested subquery in FROM clause to trigger recursion in pull_up_subqueries_recurse
+SELECT * FROM (SELECT * FROM (SELECT * FROM test_t1 WHERE id = 1) AS sub1) AS sub2;
+ id 
+----
+  1
+(1 row)
+
+-- Teardown
+DROP TABLE IF EXISTS test_t1 CASCADE;
+DROP TABLE
+DROP TABLE IF EXISTS test_t2 CASCADE;
+DROP TABLE
+-- ===== Test Case 23 (commit 107) =====
+-- Setup
+DROP TABLE IF EXISTS test_t1 CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:300: NOTICE:  table "test_t1" does not exist, skipping
+DROP TABLE
+CREATE TABLE test_t1 (id INT);
+CREATE TABLE
+INSERT INTO test_t1 VALUES (1);
+INSERT 0 1
+DROP TABLE IF EXISTS test_t2 CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:303: NOTICE:  table "test_t2" does not exist, skipping
+DROP TABLE
+CREATE TABLE test_t2 (id INT);
+CREATE TABLE
+INSERT INTO test_t2 VALUES (2);
+INSERT 0 1
+-- Execution: Deeply nested UNION ALL to trigger recursion in is_simple_union_all_recurse
+SELECT * FROM test_t1 UNION ALL SELECT * FROM test_t2 UNION ALL SELECT * FROM test_t1;
+ id 
+----
+  1
+  2
+  1
+(3 rows)
+
+-- Teardown
+DROP TABLE IF EXISTS test_t1 CASCADE;
+DROP TABLE
+DROP TABLE IF EXISTS test_t2 CASCADE;
+DROP TABLE
+-- ===== Test Case 24 (commit 108) =====
+-- Setup
+DROP TABLE IF EXISTS t1 CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:316: NOTICE:  table "t1" does not exist, skipping
+DROP TABLE
+DROP TABLE IF EXISTS t2 CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:317: NOTICE:  table "t2" does not exist, skipping
+DROP TABLE
+CREATE TABLE t1 (a int);
+CREATE TABLE
+CREATE TABLE t2 (a int);
+CREATE TABLE
+INSERT INTO t1 VALUES (1), (2);
+INSERT 0 2
+INSERT INTO t2 VALUES (3), (4);
+INSERT 0 2
+-- Execution: UNION ALL query that triggers pull-up of leaf subqueries
+SELECT * FROM (SELECT a FROM t1 UNION ALL SELECT a FROM t2) AS u;
+ a 
+---
+ 1
+ 2
+ 3
+ 4
+(4 rows)
+
+-- Teardown
+DROP TABLE IF EXISTS t1 CASCADE;
+DROP TABLE
+DROP TABLE IF EXISTS t2 CASCADE;
+DROP TABLE
+-- ===== Test Case 25 (commit 108) =====
+-- Setup
+DROP TABLE IF EXISTS t1 CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:332: NOTICE:  table "t1" does not exist, skipping
+DROP TABLE
+DROP TABLE IF EXISTS t2 CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:333: NOTICE:  table "t2" does not exist, skipping
+DROP TABLE
+CREATE TABLE t1 (a int);
+CREATE TABLE
+CREATE TABLE t2 (a int);
+CREATE TABLE
+INSERT INTO t1 VALUES (1);
+INSERT 0 1
+INSERT INTO t2 VALUES (2);
+INSERT 0 1
+-- Execution: UNION ALL with a lateral join that introduces PlaceHolderVars
+SELECT * FROM (SELECT a FROM t1 UNION ALL SELECT a FROM t2) AS u
+WHERE EXISTS (SELECT 1 FROM t1 WHERE t1.a = u.a);
+ a 
+---
+ 1
+(1 row)
+
+-- Teardown
+DROP TABLE IF EXISTS t1 CASCADE;
+DROP TABLE
+DROP TABLE IF EXISTS t2 CASCADE;
+DROP TABLE
+-- ===== Test Case 26 (commit 108) =====
+-- Setup
+DROP TABLE IF EXISTS t1 CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:349: NOTICE:  table "t1" does not exist, skipping
+DROP TABLE
+DROP TABLE IF EXISTS t2 CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:350: NOTICE:  table "t2" does not exist, skipping
+DROP TABLE
+DROP TABLE IF EXISTS t3 CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:351: NOTICE:  table "t3" does not exist, skipping
+DROP TABLE
+CREATE TABLE t1 (a int);
+CREATE TABLE
+CREATE TABLE t2 (a int);
+CREATE TABLE
+CREATE TABLE t3 (a int);
+CREATE TABLE
+INSERT INTO t1 VALUES (1);
+INSERT 0 1
+INSERT INTO t2 VALUES (2);
+INSERT 0 1
+INSERT INTO t3 VALUES (3);
+INSERT 0 1
+-- Execution: Multiple UNION ALL subqueries to trigger the O(N^2) avoidance path
+SELECT * FROM (SELECT a FROM t1 UNION ALL SELECT a FROM t2 UNION ALL SELECT a FROM t3) AS u;
+ a 
+---
+ 1
+ 2
+ 3
+(3 rows)
+
+-- Teardown
+DROP TABLE IF EXISTS t1 CASCADE;
+DROP TABLE
+DROP TABLE IF EXISTS t2 CASCADE;
+DROP TABLE
+DROP TABLE IF EXISTS t3 CASCADE;
+DROP TABLE
+-- ===== Test Case 27 (commit 109) =====
+-- Setup
+DROP TABLE IF EXISTS t1 CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:369: NOTICE:  table "t1" does not exist, skipping
+DROP TABLE
+DROP TABLE IF EXISTS t2 CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:370: NOTICE:  table "t2" does not exist, skipping
+DROP TABLE
+CREATE TABLE t1 (a int, b int);
+CREATE TABLE
+CREATE TABLE t2 (c int, d int);
+CREATE TABLE
+INSERT INTO t1 SELECT generate_series(1,100), generate_series(1,100);
+INSERT 0 100
+INSERT INTO t2 SELECT generate_series(1,100), generate_series(1,100);
+INSERT 0 100
+ANALYZE t1, t2;
+ANALYZE
+-- Execution: Force a parameterized nested loop join that may use Memoize
+SET enable_hashjoin = off;
+SET
+SET enable_mergejoin = off;
+SET
+SET enable_nestloop = on;
+SET
+EXPLAIN (COSTS OFF) SELECT * FROM t1, t2 WHERE t1.a = t2.c AND t1.b = 1;
+          QUERY PLAN          
+------------------------------
+ Nested Loop
+   Join Filter: (t1.a = t2.c)
+   ->  Seq Scan on t1
+         Filter: (b = 1)
+   ->  Seq Scan on t2
+(5 rows)
+
+SELECT * FROM t1, t2 WHERE t1.a = t2.c AND t1.b = 1;
+ a | b | c | d 
+---+---+---+---
+ 1 | 1 | 1 | 1
+(1 row)
+
+-- Teardown
+DROP TABLE IF EXISTS t1 CASCADE;
+DROP TABLE
+DROP TABLE IF EXISTS t2 CASCADE;
+DROP TABLE
+RESET enable_hashjoin;
+RESET
+RESET enable_mergejoin;
+RESET
+RESET enable_nestloop;
+RESET
+-- ===== Test Case 28 (commit 109) =====
+-- Setup
+DROP TABLE IF EXISTS t1 CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:393: NOTICE:  table "t1" does not exist, skipping
+DROP TABLE
+DROP TABLE IF EXISTS t2 CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:394: NOTICE:  table "t2" does not exist, skipping
+DROP TABLE
+CREATE TABLE t1 (a int PRIMARY KEY);
+CREATE TABLE
+CREATE TABLE t2 (b int REFERENCES t1(a));
+CREATE TABLE
+INSERT INTO t1 SELECT generate_series(1,10);
+INSERT 0 10
+INSERT INTO t2 SELECT generate_series(1,10);
+INSERT 0 10
+ANALYZE t1, t2;
+ANALYZE
+-- Execution: Use a parameterized join that might fail reparameterization due to outer rel mismatch
+SET enable_hashjoin = off;
+SET
+SET enable_mergejoin = off;
+SET
+SET enable_nestloop = on;
+SET
+EXPLAIN (COSTS OFF) SELECT * FROM t1, t2 WHERE t1.a = t2.b AND t2.b = 5;
+       QUERY PLAN        
+-------------------------
+ Nested Loop
+   ->  Seq Scan on t1
+         Filter: (a = 5)
+   ->  Seq Scan on t2
+         Filter: (b = 5)
+(5 rows)
+
+SELECT * FROM t1, t2 WHERE t1.a = t2.b AND t2.b = 5;
+ a | b 
+---+---
+ 5 | 5
+(1 row)
+
+-- Teardown
+DROP TABLE IF EXISTS t1 CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:409: NOTICE:  drop cascades to constraint t2_b_fkey on table t2
+DROP TABLE
+DROP TABLE IF EXISTS t2 CASCADE;
+DROP TABLE
+RESET enable_hashjoin;
+RESET
+RESET enable_mergejoin;
+RESET
+RESET enable_nestloop;
+RESET
+-- ===== Test Case 29 (commit 109) =====
+-- Setup
+DROP TABLE IF EXISTS t1 CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:417: NOTICE:  table "t1" does not exist, skipping
+DROP TABLE
+DROP TABLE IF EXISTS t2 CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:418: NOTICE:  table "t2" does not exist, skipping
+DROP TABLE
+CREATE TABLE t1 (x int, y int);
+CREATE TABLE
+CREATE TABLE t2 (z int, w int);
+CREATE TABLE
+INSERT INTO t1 SELECT generate_series(1,50), generate_series(1,50);
+INSERT 0 50
+INSERT INTO t2 SELECT generate_series(1,50), generate_series(1,50);
+INSERT 0 50
+ANALYZE t1, t2;
+ANALYZE
+-- Execution: Use a subquery with parameterized join and Memoize
+SET enable_hashjoin = off;
+SET
+SET enable_mergejoin = off;
+SET
+SET enable_nestloop = on;
+SET
+EXPLAIN (COSTS OFF) SELECT * FROM t1 WHERE t1.x IN (SELECT t2.z FROM t2 WHERE t2.w = t1.y AND t2.z > 10);
+                 QUERY PLAN                  
+---------------------------------------------
+ Seq Scan on t1
+   Filter: (SubPlan 1)
+   SubPlan 1
+     ->  Seq Scan on t2
+           Filter: ((z > 10) AND (w = t1.y))
+(5 rows)
+
+SELECT * FROM t1 WHERE t1.x IN (SELECT t2.z FROM t2 WHERE t2.w = t1.y AND t2.z > 10);
+ x  | y  
+----+----
+ 11 | 11
+ 12 | 12
+ 13 | 13
+ 14 | 14
+ 15 | 15
+ 16 | 16
+ 17 | 17
+ 18 | 18
+ 19 | 19
+ 20 | 20
+ 21 | 21
+ 22 | 22
+ 23 | 23
+ 24 | 24
+ 25 | 25
+ 26 | 26
+ 27 | 27
+ 28 | 28
+ 29 | 29
+ 30 | 30
+ 31 | 31
+ 32 | 32
+ 33 | 33
+ 34 | 34
+ 35 | 35
+ 36 | 36
+ 37 | 37
+ 38 | 38
+ 39 | 39
+ 40 | 40
+ 41 | 41
+ 42 | 42
+ 43 | 43
+ 44 | 44
+ 45 | 45
+ 46 | 46
+ 47 | 47
+ 48 | 48
+ 49 | 49
+ 50 | 50
+(40 rows)
+
+-- Teardown
+DROP TABLE IF EXISTS t1 CASCADE;
+DROP TABLE
+DROP TABLE IF EXISTS t2 CASCADE;
+DROP TABLE
+RESET enable_hashjoin;
+RESET
+RESET enable_mergejoin;
+RESET
+RESET enable_nestloop;
+RESET
+-- ===== Test Case 30 (commit 110) =====
+SELECT 1;
+ ?column? 
+----------
+        1
+(1 row)
+
+-- ===== Test Case 31 (commit 111) =====
+-- Setup
+DROP TABLE IF EXISTS test_mxact CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:444: NOTICE:  table "test_mxact" does not exist, skipping
+DROP TABLE
+CREATE TABLE test_mxact (id INT PRIMARY KEY, val INT);
+CREATE TABLE
+INSERT INTO test_mxact VALUES (1, 10);
+INSERT 0 1
+-- Execution: Use two concurrent sessions to create a multixact with two updaters
+-- Session 1
+BEGIN;
+BEGIN
+UPDATE test_mxact SET val = 20 WHERE id = 1;
+UPDATE 1
+-- Session 2 (run in same connection after session 1's UPDATE, but before commit)
+BEGIN;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:453: WARNING:  there is already a transaction in progress
+BEGIN
+UPDATE test_mxact SET val = 30 WHERE id = 1;
+UPDATE 1
+-- This should trigger the error: "new multixact has more than one updating member"
+COMMIT;
+COMMIT
+-- Teardown
+DROP TABLE IF EXISTS test_mxact CASCADE;
+DROP TABLE
+-- ===== Test Case 32 (commit 111) =====
+-- Setup
+DROP TABLE IF EXISTS test_mxact2 CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:462: NOTICE:  table "test_mxact2" does not exist, skipping
+DROP TABLE
+CREATE TABLE test_mxact2 (id INT PRIMARY KEY, val INT);
+CREATE TABLE
+INSERT INTO test_mxact2 VALUES (1, 100);
+INSERT 0 1
+-- Execution: Three concurrent sessions updating the same tuple
+-- Session 1
+BEGIN;
+BEGIN
+UPDATE test_mxact2 SET val = 200 WHERE id = 1;
+UPDATE 1
+-- Session 2
+BEGIN;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:471: WARNING:  there is already a transaction in progress
+BEGIN
+UPDATE test_mxact2 SET val = 300 WHERE id = 1;
+UPDATE 1
+-- Session 3
+BEGIN;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:474: WARNING:  there is already a transaction in progress
+BEGIN
+UPDATE test_mxact2 SET val = 400 WHERE id = 1;
+UPDATE 1
+-- This should trigger the error with detailed member info
+COMMIT;
+COMMIT
+-- Teardown
+DROP TABLE IF EXISTS test_mxact2 CASCADE;
+DROP TABLE
+-- ===== Test Case 33 (commit 111) =====
+-- Setup
+DROP TABLE IF EXISTS test_mxact3 CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:483: NOTICE:  table "test_mxact3" does not exist, skipping
+DROP TABLE
+CREATE TABLE test_mxact3 (id INT PRIMARY KEY, val INT);
+CREATE TABLE
+INSERT INTO test_mxact3 VALUES (1, 50);
+INSERT 0 1
+-- Execution: Two concurrent sessions, one UPDATE and one SELECT FOR UPDATE
+-- Session 1
+BEGIN;
+BEGIN
+UPDATE test_mxact3 SET val = 60 WHERE id = 1;
+UPDATE 1
+-- Session 2
+BEGIN;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:492: WARNING:  there is already a transaction in progress
+BEGIN
+SELECT * FROM test_mxact3 WHERE id = 1 FOR UPDATE;
+ id | val 
+----+-----
+  1 |  60
+(1 row)
+
+-- This should trigger the error as both are updating members
+COMMIT;
+COMMIT
+-- Teardown
+DROP TABLE IF EXISTS test_mxact3 CASCADE;
+DROP TABLE
+-- ===== Test Case 34 (commit 112) =====
+-- Setup
+CREATE ROLE test_user1 LOGIN;
+CREATE ROLE
+CREATE TABLE test_vacuum_perm (id INT);
+CREATE TABLE
+INSERT INTO test_vacuum_perm VALUES (1);
+INSERT 0 1
+GRANT ALL ON TABLE test_vacuum_perm TO test_user1;
+GRANT
+SET ROLE test_user1;
+SET
+-- Execution
+VACUUM test_vacuum_perm;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:508: WARNING:  skipping "test_vacuum_perm" --- only table or database owner can vacuum it
+VACUUM
+-- Teardown
+RESET ROLE;
+RESET
+DROP TABLE IF EXISTS test_vacuum_perm CASCADE;
+DROP TABLE
+DROP ROLE IF EXISTS test_user1;
+DROP ROLE
+-- ===== Test Case 35 (commit 112) =====
+-- Setup
+CREATE ROLE test_user2 LOGIN;
+CREATE ROLE
+CREATE TABLE test_analyze_perm (id INT);
+CREATE TABLE
+INSERT INTO test_analyze_perm VALUES (1);
+INSERT 0 1
+GRANT ALL ON TABLE test_analyze_perm TO test_user2;
+GRANT
+SET ROLE test_user2;
+SET
+-- Execution
+ANALYZE test_analyze_perm;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:524: WARNING:  skipping "test_analyze_perm" --- only table or database owner can analyze it
+ANALYZE
+-- Teardown
+RESET ROLE;
+RESET
+DROP TABLE IF EXISTS test_analyze_perm CASCADE;
+DROP TABLE
+DROP ROLE IF EXISTS test_user2;
+DROP ROLE
+-- ===== Test Case 36 (commit 112) =====
+-- Setup
+CREATE ROLE test_user3 LOGIN;
+CREATE ROLE
+CREATE TABLE test_vacuum_analyze_perm (id INT);
+CREATE TABLE
+INSERT INTO test_vacuum_analyze_perm VALUES (1);
+INSERT 0 1
+GRANT ALL ON TABLE test_vacuum_analyze_perm TO test_user3;
+GRANT
+SET ROLE test_user3;
+SET
+-- Execution
+VACUUM ANALYZE test_vacuum_analyze_perm;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:540: WARNING:  skipping "test_vacuum_analyze_perm" --- only table or database owner can vacuum it
+VACUUM
+-- Teardown
+RESET ROLE;
+RESET
+DROP TABLE IF EXISTS test_vacuum_analyze_perm CASCADE;
+DROP TABLE
+DROP ROLE IF EXISTS test_user3;
+DROP ROLE
+-- ===== Test Case 37 (commit 112) =====
+DROP TABLE IF EXISTS vacowned CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:548: NOTICE:  table "vacowned" does not exist, skipping
+DROP TABLE
+DROP ROLE IF EXISTS regress_vacuum;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:549: NOTICE:  role "regress_vacuum" does not exist, skipping
+DROP ROLE
+CREATE TABLE vacowned (a int);
+CREATE TABLE
+CREATE ROLE regress_vacuum;
+CREATE ROLE
+SET ROLE regress_vacuum;
+SET
+VACUUM vacowned;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:553: WARNING:  skipping "vacowned" --- only table or database owner can vacuum it
+VACUUM
+ANALYZE vacowned;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:554: WARNING:  skipping "vacowned" --- only table or database owner can analyze it
+ANALYZE
+VACUUM (ANALYZE) vacowned;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:555: WARNING:  skipping "vacowned" --- only table or database owner can vacuum it
+VACUUM
+VACUUM pg_catalog.pg_class;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:556: WARNING:  skipping "pg_class" --- only superuser or database owner can vacuum it
+VACUUM
+ANALYZE pg_catalog.pg_class;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:557: WARNING:  skipping "pg_class" --- only superuser or database owner can analyze it
+ANALYZE
+VACUUM (ANALYZE) pg_catalog.pg_class;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:558: WARNING:  skipping "pg_class" --- only superuser or database owner can vacuum it
+VACUUM
+VACUUM pg_catalog.pg_authid;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:559: WARNING:  skipping "pg_authid" --- only superuser can vacuum it
+VACUUM
+ANALYZE pg_catalog.pg_authid;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:560: WARNING:  skipping "pg_authid" --- only superuser can analyze it
+ANALYZE
+VACUUM (ANALYZE) pg_catalog.pg_authid;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:561: WARNING:  skipping "pg_authid" --- only superuser can vacuum it
+VACUUM
+RESET ROLE;
+RESET
+DROP TABLE IF EXISTS vacowned CASCADE;
+DROP TABLE
+DROP ROLE IF EXISTS regress_vacuum;
+DROP ROLE
+-- ===== Test Case 38 (commit 113) =====
+-- Setup
+DROP TABLE IF EXISTS test_t1 CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:568: NOTICE:  table "test_t1" does not exist, skipping
+DROP TABLE
+CREATE TABLE test_t1 (id INT);
+CREATE TABLE
+INSERT INTO test_t1 SELECT generate_series(1, 1000);
+INSERT 0 1000
+-- Create index to trigger get_actual_variable_range
+CREATE INDEX test_t1_idx ON test_t1 (id);
+CREATE INDEX
+-- Delete many tuples to create non-visible tuples near the end
+DELETE FROM test_t1 WHERE id > 900;
+DELETE 100
+-- Ensure visibility map is not set by performing a vacuum-less delete
+-- Execution: Run a query that triggers get_actual_variable_range for min/max estimation
+ANALYZE test_t1;
+ANALYZE
+SELECT * FROM test_t1 WHERE id > 500;
+ id  
+-----
+ 501
+ 502
+ 503
+ 504
+ 505
+ 506
+ 507
+ 508
+ 509
+ 510
+ 511
+ 512
+ 513
+ 514
+ 515
+ 516
+ 517
+ 518
+ 519
+ 520
+ 521
+ 522
+ 523
+ 524
+ 525
+ 526
+ 527
+ 528
+ 529
+ 530
+ 531
+ 532
+ 533
+ 534
+ 535
+ 536
+ 537
+ 538
+ 539
+ 540
+ 541
+ 542
+ 543
+ 544
+ 545
+ 546
+ 547
+ 548
+ 549
+ 550
+ 551
+ 552
+ 553
+ 554
+ 555
+ 556
+ 557
+ 558
+ 559
+ 560
+ 561
+ 562
+ 563
+ 564
+ 565
+ 566
+ 567
+ 568
+ 569
+ 570
+ 571
+ 572
+ 573
+ 574
+ 575
+ 576
+ 577
+ 578
+ 579
+ 580
+ 581
+ 582
+ 583
+ 584
+ 585
+ 586
+ 587
+ 588
+ 589
+ 590
+ 591
+ 592
+ 593
+ 594
+ 595
+ 596
+ 597
+ 598
+ 599
+ 600
+ 601
+ 602
+ 603
+ 604
+ 605
+ 606
+ 607
+ 608
+ 609
+ 610
+ 611
+ 612
+ 613
+ 614
+ 615
+ 616
+ 617
+ 618
+ 619
+ 620
+ 621
+ 622
+ 623
+ 624
+ 625
+ 626
+ 627
+ 628
+ 629
+ 630
+ 631
+ 632
+ 633
+ 634
+ 635
+ 636
+ 637
+ 638
+ 639
+ 640
+ 641
+ 642
+ 643
+ 644
+ 645
+ 646
+ 647
+ 648
+ 649
+ 650
+ 651
+ 652
+ 653
+ 654
+ 655
+ 656
+ 657
+ 658
+ 659
+ 660
+ 661
+ 662
+ 663
+ 664
+ 665
+ 666
+ 667
+ 668
+ 669
+ 670
+ 671
+ 672
+ 673
+ 674
+ 675
+ 676
+ 677
+ 678
+ 679
+ 680
+ 681
+ 682
+ 683
+ 684
+ 685
+ 686
+ 687
+ 688
+ 689
+ 690
+ 691
+ 692
+ 693
+ 694
+ 695
+ 696
+ 697
+ 698
+ 699
+ 700
+ 701
+ 702
+ 703
+ 704
+ 705
+ 706
+ 707
+ 708
+ 709
+ 710
+ 711
+ 712
+ 713
+ 714
+ 715
+ 716
+ 717
+ 718
+ 719
+ 720
+ 721
+ 722
+ 723
+ 724
+ 725
+ 726
+ 727
+ 728
+ 729
+ 730
+ 731
+ 732
+ 733
+ 734
+ 735
+ 736
+ 737
+ 738
+ 739
+ 740
+ 741
+ 742
+ 743
+ 744
+ 745
+ 746
+ 747
+ 748
+ 749
+ 750
+ 751
+ 752
+ 753
+ 754
+ 755
+ 756
+ 757
+ 758
+ 759
+ 760
+ 761
+ 762
+ 763
+ 764
+ 765
+ 766
+ 767
+ 768
+ 769
+ 770
+ 771
+ 772
+ 773
+ 774
+ 775
+ 776
+ 777
+ 778
+ 779
+ 780
+ 781
+ 782
+ 783
+ 784
+ 785
+ 786
+ 787
+ 788
+ 789
+ 790
+ 791
+ 792
+ 793
+ 794
+ 795
+ 796
+ 797
+ 798
+ 799
+ 800
+ 801
+ 802
+ 803
+ 804
+ 805
+ 806
+ 807
+ 808
+ 809
+ 810
+ 811
+ 812
+ 813
+ 814
+ 815
+ 816
+ 817
+ 818
+ 819
+ 820
+ 821
+ 822
+ 823
+ 824
+ 825
+ 826
+ 827
+ 828
+ 829
+ 830
+ 831
+ 832
+ 833
+ 834
+ 835
+ 836
+ 837
+ 838
+ 839
+ 840
+ 841
+ 842
+ 843
+ 844
+ 845
+ 846
+ 847
+ 848
+ 849
+ 850
+ 851
+ 852
+ 853
+ 854
+ 855
+ 856
+ 857
+ 858
+ 859
+ 860
+ 861
+ 862
+ 863
+ 864
+ 865
+ 866
+ 867
+ 868
+ 869
+ 870
+ 871
+ 872
+ 873
+ 874
+ 875
+ 876
+ 877
+ 878
+ 879
+ 880
+ 881
+ 882
+ 883
+ 884
+ 885
+ 886
+ 887
+ 888
+ 889
+ 890
+ 891
+ 892
+ 893
+ 894
+ 895
+ 896
+ 897
+ 898
+ 899
+ 900
+(400 rows)
+
+-- Teardown
+DROP TABLE IF EXISTS test_t1 CASCADE;
+DROP TABLE
+-- ===== Test Case 39 (commit 113) =====
+-- Setup
+DROP TABLE IF EXISTS test_t2 CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:584: NOTICE:  table "test_t2" does not exist, skipping
+DROP TABLE
+CREATE TABLE test_t2 (id INT, data TEXT);
+CREATE TABLE
+INSERT INTO test_t2 SELECT generate_series(1, 200), 'data';
+INSERT 0 200
+CREATE INDEX test_t2_idx ON test_t2 (id);
+CREATE INDEX
+-- Delete some tuples to create non-visible entries on same heap page
+DELETE FROM test_t2 WHERE id BETWEEN 50 AND 100;
+DELETE 51
+-- Execution: Query that triggers get_actual_variable_range
+ANALYZE test_t2;
+ANALYZE
+SELECT * FROM test_t2 WHERE id > 150;
+ id  | data 
+-----+------
+ 151 | data
+ 152 | data
+ 153 | data
+ 154 | data
+ 155 | data
+ 156 | data
+ 157 | data
+ 158 | data
+ 159 | data
+ 160 | data
+ 161 | data
+ 162 | data
+ 163 | data
+ 164 | data
+ 165 | data
+ 166 | data
+ 167 | data
+ 168 | data
+ 169 | data
+ 170 | data
+ 171 | data
+ 172 | data
+ 173 | data
+ 174 | data
+ 175 | data
+ 176 | data
+ 177 | data
+ 178 | data
+ 179 | data
+ 180 | data
+ 181 | data
+ 182 | data
+ 183 | data
+ 184 | data
+ 185 | data
+ 186 | data
+ 187 | data
+ 188 | data
+ 189 | data
+ 190 | data
+ 191 | data
+ 192 | data
+ 193 | data
+ 194 | data
+ 195 | data
+ 196 | data
+ 197 | data
+ 198 | data
+ 199 | data
+ 200 | data
+(50 rows)
+
+-- Teardown
+DROP TABLE IF EXISTS test_t2 CASCADE;
+DROP TABLE
+-- ===== Test Case 40 (commit 113) =====
+-- Setup
+DROP TABLE IF EXISTS test_t3 CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:598: NOTICE:  table "test_t3" does not exist, skipping
+DROP TABLE
+CREATE TABLE test_t3 (id INT);
+CREATE TABLE
+CREATE INDEX test_t3_idx ON test_t3 (id);
+CREATE INDEX
+-- No data inserted, index is empty
+-- Execution: Query that triggers get_actual_variable_range
+ANALYZE test_t3;
+ANALYZE
+SELECT * FROM test_t3 WHERE id > 10;
+ id 
+----
+(0 rows)
+
+-- Teardown
+DROP TABLE IF EXISTS test_t3 CASCADE;
+DROP TABLE
+-- ===== Test Case 41 (commit 113) =====
+DROP TABLE IF EXISTS endpoint_limit CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:609: NOTICE:  table "endpoint_limit" does not exist, skipping
+DROP TABLE
+CREATE TABLE endpoint_limit (id int, filler text) WITH (autovacuum_enabled=false, fillfactor=10);
+CREATE TABLE
+INSERT INTO endpoint_limit SELECT g, repeat('x', 7000) FROM generate_series(1,180) g;
+INSERT 0 180
+CREATE INDEX endpoint_limit_idx ON endpoint_limit(id);
+CREATE INDEX
+DELETE FROM endpoint_limit WHERE id > 40;
+DELETE 140
+ANALYZE endpoint_limit;
+ANALYZE
+EXPLAIN SELECT * FROM endpoint_limit WHERE id > 170;
+                                        QUERY PLAN                                        
+------------------------------------------------------------------------------------------
+ Index Scan using endpoint_limit_idx on endpoint_limit  (cost=0.14..4.16 rows=1 width=95)
+   Index Cond: (id > 170)
+(2 rows)
+
+SELECT count(*) FROM endpoint_limit WHERE id > 170;
+ count 
+-------
+     0
+(1 row)
+
+DROP TABLE IF EXISTS endpoint_limit CASCADE;
+DROP TABLE
+-- ===== Test Case 42 (commit 114) =====
+-- Setup
+DROP TABLE IF EXISTS hash_test1 CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:621: NOTICE:  table "hash_test1" does not exist, skipping
+DROP TABLE
+CREATE TABLE hash_test1 (id int, val text);
+CREATE TABLE
+CREATE INDEX hash_idx1 ON hash_test1 USING hash (id);
+CREATE INDEX
+-- Insert enough rows to trigger a bucket split (requires multiple pages)
+INSERT INTO hash_test1 SELECT generate_series(1, 1000), 'data' || generate_series(1, 1000);
+INSERT 0 1000
+-- Execution: force a checkpoint to ensure WAL replay occurs
+CHECKPOINT;
+CHECKPOINT
+-- Perform an INSERT that may cause a split (if not already)
+INSERT INTO hash_test1 VALUES (2000, 'extra');
+INSERT 0 1
+-- Teardown
+DROP TABLE IF EXISTS hash_test1 CASCADE;
+DROP TABLE
+-- ===== Test Case 43 (commit 114) =====
+-- Setup
+DROP TABLE IF EXISTS hash_test2 CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:637: NOTICE:  table "hash_test2" does not exist, skipping
+DROP TABLE
+CREATE TABLE hash_test2 (id int, val text);
+CREATE TABLE
+CREATE INDEX hash_idx2 ON hash_test2 USING hash (id);
+CREATE INDEX
+-- Insert many duplicate values to force splits with duplicates
+INSERT INTO hash_test2 SELECT 1, 'dup' || generate_series(1, 500);
+INSERT 0 500
+INSERT INTO hash_test2 SELECT 2, 'dup' || generate_series(1, 500);
+INSERT 0 500
+-- Execution: checkpoint and then insert more to trigger split replay
+CHECKPOINT;
+CHECKPOINT
+INSERT INTO hash_test2 VALUES (1, 'more_dup');
+INSERT 0 1
+-- Teardown
+DROP TABLE IF EXISTS hash_test2 CASCADE;
+DROP TABLE
+-- ===== Test Case 44 (commit 114) =====
+-- Setup
+DROP TABLE IF EXISTS hash_test3 CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:653: NOTICE:  table "hash_test3" does not exist, skipping
+DROP TABLE
+CREATE TABLE hash_test3 (id int, val text);
+CREATE TABLE
+CREATE INDEX hash_idx3 ON hash_test3 USING hash (id);
+CREATE INDEX
+-- Start with empty table, then insert to cause initial split
+INSERT INTO hash_test3 VALUES (1, 'first');
+INSERT 0 1
+-- Execution: checkpoint and then insert to trigger split replay
+CHECKPOINT;
+CHECKPOINT
+INSERT INTO hash_test3 SELECT generate_series(2, 100), 'batch' || generate_series(2, 100);
+INSERT 0 99
+-- Teardown
+DROP TABLE IF EXISTS hash_test3 CASCADE;
+DROP TABLE
+-- ===== Test Case 45 (commit 115) =====
+-- Setup: Create a table with data and enable checksums (requires cluster restart, but we simulate by using wal_log_hints=on)
+DROP TABLE IF EXISTS test_visible CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:668: NOTICE:  table "test_visible" does not exist, skipping
+DROP TABLE
+CREATE TABLE test_visible (id INT PRIMARY KEY, data TEXT);
+CREATE TABLE
+INSERT INTO test_visible SELECT generate_series(1,100), 'test data';
+INSERT 0 100
+-- Force a checkpoint to ensure visibility map updates are WAL-logged
+CHECKPOINT;
+CHECKPOINT
+-- Update some rows to create dead tuples and trigger visibility map changes
+UPDATE test_visible SET data = 'updated' WHERE id BETWEEN 1 AND 50;
+UPDATE 50
+-- Vacuum to set visibility map bits
+VACUUM test_visible;
+VACUUM
+-- Execution: The redo of heap_xlog_visible will now call PageSetLSN when checksums are needed
+-- (This test relies on the WAL replay during recovery; we simulate by running a checkpoint and then a crash recovery scenario)
+-- For coverage, we just need to ensure the code path is reached; we can trigger it by running a VACUUM again
+VACUUM test_visible;
+VACUUM
+-- Teardown
+DROP TABLE IF EXISTS test_visible CASCADE;
+DROP TABLE
+-- ===== Test Case 46 (commit 115) =====
+-- Setup: Create a table with data and enable wal_log_hints (simulated by setting parameter)
+DROP TABLE IF EXISTS test_hint CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:686: NOTICE:  table "test_hint" does not exist, skipping
+DROP TABLE
+CREATE TABLE test_hint (id INT, val TEXT);
+CREATE TABLE
+INSERT INTO test_hint SELECT generate_series(1,50), 'hint test';
+INSERT 0 50
+-- Force a checkpoint to ensure WAL logging
+CHECKPOINT;
+CHECKPOINT
+-- Perform operations that set hint bits (e.g., SELECT with visibility check)
+SELECT count(*) FROM test_hint WHERE id > 10;
+ count 
+-------
+    40
+(1 row)
+
+-- Vacuum to set visibility map bits
+VACUUM test_hint;
+VACUUM
+-- Execution: The redo of heap_xlog_visible will now call PageSetLSN when wal_log_hints is needed
+-- (This test relies on the WAL replay during recovery; we simulate by running a checkpoint and then a crash recovery scenario)
+-- For coverage, we just need to ensure the code path is reached; we can trigger it by running a VACUUM again
+VACUUM test_hint;
+VACUUM
+-- Teardown
+DROP TABLE IF EXISTS test_hint CASCADE;
+DROP TABLE
+-- ===== Test Case 47 (commit 115) =====
+-- Setup: Create a table with data and enable both checksums and wal_log_hints (simulated by setting parameters)
+DROP TABLE IF EXISTS test_both CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:704: NOTICE:  table "test_both" does not exist, skipping
+DROP TABLE
+CREATE TABLE test_both (id INT, data TEXT);
+CREATE TABLE
+INSERT INTO test_both SELECT generate_series(1,200), 'both test';
+INSERT 0 200
+-- Force a checkpoint to ensure WAL logging
+CHECKPOINT;
+CHECKPOINT
+-- Perform operations that set hint bits and visibility map bits
+UPDATE test_both SET data = 'updated' WHERE id BETWEEN 1 AND 100;
+UPDATE 100
+SELECT count(*) FROM test_both WHERE id > 50;
+ count 
+-------
+   150
+(1 row)
+
+-- Vacuum to set visibility map bits
+VACUUM test_both;
+VACUUM
+-- Execution: The redo of heap_xlog_visible will now call PageSetLSN when both checksums and wal_log_hints are needed
+-- (This test relies on the WAL replay during recovery; we simulate by running a checkpoint and then a crash recovery scenario)
+-- For coverage, we just need to ensure the code path is reached; we can trigger it by running a VACUUM again
+VACUUM test_both;
+VACUUM
+-- Teardown
+DROP TABLE IF EXISTS test_both CASCADE;
+DROP TABLE
+-- ===== Test Case 48 (commit 116) =====
+DROP FUNCTION IF EXISTS test_bad_sql_func();
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:722: NOTICE:  function test_bad_sql_func() does not exist, skipping
+DROP FUNCTION
+CREATE FUNCTION test_bad_sql_func() RETURNS int LANGUAGE sql AS $$ SELECT + $$;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:723: ERROR:  syntax error at end of input
+LINE 1: ...t_bad_sql_func() RETURNS int LANGUAGE sql AS $$ SELECT + $$;
+                                                                    ^
+SELECT 1;
+ ?column? 
+----------
+        1
+(1 row)
+
+-- ===== Test Case 49 (commit 116) =====
+DROP FUNCTION IF EXISTS test_bad_plpgsql_func();
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:727: NOTICE:  function test_bad_plpgsql_func() does not exist, skipping
+DROP FUNCTION
+CREATE FUNCTION test_bad_plpgsql_func() RETURNS int LANGUAGE plpgsql AS $$ BEGIN RETURN ; END $$;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:728: ERROR:  missing expression at or near ";"
+LINE 1: ...() RETURNS int LANGUAGE plpgsql AS $$ BEGIN RETURN ; END $$;
+                                                              ^
+SELECT 1;
+ ?column? 
+----------
+        1
+(1 row)
+
+-- ===== Test Case 50 (commit 116) =====
+DO $$ BEGIN IF THEN RAISE NOTICE 'bad'; END IF; END $$;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:732: ERROR:  missing expression at or near "THEN"
+LINE 1: DO $$ BEGIN IF THEN RAISE NOTICE 'bad'; END IF; END $$;
+                       ^
+SELECT 1;
+ ?column? 
+----------
+        1
+(1 row)
+
+-- ===== Test Case 51 (commit 117) =====
+DROP TABLE IF EXISTS fk_ref_parent CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:736: NOTICE:  table "fk_ref_parent" does not exist, skipping
+DROP TABLE
+DROP TABLE IF EXISTS fk_part_parent CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:737: NOTICE:  table "fk_part_parent" does not exist, skipping
+DROP TABLE
+CREATE TABLE fk_ref_parent (id int PRIMARY KEY);
+CREATE TABLE
+CREATE TABLE fk_part_parent (id int NOT NULL REFERENCES fk_ref_parent(id)) PARTITION BY RANGE (id);
+CREATE TABLE
+CREATE TABLE fk_part_child PARTITION OF fk_part_parent FOR VALUES FROM (1) TO (10);
+CREATE TABLE
+INSERT INTO fk_ref_parent VALUES (1);
+INSERT 0 1
+INSERT INTO fk_part_parent VALUES (1);
+INSERT 0 1
+ALTER TABLE fk_part_parent ATTACH PARTITION fk_part_child FOR VALUES FROM (1) TO (10);
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:743: ERROR:  "fk_part_child" is already a partition
+DROP TABLE IF EXISTS fk_part_parent CASCADE;
+DROP TABLE
+DROP TABLE IF EXISTS fk_ref_parent CASCADE;
+DROP TABLE
+-- ===== Test Case 52 (commit 117) =====
+DROP TABLE IF EXISTS detach_ref_plain CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:748: NOTICE:  table "detach_ref_plain" does not exist, skipping
+DROP TABLE
+DROP TABLE IF EXISTS detach_parent CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:749: NOTICE:  table "detach_parent" does not exist, skipping
+DROP TABLE
+CREATE TABLE detach_ref_plain (id int PRIMARY KEY);
+CREATE TABLE
+CREATE TABLE detach_parent (id int NOT NULL REFERENCES detach_ref_plain(id)) PARTITION BY RANGE (id);
+CREATE TABLE
+CREATE TABLE detach_child PARTITION OF detach_parent FOR VALUES FROM (1) TO (10);
+CREATE TABLE
+INSERT INTO detach_ref_plain VALUES (1);
+INSERT 0 1
+INSERT INTO detach_parent VALUES (1);
+INSERT 0 1
+ALTER TABLE detach_parent DETACH PARTITION detach_child;
+ALTER TABLE
+DROP TABLE IF EXISTS detach_child CASCADE;
+DROP TABLE
+DROP TABLE IF EXISTS detach_parent CASCADE;
+DROP TABLE
+DROP TABLE IF EXISTS detach_ref_plain CASCADE;
+DROP TABLE
+-- ===== Test Case 53 (commit 117) =====
+DROP TABLE IF EXISTS ref_parent_ok CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:761: NOTICE:  table "ref_parent_ok" does not exist, skipping
+DROP TABLE
+DROP TABLE IF EXISTS ref_parted_ok CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:762: NOTICE:  table "ref_parted_ok" does not exist, skipping
+DROP TABLE
+CREATE TABLE ref_parent_ok (id int PRIMARY KEY);
+CREATE TABLE
+CREATE TABLE ref_parted_ok (id int NOT NULL REFERENCES ref_parent_ok(id)) PARTITION BY RANGE (id);
+CREATE TABLE
+CREATE TABLE ref_child_ok (id int NOT NULL REFERENCES ref_parent_ok(id));
+CREATE TABLE
+ALTER TABLE ref_parted_ok ATTACH PARTITION ref_child_ok FOR VALUES FROM (1) TO (10);
+ALTER TABLE
+DROP TABLE IF EXISTS ref_parted_ok CASCADE;
+DROP TABLE
+DROP TABLE IF EXISTS ref_parent_ok CASCADE;
+DROP TABLE
+-- ===== Test Case 54 (commit 118) =====
+-- Setup
+DROP TABLE IF EXISTS test_t1 CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:772: NOTICE:  table "test_t1" does not exist, skipping
+DROP TABLE
+CREATE TABLE test_t1 (id INT);
+CREATE TABLE
+-- Execution: Attempt to create a non-ON-SELECT rule named "_RETURN"
+CREATE OR REPLACE RULE "_RETURN" AS ON INSERT TO test_t1 DO INSTEAD NOTHING;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:776: ERROR:  non-view rule for "test_t1" must not be named "_RETURN"
+-- Teardown
+DROP TABLE IF EXISTS test_t1 CASCADE;
+DROP TABLE
+-- ===== Test Case 55 (commit 118) =====
+-- Setup
+DROP TABLE IF EXISTS test_t2 CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:783: NOTICE:  table "test_t2" does not exist, skipping
+DROP TABLE
+CREATE TABLE test_t2 (id INT);
+CREATE TABLE
+CREATE VIEW test_v2 AS SELECT * FROM test_t2;
+CREATE VIEW
+-- Execution: Attempt to replace the view's ON SELECT rule with a non-ON-SELECT rule named "_RETURN"
+CREATE OR REPLACE RULE "_RETURN" AS ON INSERT TO test_v2 DO INSTEAD NOTHING;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:788: ERROR:  non-view rule for "test_v2" must not be named "_RETURN"
+-- Teardown
+DROP TABLE IF EXISTS test_t2 CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:791: NOTICE:  drop cascades to view test_v2
+DROP TABLE
+DROP VIEW IF EXISTS test_v2 CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:792: NOTICE:  view "test_v2" does not exist, skipping
+DROP VIEW
+-- ===== Test Case 56 (commit 118) =====
+-- Setup
+DROP TABLE IF EXISTS test_t3 CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:796: NOTICE:  table "test_t3" does not exist, skipping
+DROP TABLE
+CREATE TABLE test_t3 (id INT);
+CREATE TABLE
+INSERT INTO test_t3 VALUES (1);
+INSERT 0 1
+-- Execution: Create a view with a valid ON SELECT rule named "_RETURN"
+CREATE VIEW test_v3 AS SELECT * FROM test_t3;
+CREATE VIEW
+-- Verify the view works
+SELECT * FROM test_v3;
+ id 
+----
+  1
+(1 row)
+
+-- Teardown
+DROP TABLE IF EXISTS test_t3 CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:807: NOTICE:  drop cascades to view test_v3
+DROP TABLE
+DROP VIEW IF EXISTS test_v3 CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:808: NOTICE:  view "test_v3" does not exist, skipping
+DROP VIEW
+-- ===== Test Case 57 (commit 118) =====
+DROP TABLE IF EXISTS r118_compact CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:811: NOTICE:  table "r118_compact" does not exist, skipping
+DROP TABLE
+CREATE TABLE r118_compact (id int);
+CREATE TABLE
+CREATE RULE "_RETURN" AS ON INSERT TO r118_compact DO ALSO SELECT 1;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:813: ERROR:  non-view rule for "r118_compact" must not be named "_RETURN"
+DROP TABLE IF EXISTS r118_compact CASCADE;
+DROP TABLE
+-- ===== Test Case 58 (commit 119) =====
+SELECT 1;
+ ?column? 
+----------
+        1
+(1 row)
+
+-- ===== Test Case 59 (commit 120) =====
+-- Setup
+DROP TABLE IF EXISTS base_tbl CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:821: NOTICE:  table "base_tbl" does not exist, skipping
+DROP TABLE
+DROP VIEW IF EXISTS upd_view CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:822: NOTICE:  view "upd_view" does not exist, skipping
+DROP VIEW
+CREATE TABLE base_tbl (a int, b int);
+CREATE TABLE
+CREATE VIEW upd_view AS SELECT * FROM base_tbl;
+CREATE VIEW
+CREATE RULE upd_view_ins AS ON INSERT TO upd_view DO ALSO INSERT INTO base_tbl VALUES (DEFAULT, DEFAULT);
+CREATE RULE
+-- Execution: Insert multi-row VALUES with DEFAULT into the view
+INSERT INTO upd_view VALUES (1, DEFAULT), (DEFAULT, 2);
+INSERT 0 2
+-- Teardown
+DROP TABLE IF EXISTS base_tbl CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:829: NOTICE:  drop cascades to view upd_view
+DROP TABLE
+DROP VIEW IF EXISTS upd_view CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:830: NOTICE:  view "upd_view" does not exist, skipping
+DROP VIEW
+-- ===== Test Case 60 (commit 120) =====
+-- Setup
+DROP TABLE IF EXISTS base_tbl CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:834: NOTICE:  table "base_tbl" does not exist, skipping
+DROP TABLE
+DROP VIEW IF EXISTS upd_view CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:835: NOTICE:  view "upd_view" does not exist, skipping
+DROP VIEW
+CREATE TABLE base_tbl (a int DEFAULT 10, b int DEFAULT 20);
+CREATE TABLE
+CREATE VIEW upd_view AS SELECT * FROM base_tbl;
+CREATE VIEW
+-- Execution: Insert multi-row VALUES with DEFAULT into the view
+INSERT INTO upd_view VALUES (DEFAULT, 1), (2, DEFAULT);
+INSERT 0 2
+-- Teardown
+DROP TABLE IF EXISTS base_tbl CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:841: NOTICE:  drop cascades to view upd_view
+DROP TABLE
+DROP VIEW IF EXISTS upd_view CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:842: NOTICE:  view "upd_view" does not exist, skipping
+DROP VIEW
+-- ===== Test Case 61 (commit 120) =====
+-- Setup
+DROP TABLE IF EXISTS base_tbl CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:846: NOTICE:  table "base_tbl" does not exist, skipping
+DROP TABLE
+DROP VIEW IF EXISTS upd_view CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:847: NOTICE:  view "upd_view" does not exist, skipping
+DROP VIEW
+CREATE TABLE base_tbl (a int, b int);
+CREATE TABLE
+CREATE VIEW upd_view AS SELECT * FROM base_tbl;
+CREATE VIEW
+CREATE RULE upd_view_ins AS ON INSERT TO upd_view DO ALSO UPDATE base_tbl SET a = DEFAULT WHERE b = 1;
+CREATE RULE
+-- Execution: Insert multi-row VALUES with DEFAULT into the view
+INSERT INTO upd_view VALUES (DEFAULT, 1), (2, DEFAULT);
+INSERT 0 2
+-- Teardown
+DROP TABLE IF EXISTS base_tbl CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:854: NOTICE:  drop cascades to view upd_view
+DROP TABLE
+DROP VIEW IF EXISTS upd_view CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:855: NOTICE:  view "upd_view" does not exist, skipping
+DROP VIEW
+-- ===== Test Case 62 (commit 120) =====
+DROP VIEW IF EXISTS rw_view CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:858: NOTICE:  view "rw_view" does not exist, skipping
+DROP VIEW
+DROP TABLE IF EXISTS rw_log CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:859: NOTICE:  table "rw_log" does not exist, skipping
+DROP TABLE
+DROP TABLE IF EXISTS rw_base CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:860: NOTICE:  table "rw_base" does not exist, skipping
+DROP TABLE
+CREATE TABLE rw_base (a int DEFAULT 10, b int DEFAULT 20);
+CREATE TABLE
+CREATE TABLE rw_log (a int, b int);
+CREATE TABLE
+CREATE VIEW rw_view AS SELECT a,b FROM rw_base;
+CREATE VIEW
+CREATE RULE rw_also AS ON INSERT TO rw_view DO ALSO INSERT INTO rw_log VALUES (DEFAULT, DEFAULT);
+CREATE RULE
+INSERT INTO rw_view VALUES (DEFAULT, 1), (2, DEFAULT), (DEFAULT, DEFAULT);
+INSERT 0 3
+SELECT * FROM rw_base ORDER BY a NULLS FIRST, b NULLS FIRST;
+ a  | b  
+----+----
+  2 | 20
+ 10 |  1
+ 10 | 20
+(3 rows)
+
+SELECT * FROM rw_log;
+ a | b 
+---+---
+   |  
+   |  
+   |  
+(3 rows)
+
+DROP VIEW IF EXISTS rw_view CASCADE;
+DROP VIEW
+DROP TABLE IF EXISTS rw_log CASCADE;
+DROP TABLE
+DROP TABLE IF EXISTS rw_base CASCADE;
+DROP TABLE
+-- ===== Test Case 63 (commit 120) =====
+DROP VIEW IF EXISTS rw_view2 CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:873: NOTICE:  view "rw_view2" does not exist, skipping
+DROP VIEW
+DROP TABLE IF EXISTS rw_base2 CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:874: NOTICE:  table "rw_base2" does not exist, skipping
+DROP TABLE
+CREATE TABLE rw_base2 (a int DEFAULT 10, b int DEFAULT 20);
+CREATE TABLE
+INSERT INTO rw_base2 VALUES (1,1);
+INSERT 0 1
+CREATE VIEW rw_view2 AS SELECT a,b FROM rw_base2;
+CREATE VIEW
+CREATE RULE rw_also_upd AS ON INSERT TO rw_view2 DO ALSO UPDATE rw_base2 SET b = DEFAULT WHERE a = 1;
+CREATE RULE
+INSERT INTO rw_view2 VALUES (DEFAULT, DEFAULT), (5, DEFAULT);
+INSERT 0 2
+SELECT * FROM rw_base2 ORDER BY a NULLS FIRST;
+ a  | b  
+----+----
+  1 | 20
+  5 | 20
+ 10 | 20
+(3 rows)
+
+DROP VIEW IF EXISTS rw_view2 CASCADE;
+DROP VIEW
+DROP TABLE IF EXISTS rw_base2 CASCADE;
+DROP TABLE
+-- ===== Test Case 64 (commit 121) =====
+-- Setup: Create a partitioned table with a self-referencing foreign key and a primary key
+DROP TABLE IF EXISTS test_part_fk CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:886: NOTICE:  table "test_part_fk" does not exist, skipping
+DROP TABLE
+CREATE TABLE test_part_fk (
+    id INT NOT NULL,
+    ref_id INT,
+    PRIMARY KEY (id),
+    FOREIGN KEY (ref_id) REFERENCES test_part_fk(id)
+) PARTITION BY RANGE (id);
+CREATE TABLE
+CREATE TABLE test_part_fk_1 PARTITION OF test_part_fk FOR VALUES FROM (1) TO (100);
+CREATE TABLE
+-- Execution: This should trigger the modified code path when cloning constraints for the partition
+-- The foreign key constraint should be ignored when looking for the index-backed constraint
+INSERT INTO test_part_fk (id, ref_id) VALUES (1, NULL);
+INSERT 0 1
+INSERT INTO test_part_fk (id, ref_id) VALUES (2, 1);
+INSERT 0 1
+-- Teardown
+DROP TABLE IF EXISTS test_part_fk CASCADE;
+DROP TABLE
+-- ===== Test Case 65 (commit 121) =====
+-- Setup: Create a partitioned table with a self-referencing foreign key and a unique constraint
+DROP TABLE IF EXISTS test_part_selfref CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:905: NOTICE:  table "test_part_selfref" does not exist, skipping
+DROP TABLE
+CREATE TABLE test_part_selfref (
+    id INT NOT NULL,
+    ref_id INT,
+    UNIQUE (id),
+    FOREIGN KEY (ref_id) REFERENCES test_part_selfref(id)
+) PARTITION BY RANGE (id);
+CREATE TABLE
+CREATE TABLE test_part_selfref_1 PARTITION OF test_part_selfref FOR VALUES FROM (1) TO (100);
+CREATE TABLE
+-- Execution: Insert data to trigger constraint cloning; should not create duplicate foreign keys
+INSERT INTO test_part_selfref (id, ref_id) VALUES (10, NULL);
+INSERT 0 1
+INSERT INTO test_part_selfref (id, ref_id) VALUES (20, 10);
+INSERT 0 1
+-- Teardown
+DROP TABLE IF EXISTS test_part_selfref CASCADE;
+DROP TABLE
+-- ===== Test Case 66 (commit 121) =====
+-- Setup: Create a partitioned table with both a primary key and a foreign key referencing the same column
+DROP TABLE IF EXISTS test_part_multi CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:923: NOTICE:  table "test_part_multi" does not exist, skipping
+DROP TABLE
+CREATE TABLE test_part_multi (
+    id INT NOT NULL,
+    ref_id INT,
+    PRIMARY KEY (id),
+    FOREIGN KEY (ref_id) REFERENCES test_part_multi(id)
+) PARTITION BY RANGE (id);
+CREATE TABLE
+CREATE TABLE test_part_multi_1 PARTITION OF test_part_multi FOR VALUES FROM (1) TO (100);
+CREATE TABLE
+-- Execution: Insert data to trigger constraint lookups; the primary key should be found, not the foreign key
+INSERT INTO test_part_multi (id, ref_id) VALUES (100, NULL);
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:933: ERROR:  no partition of relation "test_part_multi" found for row
+DETAIL:  Partition key of the failing row contains (id) = (100).
+INSERT INTO test_part_multi (id, ref_id) VALUES (200, 100);
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:934: ERROR:  no partition of relation "test_part_multi" found for row
+DETAIL:  Partition key of the failing row contains (id) = (200).
+-- Teardown
+DROP TABLE IF EXISTS test_part_multi CASCADE;
+DROP TABLE
+-- ===== Test Case 67 (commit 121) =====
+DROP TABLE IF EXISTS self_fk_part CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:940: NOTICE:  table "self_fk_part" does not exist, skipping
+DROP TABLE
+CREATE TABLE self_fk_part (
+  id int NOT NULL,
+  parent_id int,
+  CONSTRAINT self_fk_part_pk PRIMARY KEY (id),
+  CONSTRAINT self_fk_part_fk FOREIGN KEY (parent_id) REFERENCES self_fk_part(id)
+) PARTITION BY RANGE (id);
+CREATE TABLE
+CREATE TABLE self_fk_part_1 PARTITION OF self_fk_part FOR VALUES FROM (1) TO (100);
+CREATE TABLE
+CREATE INDEX self_fk_part_parent_idx ON self_fk_part(parent_id);
+CREATE INDEX
+ALTER INDEX self_fk_part_parent_idx ATTACH PARTITION self_fk_part_1_parent_id_idx;
+ALTER INDEX
+SELECT conname, contype FROM pg_constraint WHERE conrelid='self_fk_part_1'::regclass ORDER BY conname;
+       conname       | contype 
+---------------------+---------
+ self_fk_part_1_pkey | p
+ self_fk_part_fk     | f
+(2 rows)
+
+DROP TABLE IF EXISTS self_fk_part CASCADE;
+DROP TABLE
+-- ===== Test Case 68 (commit 121) =====
+DROP TABLE IF EXISTS parted_self_fk CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:954: NOTICE:  table "parted_self_fk" does not exist, skipping
+DROP TABLE
+CREATE TABLE parted_self_fk (
+    id bigint NOT NULL PRIMARY KEY,
+    id_abc bigint,
+    FOREIGN KEY (id_abc) REFERENCES parted_self_fk(id)
+) PARTITION BY RANGE (id);
+CREATE TABLE
+CREATE TABLE part1_self_fk (
+    id bigint NOT NULL PRIMARY KEY,
+    id_abc bigint
+);
+CREATE TABLE
+ALTER TABLE parted_self_fk ATTACH PARTITION part1_self_fk FOR VALUES FROM (0) TO (10);
+ALTER TABLE
+CREATE TABLE part2_self_fk PARTITION OF parted_self_fk FOR VALUES FROM (10) TO (20);
+CREATE TABLE
+CREATE TABLE part3_self_fk (
+    id bigint NOT NULL PRIMARY KEY,
+    id_abc bigint
+) PARTITION BY RANGE (id);
+CREATE TABLE
+CREATE TABLE part32_self_fk PARTITION OF part3_self_fk FOR VALUES FROM (20) TO (30);
+CREATE TABLE
+ALTER TABLE parted_self_fk ATTACH PARTITION part3_self_fk FOR VALUES FROM (20) TO (40);
+ALTER TABLE
+CREATE TABLE part33_self_fk (id bigint NOT NULL PRIMARY KEY, id_abc bigint);
+CREATE TABLE
+ALTER TABLE part3_self_fk ATTACH PARTITION part33_self_fk FOR VALUES FROM (30) TO (40);
+ALTER TABLE
+INSERT INTO parted_self_fk VALUES (1, NULL), (2, NULL), (3, NULL);
+INSERT 0 3
+INSERT INTO parted_self_fk VALUES (10, 1), (11, 2), (12, 3);
+INSERT 0 3
+SELECT cr.relname, co.conname, co.convalidated, p.conname AS conparent, cf.relname AS foreignrel
+FROM pg_constraint co
+JOIN pg_class cr ON cr.oid = co.conrelid
+LEFT JOIN pg_class cf ON cf.oid = co.confrelid
+LEFT JOIN pg_constraint p ON p.oid = co.conparentid
+WHERE co.contype = 'f' AND cr.oid IN (SELECT relid FROM pg_partition_tree('parted_self_fk'))
+ORDER BY cr.relname, co.conname, p.conname;
+    relname     |           conname           | convalidated |          conparent          |   foreignrel   
+----------------+-----------------------------+--------------+-----------------------------+----------------
+ part1_self_fk  | parted_self_fk_id_abc_fkey  | t            | parted_self_fk_id_abc_fkey  | parted_self_fk
+ part2_self_fk  | parted_self_fk_id_abc_fkey  | t            | parted_self_fk_id_abc_fkey  | parted_self_fk
+ part32_self_fk | parted_self_fk_id_abc_fkey  | t            | parted_self_fk_id_abc_fkey  | parted_self_fk
+ part33_self_fk | parted_self_fk_id_abc_fkey  | t            | parted_self_fk_id_abc_fkey  | parted_self_fk
+ part3_self_fk  | parted_self_fk_id_abc_fkey  | t            | parted_self_fk_id_abc_fkey  | parted_self_fk
+ parted_self_fk | parted_self_fk_id_abc_fkey  | t            |                             | parted_self_fk
+ parted_self_fk | parted_self_fk_id_abc_fkey1 | t            | parted_self_fk_id_abc_fkey  | part1_self_fk
+ parted_self_fk | parted_self_fk_id_abc_fkey2 | t            | parted_self_fk_id_abc_fkey  | part2_self_fk
+ parted_self_fk | parted_self_fk_id_abc_fkey3 | t            | parted_self_fk_id_abc_fkey  | part3_self_fk
+ parted_self_fk | parted_self_fk_id_abc_fkey4 | t            | parted_self_fk_id_abc_fkey3 | part32_self_fk
+ parted_self_fk | parted_self_fk_id_abc_fkey5 | t            | parted_self_fk_id_abc_fkey3 | part33_self_fk
+(11 rows)
+
+ALTER TABLE parted_self_fk DETACH PARTITION part2_self_fk;
+ALTER TABLE
+ALTER TABLE parted_self_fk ATTACH PARTITION part2_self_fk FOR VALUES FROM (10) TO (20);
+ALTER TABLE
+ALTER TABLE parted_self_fk DETACH PARTITION part3_self_fk;
+ALTER TABLE
+ALTER TABLE parted_self_fk ATTACH PARTITION part3_self_fk FOR VALUES FROM (20) TO (40);
+ALTER TABLE
+ALTER TABLE part3_self_fk DETACH PARTITION part33_self_fk;
+ALTER TABLE
+ALTER TABLE part3_self_fk ATTACH PARTITION part33_self_fk FOR VALUES FROM (30) TO (40);
+ALTER TABLE
+DROP TABLE IF EXISTS parted_self_fk CASCADE;
+DROP TABLE
+-- ===== Test Case 69 (commit 122) =====
+-- Setup: Create a table with an array type (pass-by-ref) to trigger expanded datum handling
+DROP TABLE IF EXISTS test_agg1 CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:993: NOTICE:  table "test_agg1" does not exist, skipping
+DROP TABLE
+CREATE TABLE test_agg1 (id INT, arr INT[]);
+CREATE TABLE
+INSERT INTO test_agg1 VALUES (1, ARRAY[1,2,3]), (2, ARRAY[4,5,6]);
+INSERT 0 2
+-- Execution: Use array_agg which has no finalfn, returns pass-by-ref result
+SELECT id, array_agg(arr) FROM test_agg1 GROUP BY id;
+ id | array_agg 
+----+-----------
+  2 | {{4,5,6}}
+  1 | {{1,2,3}}
+(2 rows)
+
+-- Teardown
+DROP TABLE IF EXISTS test_agg1 CASCADE;
+DROP TABLE
+-- ===== Test Case 70 (commit 122) =====
+-- Setup: Create a table with text type (pass-by-ref) and use string_agg which has no finalfn
+DROP TABLE IF EXISTS test_agg2 CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1005: NOTICE:  table "test_agg2" does not exist, skipping
+DROP TABLE
+CREATE TABLE test_agg2 (id INT, val TEXT);
+CREATE TABLE
+INSERT INTO test_agg2 VALUES (1, 'a'), (1, 'b'), (2, 'c');
+INSERT 0 3
+-- Execution: Use string_agg with partial aggregation (enable hashagg if needed)
+SET enable_hashagg = on;
+SET
+SELECT id, string_agg(val, ',') FROM test_agg2 GROUP BY id;
+ id | string_agg 
+----+------------
+  2 | c
+  1 | a,b
+(2 rows)
+
+RESET enable_hashagg;
+RESET
+-- Teardown
+DROP TABLE IF EXISTS test_agg2 CASCADE;
+DROP TABLE
+-- ===== Test Case 71 (commit 122) =====
+-- Setup: Create a table with nullable integer and use an aggregate that can produce NULL transition values
+DROP TABLE IF EXISTS test_agg3 CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1019: NOTICE:  table "test_agg3" does not exist, skipping
+DROP TABLE
+CREATE TABLE test_agg3 (id INT, val INT);
+CREATE TABLE
+INSERT INTO test_agg3 VALUES (1, NULL), (1, 10), (2, NULL);
+INSERT 0 3
+-- Execution: Use avg() which has a finalfn, but the transition value may be null for groups with all nulls
+SELECT id, avg(val) FROM test_agg3 GROUP BY id;
+ id |         avg         
+----+---------------------
+  2 |                    
+  1 | 10.0000000000000000
+(2 rows)
+
+-- Teardown
+DROP TABLE IF EXISTS test_agg3 CASCADE;
+DROP TABLE
+-- ===== Test Case 72 (commit 123) =====
+-- Setup
+DROP TABLE IF EXISTS test_heap_update_vm CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1031: NOTICE:  table "test_heap_update_vm" does not exist, skipping
+DROP TABLE
+CREATE TABLE test_heap_update_vm (id INT PRIMARY KEY, val TEXT);
+CREATE TABLE
+INSERT INTO test_heap_update_vm SELECT generate_series(1, 100), 'initial';
+INSERT 0 100
+-- Create a situation where otherBuffer's all-visible bit might be set
+VACUUM test_heap_update_vm;
+VACUUM
+-- Execution: Perform an UPDATE that triggers heap_update with a non-target buffer (otherBuffer) that may have all-visible set
+BEGIN;
+BEGIN
+UPDATE test_heap_update_vm SET val = 'updated' WHERE id = 1;
+UPDATE 1
+-- This should reach the modified code path in hio.c where GetVisibilityMapPins is called after conditional lock succeeds
+COMMIT;
+COMMIT
+-- Teardown
+DROP TABLE IF EXISTS test_heap_update_vm CASCADE;
+DROP TABLE
+-- ===== Test Case 73 (commit 123) =====
+-- Setup
+DROP TABLE IF EXISTS test_heap_update_lock CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1048: NOTICE:  table "test_heap_update_lock" does not exist, skipping
+DROP TABLE
+CREATE TABLE test_heap_update_lock (id INT PRIMARY KEY, val TEXT);
+CREATE TABLE
+INSERT INTO test_heap_update_lock SELECT generate_series(1, 100), 'initial';
+INSERT 0 100
+-- Execution: Simulate contention on otherBuffer to force conditional lock failure
+BEGIN;
+BEGIN
+-- First session holds lock on otherBuffer (simulate by using a different tuple)
+UPDATE test_heap_update_lock SET val = 'locked' WHERE id = 2;
+UPDATE 1
+-- In same session, update another tuple to trigger heap_update with otherBuffer contention
+UPDATE test_heap_update_lock SET val = 'updated' WHERE id = 1;
+UPDATE 1
+COMMIT;
+COMMIT
+-- Teardown
+DROP TABLE IF EXISTS test_heap_update_lock CASCADE;
+DROP TABLE
+-- ===== Test Case 74 (commit 123) =====
+-- Setup
+DROP TABLE IF EXISTS test_heap_update_extend CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1065: NOTICE:  table "test_heap_update_extend" does not exist, skipping
+DROP TABLE
+CREATE TABLE test_heap_update_extend (id INT PRIMARY KEY, val TEXT);
+CREATE TABLE
+INSERT INTO test_heap_update_extend SELECT generate_series(1, 100), 'initial';
+INSERT 0 100
+-- Ensure some pages are all-visible
+VACUUM test_heap_update_extend;
+VACUUM
+-- Execution: Insert a new tuple that causes page extension, then update another tuple to trigger the code path
+BEGIN;
+BEGIN
+INSERT INTO test_heap_update_extend VALUES (101, 'new');
+INSERT 0 1
+UPDATE test_heap_update_extend SET val = 'updated' WHERE id = 1;
+UPDATE 1
+COMMIT;
+COMMIT
+-- Teardown
+DROP TABLE IF EXISTS test_heap_update_extend CASCADE;
+DROP TABLE
+-- ===== Test Case 75 (commit 124) =====
+SELECT 1;
+ ?column? 
+----------
+        1
+(1 row)
+
+-- ===== Test Case 76 (commit 125) =====
+-- Setup
+DROP TABLE IF EXISTS test_heap_delete_vm CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1085: NOTICE:  table "test_heap_delete_vm" does not exist, skipping
+DROP TABLE
+CREATE TABLE test_heap_delete_vm (id INT) WITH (autovacuum_enabled = false);
+CREATE TABLE
+INSERT INTO test_heap_delete_vm SELECT generate_series(1, 1000);
+INSERT 0 1000
+-- Create a visibility map by vacuuming
+VACUUM test_heap_delete_vm;
+VACUUM
+-- Execution: Start a transaction that deletes a row, but before locking the buffer, another session makes the page all visible.
+BEGIN;
+BEGIN
+DELETE FROM test_heap_delete_vm WHERE id = 1;
+DELETE 1
+-- The DELETE will re-check PageIsAllVisible() after acquiring buffer lock, hitting the new code path.
+COMMIT;
+COMMIT
+-- Teardown
+DROP TABLE IF EXISTS test_heap_delete_vm CASCADE;
+DROP TABLE
+-- ===== Test Case 77 (commit 125) =====
+-- Setup
+DROP TABLE IF EXISTS test_heap_delete_conflict CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1102: NOTICE:  table "test_heap_delete_conflict" does not exist, skipping
+DROP TABLE
+CREATE TABLE test_heap_delete_conflict (id INT PRIMARY KEY) WITH (autovacuum_enabled = false);
+CREATE TABLE
+INSERT INTO test_heap_delete_conflict VALUES (1);
+INSERT 0 1
+VACUUM test_heap_delete_conflict;
+VACUUM
+-- Execution: Simulate a concurrent update that causes a restart due to page becoming all visible.
+-- Session 1: Start a transaction and update the row to create a lock.
+BEGIN;
+BEGIN
+UPDATE test_heap_delete_conflict SET id = 2 WHERE id = 1;
+UPDATE 1
+-- Session 2: In another session, try to delete the same row (will wait for lock).
+-- This DELETE will eventually restart after the update commits, and the page may become all visible.
+-- For simplicity, we run sequentially but the code path is exercised by the lock conflict.
+COMMIT;
+COMMIT
+-- Teardown
+DROP TABLE IF EXISTS test_heap_delete_conflict CASCADE;
+DROP TABLE
+-- ===== Test Case 78 (commit 125) =====
+-- Setup
+DROP TABLE IF EXISTS test_heap_delete_vacuum CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1121: NOTICE:  table "test_heap_delete_vacuum" does not exist, skipping
+DROP TABLE
+CREATE TABLE test_heap_delete_vacuum (id INT) WITH (autovacuum_enabled = false);
+CREATE TABLE
+INSERT INTO test_heap_delete_vacuum SELECT generate_series(1, 100);
+INSERT 0 100
+VACUUM test_heap_delete_vacuum;
+VACUUM
+-- Execution: Delete a row, then immediately vacuum to make the page all visible, then delete another row from the same page.
+-- The second DELETE will see the page all visible without a VM pin, triggering the new check.
+DELETE FROM test_heap_delete_vacuum WHERE id = 1;
+DELETE 1
+VACUUM test_heap_delete_vacuum;
+VACUUM
+DELETE FROM test_heap_delete_vacuum WHERE id = 2;
+DELETE 1
+-- Teardown
+DROP TABLE IF EXISTS test_heap_delete_vacuum CASCADE;
+DROP TABLE
+-- ===== Test Case 79 (commit 126) =====
+-- Setup
+DROP TABLE IF EXISTS test_shutdown1 CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1137: NOTICE:  table "test_shutdown1" does not exist, skipping
+DROP TABLE
+CREATE TABLE test_shutdown1 (id INT);
+CREATE TABLE
+INSERT INTO test_shutdown1 VALUES (1), (2), (3);
+INSERT 0 3
+-- Execution: Force a query that triggers ExecShutdownNode during cleanup
+BEGIN;
+BEGIN
+DECLARE c1 CURSOR FOR SELECT * FROM test_shutdown1;
+DECLARE CURSOR
+FETCH ALL FROM c1;
+ id 
+----
+  1
+  2
+  3
+(3 rows)
+
+CLOSE c1;
+CLOSE CURSOR
+COMMIT;
+COMMIT
+-- Teardown
+DROP TABLE IF EXISTS test_shutdown1 CASCADE;
+DROP TABLE
+-- ===== Test Case 80 (commit 126) =====
+-- Setup
+DROP TABLE IF EXISTS test_shutdown2 CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1153: NOTICE:  table "test_shutdown2" does not exist, skipping
+DROP TABLE
+CREATE TABLE test_shutdown2 (a INT, b INT);
+CREATE TABLE
+INSERT INTO test_shutdown2 VALUES (1, 10), (2, 20);
+INSERT 0 2
+-- Execution: Use subquery to create SubqueryScan plan node
+BEGIN;
+BEGIN
+DECLARE c2 CURSOR FOR SELECT * FROM (SELECT a, b FROM test_shutdown2) sub;
+DECLARE CURSOR
+FETCH ALL FROM c2;
+ a | b  
+---+----
+ 1 | 10
+ 2 | 20
+(2 rows)
+
+CLOSE c2;
+CLOSE CURSOR
+COMMIT;
+COMMIT
+-- Teardown
+DROP TABLE IF EXISTS test_shutdown2 CASCADE;
+DROP TABLE
+-- ===== Test Case 81 (commit 126) =====
+-- Setup
+DROP TABLE IF EXISTS test_shutdown3a CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1169: NOTICE:  table "test_shutdown3a" does not exist, skipping
+DROP TABLE
+DROP TABLE IF EXISTS test_shutdown3b CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1170: NOTICE:  table "test_shutdown3b" does not exist, skipping
+DROP TABLE
+CREATE TABLE test_shutdown3a (x INT);
+CREATE TABLE
+CREATE TABLE test_shutdown3b (x INT);
+CREATE TABLE
+INSERT INTO test_shutdown3a VALUES (1), (2);
+INSERT 0 2
+INSERT INTO test_shutdown3b VALUES (3), (4);
+INSERT 0 2
+-- Execution: Use UNION ALL to create Append plan node
+BEGIN;
+BEGIN
+DECLARE c3 CURSOR FOR SELECT x FROM test_shutdown3a UNION ALL SELECT x FROM test_shutdown3b;
+DECLARE CURSOR
+FETCH ALL FROM c3;
+ x 
+---
+ 1
+ 2
+ 3
+ 4
+(4 rows)
+
+CLOSE c3;
+CLOSE CURSOR
+COMMIT;
+COMMIT
+-- Teardown
+DROP TABLE IF EXISTS test_shutdown3a CASCADE;
+DROP TABLE
+DROP TABLE IF EXISTS test_shutdown3b CASCADE;
+DROP TABLE
+-- ===== Test Case 82 (commit 127) =====
+-- Setup: Create parent table with a foreign key constraint, and a partition that already has a constraint with the same name
+DROP TABLE IF EXISTS parent_tbl CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1189: NOTICE:  table "parent_tbl" does not exist, skipping
+DROP TABLE
+DROP TABLE IF EXISTS child_tbl CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1190: NOTICE:  table "child_tbl" does not exist, skipping
+DROP TABLE
+DROP TABLE IF EXISTS ref_tbl CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1191: NOTICE:  table "ref_tbl" does not exist, skipping
+DROP TABLE
+CREATE TABLE ref_tbl (id INT PRIMARY KEY);
+CREATE TABLE
+CREATE TABLE parent_tbl (id INT, ref_id INT REFERENCES ref_tbl(id)) PARTITION BY LIST (id);
+CREATE TABLE
+CREATE TABLE child_tbl (id INT, ref_id INT);
+CREATE TABLE
+-- Add a constraint with the same name as the parent's FK on the partition to force conflict
+ALTER TABLE child_tbl ADD CONSTRAINT parent_tbl_ref_id_fkey FOREIGN KEY (ref_id) REFERENCES ref_tbl(id);
+ALTER TABLE
+-- Execution: Attach partition, which triggers CloneFkReferencing and the new code path
+ALTER TABLE parent_tbl ATTACH PARTITION child_tbl FOR VALUES IN (1);
+ALTER TABLE
+-- Teardown
+DROP TABLE IF EXISTS parent_tbl CASCADE;
+DROP TABLE
+DROP TABLE IF EXISTS child_tbl CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1204: NOTICE:  table "child_tbl" does not exist, skipping
+DROP TABLE
+DROP TABLE IF EXISTS ref_tbl CASCADE;
+DROP TABLE
+-- ===== Test Case 83 (commit 127) =====
+-- Setup: Create parent table with a foreign key constraint, and a partition with no conflicting constraint
+DROP TABLE IF EXISTS parent_tbl CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1209: NOTICE:  table "parent_tbl" does not exist, skipping
+DROP TABLE
+DROP TABLE IF EXISTS child_tbl CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1210: NOTICE:  table "child_tbl" does not exist, skipping
+DROP TABLE
+DROP TABLE IF EXISTS ref_tbl CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1211: NOTICE:  table "ref_tbl" does not exist, skipping
+DROP TABLE
+CREATE TABLE ref_tbl (id INT PRIMARY KEY);
+CREATE TABLE
+CREATE TABLE parent_tbl (id INT, ref_id INT REFERENCES ref_tbl(id)) PARTITION BY LIST (id);
+CREATE TABLE
+CREATE TABLE child_tbl (id INT, ref_id INT);
+CREATE TABLE
+-- Execution: Attach partition, no name conflict, so else branch is taken
+ALTER TABLE parent_tbl ATTACH PARTITION child_tbl FOR VALUES IN (1);
+ALTER TABLE
+-- Teardown
+DROP TABLE IF EXISTS parent_tbl CASCADE;
+DROP TABLE
+DROP TABLE IF EXISTS child_tbl CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1222: NOTICE:  table "child_tbl" does not exist, skipping
+DROP TABLE
+DROP TABLE IF EXISTS ref_tbl CASCADE;
+DROP TABLE
+-- ===== Test Case 84 (commit 127) =====
+-- Setup: Create parent table with a composite foreign key, and a partition with a conflicting constraint name
+DROP TABLE IF EXISTS parent_tbl CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1227: NOTICE:  table "parent_tbl" does not exist, skipping
+DROP TABLE
+DROP TABLE IF EXISTS child_tbl CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1228: NOTICE:  table "child_tbl" does not exist, skipping
+DROP TABLE
+DROP TABLE IF EXISTS ref_tbl CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1229: NOTICE:  table "ref_tbl" does not exist, skipping
+DROP TABLE
+CREATE TABLE ref_tbl (a INT, b INT, PRIMARY KEY (a, b));
+CREATE TABLE
+CREATE TABLE parent_tbl (id INT, a INT, b INT, FOREIGN KEY (a, b) REFERENCES ref_tbl(a, b)) PARTITION BY LIST (id);
+CREATE TABLE
+CREATE TABLE child_tbl (id INT, a INT, b INT);
+CREATE TABLE
+-- Add a constraint with the same name as the parent's FK to force conflict
+ALTER TABLE child_tbl ADD CONSTRAINT parent_tbl_a_b_fkey FOREIGN KEY (a, b) REFERENCES ref_tbl(a, b);
+ALTER TABLE
+-- Execution: Attach partition, triggers new code path with multiple FK attributes
+ALTER TABLE parent_tbl ATTACH PARTITION child_tbl FOR VALUES IN (1);
+ALTER TABLE
+-- Teardown
+DROP TABLE IF EXISTS parent_tbl CASCADE;
+DROP TABLE
+DROP TABLE IF EXISTS child_tbl CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1242: NOTICE:  table "child_tbl" does not exist, skipping
+DROP TABLE
+DROP TABLE IF EXISTS ref_tbl CASCADE;
+DROP TABLE
+-- ===== Test Case 85 (commit 127) =====
+DROP TABLE IF EXISTS fk127_parent CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1246: NOTICE:  table "fk127_parent" does not exist, skipping
+DROP TABLE
+DROP TABLE IF EXISTS fk127_child CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1247: NOTICE:  table "fk127_child" does not exist, skipping
+DROP TABLE
+DROP TABLE IF EXISTS fk127_ref CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1248: NOTICE:  table "fk127_ref" does not exist, skipping
+DROP TABLE
+CREATE TABLE fk127_ref (id int PRIMARY KEY);
+CREATE TABLE
+CREATE TABLE fk127_parent (id int NOT NULL, ref_id int REFERENCES fk127_ref(id)) PARTITION BY LIST (id);
+CREATE TABLE
+CREATE TABLE fk127_child (id int NOT NULL, ref_id int);
+CREATE TABLE
+ALTER TABLE fk127_parent ATTACH PARTITION fk127_child FOR VALUES IN (1);
+ALTER TABLE
+SELECT conname FROM pg_constraint WHERE conrelid='fk127_child'::regclass ORDER BY conname;
+         conname          
+--------------------------
+ fk127_parent_ref_id_fkey
+(1 row)
+
+DROP TABLE IF EXISTS fk127_parent CASCADE;
+DROP TABLE
+DROP TABLE IF EXISTS fk127_child CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1255: NOTICE:  table "fk127_child" does not exist, skipping
+DROP TABLE
+DROP TABLE IF EXISTS fk127_ref CASCADE;
+DROP TABLE
+-- ===== Test Case 86 (commit 127) =====
+DROP TABLE IF EXISTS fk127_conflict_parent CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1259: NOTICE:  table "fk127_conflict_parent" does not exist, skipping
+DROP TABLE
+DROP TABLE IF EXISTS fk127_conflict_child CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1260: NOTICE:  table "fk127_conflict_child" does not exist, skipping
+DROP TABLE
+DROP TABLE IF EXISTS fk127_conflict_ref CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1261: NOTICE:  table "fk127_conflict_ref" does not exist, skipping
+DROP TABLE
+CREATE TABLE fk127_conflict_ref (id int PRIMARY KEY);
+CREATE TABLE
+CREATE TABLE fk127_conflict_parent (id int NOT NULL, ref_id int REFERENCES fk127_conflict_ref(id)) PARTITION BY LIST (id);
+CREATE TABLE
+CREATE TABLE fk127_conflict_child (id int NOT NULL, ref_id int);
+CREATE TABLE
+ALTER TABLE fk127_conflict_child ADD CONSTRAINT fk127_conflict_parent_ref_id_fkey CHECK (ref_id IS NULL OR ref_id IS NOT NULL);
+ALTER TABLE
+ALTER TABLE fk127_conflict_parent ATTACH PARTITION fk127_conflict_child FOR VALUES IN (1);
+ALTER TABLE
+SELECT conname FROM pg_constraint WHERE conrelid='fk127_conflict_child'::regclass ORDER BY conname;
+              conname              
+-----------------------------------
+ fk127_conflict_child_ref_id_fkey
+ fk127_conflict_parent_ref_id_fkey
+(2 rows)
+
+DROP TABLE IF EXISTS fk127_conflict_parent CASCADE;
+DROP TABLE
+DROP TABLE IF EXISTS fk127_conflict_child CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1269: NOTICE:  table "fk127_conflict_child" does not exist, skipping
+DROP TABLE
+DROP TABLE IF EXISTS fk127_conflict_ref CASCADE;
+DROP TABLE
+-- ===== Test Case 87 (commit 128) =====
+-- Setup
+DROP TABLE IF EXISTS test_part_t1 CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1274: NOTICE:  table "test_part_t1" does not exist, skipping
+DROP TABLE
+CREATE TABLE test_part_t1 (a INT, b INT) PARTITION BY RANGE (a);
+CREATE TABLE
+CREATE TABLE test_part_t1_p1 PARTITION OF test_part_t1 FOR VALUES FROM (1) TO (100);
+CREATE TABLE
+CREATE TABLE test_part_t1_p2 PARTITION OF test_part_t1 FOR VALUES FROM (100) TO (200);
+CREATE TABLE
+CREATE INDEX ON test_part_t1_p1 (a);
+CREATE INDEX
+CREATE INDEX ON test_part_t1_p2 (a);
+CREATE INDEX
+-- Execution: create partitioned index, should match existing child indexes
+CREATE INDEX ON test_part_t1 (a);
+CREATE INDEX
+-- Teardown
+DROP TABLE IF EXISTS test_part_t1 CASCADE;
+DROP TABLE
+-- ===== Test Case 88 (commit 128) =====
+-- Setup
+DROP TABLE IF EXISTS test_part_t2 CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1289: NOTICE:  table "test_part_t2" does not exist, skipping
+DROP TABLE
+CREATE TABLE test_part_t2 (a TEXT, b INT) PARTITION BY RANGE (a COLLATE "C");
+CREATE TABLE
+CREATE TABLE test_part_t2_p1 PARTITION OF test_part_t2 FOR VALUES FROM ('a') TO ('m');
+CREATE TABLE
+CREATE TABLE test_part_t2_p2 PARTITION OF test_part_t2 FOR VALUES FROM ('m') TO ('z');
+CREATE TABLE
+CREATE INDEX ON test_part_t2_p1 (a COLLATE "POSIX");
+CREATE INDEX
+CREATE INDEX ON test_part_t2_p2 (a COLLATE "POSIX");
+CREATE INDEX
+-- Execution: create partitioned index with different collation, should not match existing child indexes
+CREATE INDEX ON test_part_t2 (a COLLATE "C");
+CREATE INDEX
+-- Teardown
+DROP TABLE IF EXISTS test_part_t2 CASCADE;
+DROP TABLE
+-- ===== Test Case 89 (commit 128) =====
+-- Setup
+DROP TABLE IF EXISTS test_part_t3 CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1304: NOTICE:  table "test_part_t3" does not exist, skipping
+DROP TABLE
+CREATE TABLE test_part_t3 (a INT, b INT) PARTITION BY RANGE (a);
+CREATE TABLE
+CREATE TABLE test_part_t3_p1 PARTITION OF test_part_t3 FOR VALUES FROM (1) TO (100);
+CREATE TABLE
+CREATE TABLE test_part_t3_p2 PARTITION OF test_part_t3 FOR VALUES FROM (100) TO (200);
+CREATE TABLE
+CREATE INDEX test_idx_p1 ON test_part_t3_p1 (a);
+CREATE INDEX
+CREATE INDEX test_idx_p2 ON test_part_t3_p2 (a);
+CREATE INDEX
+-- Execution: create partitioned index with same name, should fail due to duplicate
+CREATE INDEX test_idx_parent ON test_part_t3 (a);
+CREATE INDEX
+-- Teardown
+DROP TABLE IF EXISTS test_part_t3 CASCADE;
+DROP TABLE
+-- ===== Test Case 90 (commit 129) =====
+-- Setup
+SET work_mem = '64kB';
+SET
+DROP TABLE IF EXISTS test_wide CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1320: NOTICE:  table "test_wide" does not exist, skipping
+DROP TABLE
+CREATE TABLE test_wide (id INT, data text);
+CREATE TABLE
+INSERT INTO test_wide SELECT generate_series(1, 100), repeat('x', 10000);
+INSERT 0 100
+-- Execution: Hash join with large tuples and small work_mem
+EXPLAIN (ANALYZE, COSTS OFF, TIMING OFF) SELECT * FROM test_wide a JOIN test_wide b ON a.id = b.id;
+                             QUERY PLAN                              
+---------------------------------------------------------------------
+ Merge Join (actual rows=100 loops=1)
+   Merge Cond: (a.id = b.id)
+   ->  Sort (actual rows=100 loops=1)
+         Sort Key: a.id
+         Sort Method: quicksort  Memory: 51kB
+         ->  Seq Scan on test_wide a (actual rows=100 loops=1)
+   ->  Materialize (actual rows=100 loops=1)
+         ->  Sort (actual rows=100 loops=1)
+               Sort Key: b.id
+               Sort Method: quicksort  Memory: 51kB
+               ->  Seq Scan on test_wide b (actual rows=100 loops=1)
+ Planning Time: 0.157 ms
+ Execution Time: 0.336 ms
+(13 rows)
+
+-- Teardown
+DROP TABLE IF EXISTS test_wide CASCADE;
+DROP TABLE
+RESET work_mem;
+RESET
+-- ===== Test Case 91 (commit 129) =====
+-- Setup
+SET work_mem = '64kB';
+SET
+DROP TABLE IF EXISTS test_wide2 CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1334: NOTICE:  table "test_wide2" does not exist, skipping
+DROP TABLE
+CREATE TABLE test_wide2 (id INT, data text);
+CREATE TABLE
+INSERT INTO test_wide2 SELECT generate_series(1, 50), repeat('y', 20000);
+INSERT 0 50
+-- Execution: Hash join with very large tuples
+EXPLAIN (ANALYZE, COSTS OFF, TIMING OFF) SELECT * FROM test_wide2 a JOIN test_wide2 b ON a.id = b.id;
+                             QUERY PLAN                              
+---------------------------------------------------------------------
+ Merge Join (actual rows=50 loops=1)
+   Merge Cond: (a.id = b.id)
+   ->  Sort (actual rows=50 loops=1)
+         Sort Key: a.id
+         Sort Method: quicksort  Memory: 50kB
+         ->  Seq Scan on test_wide2 a (actual rows=50 loops=1)
+   ->  Materialize (actual rows=50 loops=1)
+         ->  Sort (actual rows=50 loops=1)
+               Sort Key: b.id
+               Sort Method: quicksort  Memory: 50kB
+               ->  Seq Scan on test_wide2 b (actual rows=50 loops=1)
+ Planning Time: 0.093 ms
+ Execution Time: 0.118 ms
+(13 rows)
+
+-- Teardown
+DROP TABLE IF EXISTS test_wide2 CASCADE;
+DROP TABLE
+RESET work_mem;
+RESET
+-- ===== Test Case 92 (commit 129) =====
+-- Setup
+SET work_mem = '64kB';
+SET
+DROP TABLE IF EXISTS test_single_wide CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1348: NOTICE:  table "test_single_wide" does not exist, skipping
+DROP TABLE
+CREATE TABLE test_single_wide (id INT, data text);
+CREATE TABLE
+INSERT INTO test_single_wide VALUES (1, repeat('z', 50000));
+INSERT 0 1
+-- Execution: Hash join with single very wide row
+EXPLAIN (ANALYZE, COSTS OFF, TIMING OFF) SELECT * FROM test_single_wide a JOIN test_single_wide b ON a.id = b.id;
+                                QUERY PLAN                                
+--------------------------------------------------------------------------
+ Merge Join (actual rows=1 loops=1)
+   Merge Cond: (a.id = b.id)
+   ->  Sort (actual rows=1 loops=1)
+         Sort Key: a.id
+         Sort Method: quicksort  Memory: 26kB
+         ->  Seq Scan on test_single_wide a (actual rows=1 loops=1)
+   ->  Materialize (actual rows=1 loops=1)
+         ->  Sort (actual rows=1 loops=1)
+               Sort Key: b.id
+               Sort Method: quicksort  Memory: 26kB
+               ->  Seq Scan on test_single_wide b (actual rows=1 loops=1)
+ Planning Time: 0.115 ms
+ Execution Time: 0.048 ms
+(13 rows)
+
+-- Teardown
+DROP TABLE IF EXISTS test_single_wide CASCADE;
+DROP TABLE
+RESET work_mem;
+RESET
+-- ===== Test Case 93 (commit 130) =====
+-- Setup
+DROP TABLE IF EXISTS test_check_valid CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1361: NOTICE:  table "test_check_valid" does not exist, skipping
+DROP TABLE
+CREATE TABLE test_check_valid (id INT CHECK (id > 0));
+CREATE TABLE
+-- Execution: Force debug output of the constraint node by examining the plan or using a debug function
+-- This triggers _outConstraint() for the check constraint with initially_valid = true, skip_validation = false
+SET client_min_messages TO DEBUG1;
+SET
+EXPLAIN (COSTS OFF) SELECT * FROM test_check_valid WHERE id = 1;
+          QUERY PLAN          
+------------------------------
+ Seq Scan on test_check_valid
+   Filter: (id = 1)
+(2 rows)
+
+RESET client_min_messages;
+RESET
+-- Teardown
+DROP TABLE IF EXISTS test_check_valid CASCADE;
+DROP TABLE
+-- ===== Test Case 94 (commit 130) =====
+-- Setup
+DROP TABLE IF EXISTS test_check_notvalid CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1375: NOTICE:  table "test_check_notvalid" does not exist, skipping
+DROP TABLE
+CREATE TABLE test_check_notvalid (id INT);
+CREATE TABLE
+ALTER TABLE test_check_notvalid ADD CONSTRAINT ck_notvalid CHECK (id > 0) NOT VALID;
+ALTER TABLE
+-- Execution: Force debug output of the constraint node
+SET client_min_messages TO DEBUG1;
+SET
+EXPLAIN (COSTS OFF) SELECT * FROM test_check_notvalid WHERE id = 1;
+           QUERY PLAN            
+---------------------------------
+ Seq Scan on test_check_notvalid
+   Filter: (id = 1)
+(2 rows)
+
+RESET client_min_messages;
+RESET
+-- Teardown
+DROP TABLE IF EXISTS test_check_notvalid CASCADE;
+DROP TABLE
+-- ===== Test Case 95 (commit 130) =====
+-- Setup
+DROP TABLE IF EXISTS test_check_invalid CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1389: NOTICE:  table "test_check_invalid" does not exist, skipping
+DROP TABLE
+CREATE TABLE test_check_invalid (id INT);
+CREATE TABLE
+INSERT INTO test_check_invalid VALUES (-1);
+INSERT 0 1
+ALTER TABLE test_check_invalid ADD CONSTRAINT ck_invalid CHECK (id > 0) NOT VALID;
+ALTER TABLE
+-- Attempt to validate (will fail due to existing data, but constraint remains invalid)
+BEGIN;
+BEGIN
+ALTER TABLE test_check_invalid VALIDATE CONSTRAINT ck_invalid;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1395: ERROR:  check constraint "ck_invalid" of relation "test_check_invalid" is violated by some row
+COMMIT;
+ROLLBACK
+-- Execution: Force debug output of the constraint node
+SET client_min_messages TO DEBUG1;
+SET
+EXPLAIN (COSTS OFF) SELECT * FROM test_check_invalid WHERE id = 1;
+           QUERY PLAN           
+--------------------------------
+ Seq Scan on test_check_invalid
+   Filter: (id = 1)
+(2 rows)
+
+RESET client_min_messages;
+RESET
+-- Teardown
+DROP TABLE IF EXISTS test_check_invalid CASCADE;
+DROP TABLE
+-- ===== Test Case 96 (commit 131) =====
+SELECT 1;
+ ?column? 
+----------
+        1
+(1 row)
+
+-- ===== Test Case 97 (commit 132) =====
+DROP TABLE IF EXISTS lock_a CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1410: NOTICE:  table "lock_a" does not exist, skipping
+DROP TABLE
+DROP TABLE IF EXISTS lock_b CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1411: NOTICE:  table "lock_b" does not exist, skipping
+DROP TABLE
+CREATE TABLE lock_a (id int);
+CREATE TABLE
+CREATE TABLE lock_b (id int);
+CREATE TABLE
+SELECT * FROM lock_a JOIN lock_b ON true FOR UPDATE OF unnamed_join;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1414: ERROR:  relation "unnamed_join" in FOR UPDATE clause not found in FROM clause
+LINE 1: ...T * FROM lock_a JOIN lock_b ON true FOR UPDATE OF unnamed_jo...
+                                                             ^
+DROP TABLE IF EXISTS lock_a CASCADE;
+DROP TABLE
+DROP TABLE IF EXISTS lock_b CASCADE;
+DROP TABLE
+-- ===== Test Case 98 (commit 132) =====
+DROP TABLE IF EXISTS lock_a2 CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1419: NOTICE:  table "lock_a2" does not exist, skipping
+DROP TABLE
+DROP TABLE IF EXISTS lock_b2 CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1420: NOTICE:  table "lock_b2" does not exist, skipping
+DROP TABLE
+DROP TABLE IF EXISTS lock_c2 CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1421: NOTICE:  table "lock_c2" does not exist, skipping
+DROP TABLE
+CREATE TABLE lock_a2 (id int);
+CREATE TABLE
+CREATE TABLE lock_b2 (id int);
+CREATE TABLE
+CREATE TABLE lock_c2 (id int);
+CREATE TABLE
+SELECT * FROM lock_a2 JOIN lock_b2 ON true, lock_c2 AS unnamed_join FOR UPDATE OF unnamed_join;
+ id | id | id 
+----+----+----
+(0 rows)
+
+DROP TABLE IF EXISTS lock_a2 CASCADE;
+DROP TABLE
+DROP TABLE IF EXISTS lock_b2 CASCADE;
+DROP TABLE
+DROP TABLE IF EXISTS lock_c2 CASCADE;
+DROP TABLE
+-- ===== Test Case 99 (commit 132) =====
+DROP TABLE IF EXISTS lock_plain CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1431: NOTICE:  table "lock_plain" does not exist, skipping
+DROP TABLE
+CREATE TABLE lock_plain (id int);
+CREATE TABLE
+INSERT INTO lock_plain VALUES (1);
+INSERT 0 1
+SELECT * FROM lock_plain FOR UPDATE OF lock_plain;
+ id 
+----
+  1
+(1 row)
+
+DROP TABLE IF EXISTS lock_plain CASCADE;
+DROP TABLE
+-- ===== Test Case 100 (commit 133) =====
+-- Setup: create a table that uses a TransactionId list internally (e.g., via logical replication)
+CREATE TABLE test_xid_list (id INT);
+CREATE TABLE
+-- Insert a row to trigger logical replication tracking (if enabled)
+INSERT INTO test_xid_list VALUES (1);
+INSERT 0 1
+-- Force use of lappend_xid by creating a logical replication slot (requires wal_level=logical)
+SELECT pg_create_logical_replication_slot('test_slot', 'pgoutput');
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1443: ERROR:  logical decoding requires wal_level >= logical
+-- Execution: the slot creation will internally use lappend_xid for streamed_txns
+SELECT slot_name, active FROM pg_replication_slots WHERE slot_name = 'test_slot';
+ slot_name | active 
+-----------+--------
+(0 rows)
+
+-- Teardown
+SELECT pg_drop_replication_slot('test_slot');
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1447: ERROR:  replication slot "test_slot" does not exist
+DROP TABLE IF EXISTS test_xid_list CASCADE;
+DROP TABLE
+-- ===== Test Case 101 (commit 133) =====
+-- Setup: create a table and a replication slot to generate an XidList
+CREATE TABLE test_xid_member (id INT);
+CREATE TABLE
+INSERT INTO test_xid_member VALUES (1);
+INSERT 0 1
+SELECT pg_create_logical_replication_slot('test_slot2', 'pgoutput');
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1454: ERROR:  logical decoding requires wal_level >= logical
+-- Execution: query pg_replication_slots which internally calls list_member_xid
+SELECT slot_name, active FROM pg_replication_slots WHERE slot_name = 'test_slot2';
+ slot_name | active 
+-----------+--------
+(0 rows)
+
+-- Teardown
+SELECT pg_drop_replication_slot('test_slot2');
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1458: ERROR:  replication slot "test_slot2" does not exist
+DROP TABLE IF EXISTS test_xid_member CASCADE;
+DROP TABLE
+-- ===== Test Case 102 (commit 133) =====
+-- Setup: create a table and a replication slot to trigger initial XidList creation
+CREATE TABLE test_xid_empty (id INT);
+CREATE TABLE
+INSERT INTO test_xid_empty VALUES (1);
+INSERT 0 1
+SELECT pg_create_logical_replication_slot('test_slot3', 'pgoutput');
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1465: ERROR:  logical decoding requires wal_level >= logical
+-- Execution: the first transaction tracked will create a new XidList via new_list
+SELECT slot_name, active FROM pg_replication_slots WHERE slot_name = 'test_slot3';
+ slot_name | active 
+-----------+--------
+(0 rows)
+
+-- Teardown
+SELECT pg_drop_replication_slot('test_slot3');
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1469: ERROR:  replication slot "test_slot3" does not exist
+DROP TABLE IF EXISTS test_xid_empty CASCADE;
+DROP TABLE
+-- ===== Test Case 103 (commit 134) =====
+SELECT 1;
+ ?column? 
+----------
+        1
+(1 row)
+
+-- ===== Test Case 104 (commit 135) =====
+-- Setup
+DROP TABLE IF EXISTS test_t1 CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1477: NOTICE:  table "test_t1" does not exist, skipping
+DROP TABLE
+CREATE TABLE test_t1 (a int);
+CREATE TABLE
+INSERT INTO test_t1 VALUES (1);
+INSERT 0 1
+-- Create a view with an expression that would get "?column?" as its column name
+CREATE VIEW test_view1 AS SELECT a + 1 FROM test_t1;
+CREATE VIEW
+-- Execution: deparse the view definition (triggers make_viewdef with colNamesVisible=true)
+SELECT pg_get_viewdef('test_view1'::regclass);
+            pg_get_viewdef             
+---------------------------------------
+  SELECT (test_t1.a + 1) AS "?column?"+
+    FROM test_t1;
+(1 row)
+
+-- Teardown
+DROP VIEW IF EXISTS test_view1 CASCADE;
+DROP VIEW
+DROP TABLE IF EXISTS test_t1 CASCADE;
+DROP TABLE
+-- ===== Test Case 105 (commit 135) =====
+-- Setup
+DROP TABLE IF EXISTS test_t2 CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1493: NOTICE:  table "test_t2" does not exist, skipping
+DROP TABLE
+CREATE TABLE test_t2 (x int);
+CREATE TABLE
+INSERT INTO test_t2 VALUES (1);
+INSERT 0 1
+-- Execution: Use a subquery in FROM with an expression that would get "?column?"
+SELECT * FROM (SELECT x + 1 FROM test_t2) AS subq;
+ ?column? 
+----------
+        2
+(1 row)
+
+-- Teardown
+DROP TABLE IF EXISTS test_t2 CASCADE;
+DROP TABLE
+-- ===== Test Case 106 (commit 135) =====
+-- Setup
+DROP TABLE IF EXISTS test_t3 CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1505: NOTICE:  table "test_t3" does not exist, skipping
+DROP TABLE
+CREATE TABLE test_t3 (id int);
+CREATE TABLE
+INSERT INTO test_t3 VALUES (1);
+INSERT 0 1
+-- Execution: Use EXISTS with a subquery that has an expression producing "?column?"
+SELECT * FROM test_t3 WHERE EXISTS (SELECT id + 1 FROM test_t3 WHERE id = 1);
+ id 
+----
+  1
+(1 row)
+
+-- Teardown
+DROP TABLE IF EXISTS test_t3 CASCADE;
+DROP TABLE
+-- ===== Test Case 107 (commit 135) =====
+DROP VIEW IF EXISTS qcol_setop_v CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1516: NOTICE:  view "qcol_setop_v" does not exist, skipping
+DROP VIEW
+CREATE VIEW qcol_setop_v AS SELECT 1+1 UNION ALL SELECT 2+2;
+CREATE VIEW
+SELECT pg_get_viewdef('qcol_setop_v'::regclass, true);
+       pg_get_viewdef        
+-----------------------------
+  SELECT 1 + 1 AS "?column?"+
+ UNION ALL                  +
+  SELECT 2 + 2;
+(1 row)
+
+DROP VIEW IF EXISTS qcol_setop_v CASCADE;
+DROP VIEW
+-- ===== Test Case 108 (commit 135) =====
+DROP VIEW IF EXISTS qcol_upd_v CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1522: NOTICE:  view "qcol_upd_v" does not exist, skipping
+DROP VIEW
+DROP TABLE IF EXISTS qcol_upd_t CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1523: NOTICE:  table "qcol_upd_t" does not exist, skipping
+DROP TABLE
+CREATE TABLE qcol_upd_t (id int, val int);
+CREATE TABLE
+CREATE VIEW qcol_upd_v AS SELECT * FROM qcol_upd_t;
+CREATE VIEW
+CREATE RULE qcol_upd_r AS ON UPDATE TO qcol_upd_v DO INSTEAD UPDATE qcol_upd_t SET val = NEW.val + 1 WHERE id = OLD.id;
+CREATE RULE
+SELECT pg_get_ruledef(oid, true) FROM pg_rewrite WHERE ev_class='qcol_upd_v'::regclass AND rulename='qcol_upd_r';
+                                 pg_get_ruledef                                  
+---------------------------------------------------------------------------------
+ CREATE RULE qcol_upd_r AS                                                      +
+     ON UPDATE TO qcol_upd_v DO INSTEAD  UPDATE qcol_upd_t SET val = new.val + 1+
+   WHERE qcol_upd_t.id = old.id;
+(1 row)
+
+DROP VIEW IF EXISTS qcol_upd_v CASCADE;
+DROP VIEW
+DROP TABLE IF EXISTS qcol_upd_t CASCADE;
+DROP TABLE
+-- ===== Test Case 109 (commit 135) =====
+DROP VIEW IF EXISTS qcol_del_v CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1532: NOTICE:  view "qcol_del_v" does not exist, skipping
+DROP VIEW
+DROP TABLE IF EXISTS qcol_del_t CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1533: NOTICE:  table "qcol_del_t" does not exist, skipping
+DROP TABLE
+CREATE TABLE qcol_del_t (id int);
+CREATE TABLE
+CREATE VIEW qcol_del_v AS SELECT * FROM qcol_del_t;
+CREATE VIEW
+CREATE RULE qcol_del_r AS ON DELETE TO qcol_del_v DO INSTEAD DELETE FROM qcol_del_t WHERE id = OLD.id RETURNING id + 1;
+CREATE RULE
+SELECT pg_get_ruledef(oid, true) FROM pg_rewrite WHERE ev_class='qcol_del_v'::regclass AND rulename='qcol_del_r';
+                         pg_get_ruledef                         
+----------------------------------------------------------------
+ CREATE RULE qcol_del_r AS                                     +
+     ON DELETE TO qcol_del_v DO INSTEAD  DELETE FROM qcol_del_t+
+   WHERE qcol_del_t.id = old.id                                +
+   RETURNING qcol_del_t.id + 1 AS "?column?";
+(1 row)
+
+DROP VIEW IF EXISTS qcol_del_v CASCADE;
+DROP VIEW
+DROP TABLE IF EXISTS qcol_del_t CASCADE;
+DROP TABLE
+-- ===== Test Case 110 (commit 136) =====
+-- Setup
+DROP OPERATOR FAMILY IF EXISTS test_opfamily1 USING btree CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1543: NOTICE:  operator family "test_opfamily1" does not exist for access method "btree", skipping
+DROP OPERATOR FAMILY
+DROP OPERATOR CLASS IF EXISTS test_opclass1 USING btree CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1544: NOTICE:  operator class "test_opclass1" does not exist for access method "btree", skipping
+DROP OPERATOR CLASS
+-- Execution: Create an operator class without an existing operator family, triggering implicit family creation
+CREATE OPERATOR CLASS test_opclass1 FOR TYPE int4 USING btree AS
+    OPERATOR 1 =,
+    FUNCTION 1 btint4cmp(int4, int4);
+CREATE OPERATOR CLASS
+-- Teardown
+DROP OPERATOR CLASS test_opclass1 USING btree CASCADE;
+DROP OPERATOR CLASS
+DROP OPERATOR FAMILY IF EXISTS test_opfamily1 USING btree CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1553: NOTICE:  operator family "test_opfamily1" does not exist for access method "btree", skipping
+DROP OPERATOR FAMILY
+-- ===== Test Case 111 (commit 136) =====
+-- Setup
+DROP OPERATOR FAMILY IF EXISTS test_opfamily2 USING btree CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1557: NOTICE:  operator family "test_opfamily2" does not exist for access method "btree", skipping
+DROP OPERATOR FAMILY
+-- Execution: Create an operator family directly
+CREATE OPERATOR FAMILY test_opfamily2 USING btree;
+CREATE OPERATOR FAMILY
+-- Teardown
+DROP OPERATOR FAMILY test_opfamily2 USING btree CASCADE;
+DROP OPERATOR FAMILY
+-- ===== Test Case 112 (commit 136) =====
+-- Setup
+DROP OPERATOR FAMILY IF EXISTS test_opfamily3 USING btree CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1567: NOTICE:  operator family "test_opfamily3" does not exist for access method "btree", skipping
+DROP OPERATOR FAMILY
+CREATE OPERATOR FAMILY test_opfamily3 USING btree;
+CREATE OPERATOR FAMILY
+-- Execution: Try to create an operator class that would implicitly create a duplicate operator family
+CREATE OPERATOR CLASS test_opclass3 FOR TYPE int4 USING btree FAMILY test_opfamily3 AS
+    OPERATOR 1 =,
+    FUNCTION 1 btint4cmp(int4, int4);
+CREATE OPERATOR CLASS
+-- Teardown
+DROP OPERATOR CLASS test_opclass3 USING btree CASCADE;
+DROP OPERATOR CLASS
+DROP OPERATOR FAMILY test_opfamily3 USING btree CASCADE;
+DROP OPERATOR FAMILY
+-- ===== Test Case 113 (commit 137) =====
+-- Setup
+DROP TABLE IF EXISTS zero_col_tab CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1581: NOTICE:  table "zero_col_tab" does not exist, skipping
+DROP TABLE
+CREATE TABLE zero_col_tab ();  -- zero-column table
+CREATE TABLE
+INSERT INTO zero_col_tab DEFAULT VALUES;
+INSERT 0 1
+-- Execution: Use VALUES with a zero-column subquery via tab.* expansion
+SELECT * FROM (VALUES ((SELECT * FROM zero_col_tab))) AS v;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1586: ERROR:  subquery must return only one column
+LINE 1: SELECT * FROM (VALUES ((SELECT * FROM zero_col_tab))) AS v;
+                               ^
+-- Teardown
+DROP TABLE IF EXISTS zero_col_tab CASCADE;
+DROP TABLE
+-- ===== Test Case 114 (commit 137) =====
+-- Setup
+DROP TABLE IF EXISTS multi_col_tab CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1593: NOTICE:  table "multi_col_tab" does not exist, skipping
+DROP TABLE
+CREATE TABLE multi_col_tab (a INT, b TEXT);
+CREATE TABLE
+INSERT INTO multi_col_tab VALUES (1, 'one'), (2, 'two');
+INSERT 0 2
+-- Execution: Use VALUES with multiple rows and columns
+SELECT * FROM (VALUES (1, 'a'), (2, 'b')) AS v(x, y);
+ x | y 
+---+---
+ 1 | a
+ 2 | b
+(2 rows)
+
+-- Teardown
+DROP TABLE IF EXISTS multi_col_tab CASCADE;
+DROP TABLE
+-- ===== Test Case 115 (commit 137) =====
+-- Setup
+DROP TABLE IF EXISTS single_col_tab CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1605: NOTICE:  table "single_col_tab" does not exist, skipping
+DROP TABLE
+CREATE TABLE single_col_tab (x INT);
+CREATE TABLE
+INSERT INTO single_col_tab VALUES (42);
+INSERT 0 1
+-- Execution: Use VALUES with a single row and column
+SELECT * FROM (VALUES (42)) AS v(x);
+ x  
+----
+ 42
+(1 row)
+
+-- Teardown
+DROP TABLE IF EXISTS single_col_tab CASCADE;
+DROP TABLE
+-- ===== Test Case 116 (commit 138) =====
+-- Setup
+DROP MATERIALIZED VIEW IF EXISTS mv_test1 CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1617: NOTICE:  materialized view "mv_test1" does not exist, skipping
+DROP MATERIALIZED VIEW
+CREATE TABLE base_t1 (id INT, val TEXT);
+CREATE TABLE
+INSERT INTO base_t1 VALUES (1, 'a'), (2, 'b');
+INSERT 0 2
+CREATE MATERIALIZED VIEW mv_test1 AS SELECT * FROM base_t1;
+SELECT 2
+-- Execution
+REFRESH MATERIALIZED VIEW mv_test1;
+REFRESH MATERIALIZED VIEW
+-- Teardown
+DROP MATERIALIZED VIEW IF EXISTS mv_test1 CASCADE;
+DROP MATERIALIZED VIEW
+DROP TABLE IF EXISTS base_t1 CASCADE;
+DROP TABLE
+-- ===== Test Case 117 (commit 138) =====
+-- Setup
+DROP MATERIALIZED VIEW IF EXISTS mv_test2 CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1631: NOTICE:  materialized view "mv_test2" does not exist, skipping
+DROP MATERIALIZED VIEW
+CREATE TABLE base_t2 (id INT, val TEXT);
+CREATE TABLE
+INSERT INTO base_t2 VALUES (1, 'x');
+INSERT 0 1
+CREATE MATERIALIZED VIEW mv_test2 AS SELECT * FROM base_t2;
+SELECT 1
+-- Execution
+REFRESH MATERIALIZED VIEW mv_test2 WITH NO DATA;
+REFRESH MATERIALIZED VIEW
+-- Teardown
+DROP MATERIALIZED VIEW IF EXISTS mv_test2 CASCADE;
+DROP MATERIALIZED VIEW
+DROP TABLE IF EXISTS base_t2 CASCADE;
+DROP TABLE
+-- ===== Test Case 118 (commit 138) =====
+-- Setup
+DROP MATERIALIZED VIEW IF EXISTS mv_test3 CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1645: NOTICE:  materialized view "mv_test3" does not exist, skipping
+DROP MATERIALIZED VIEW
+CREATE TABLE base_t3 (id INT PRIMARY KEY, val TEXT);
+CREATE TABLE
+INSERT INTO base_t3 VALUES (1, 'a'), (2, 'b');
+INSERT 0 2
+CREATE MATERIALIZED VIEW mv_test3 AS SELECT * FROM base_t3;
+SELECT 2
+CREATE UNIQUE INDEX ON mv_test3 (id);
+CREATE INDEX
+INSERT INTO base_t3 VALUES (3, 'c');
+INSERT 0 1
+-- Execution
+REFRESH MATERIALIZED VIEW CONCURRENTLY mv_test3;
+REFRESH MATERIALIZED VIEW
+-- Teardown
+DROP MATERIALIZED VIEW IF EXISTS mv_test3 CASCADE;
+DROP MATERIALIZED VIEW
+DROP TABLE IF EXISTS base_t3 CASCADE;
+DROP TABLE
+-- ===== Test Case 119 (commit 139) =====
+-- Setup
+DROP TABLE IF EXISTS test_alter_sys_attr CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1661: NOTICE:  table "test_alter_sys_attr" does not exist, skipping
+DROP TABLE
+CREATE TABLE test_alter_sys_attr (id INT);
+CREATE TABLE
+INSERT INTO test_alter_sys_attr VALUES (1);
+INSERT 0 1
+-- Execution: Attempt to alter a system column (oid) which has attnum <= 0
+ALTER TABLE test_alter_sys_attr ALTER COLUMN oid TYPE bigint;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1666: ERROR:  column "oid" of relation "test_alter_sys_attr" does not exist
+-- Teardown
+DROP TABLE IF EXISTS test_alter_sys_attr CASCADE;
+DROP TABLE
+-- ===== Test Case 120 (commit 139) =====
+-- Setup
+DROP TABLE IF EXISTS test_alter_identity CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1673: NOTICE:  table "test_alter_identity" does not exist, skipping
+DROP TABLE
+CREATE TABLE test_alter_identity (id INT GENERATED BY DEFAULT AS IDENTITY);
+CREATE TABLE
+INSERT INTO test_alter_identity DEFAULT VALUES;
+INSERT 0 1
+-- Execution: Alter the identity column's type (triggers getIdentitySequence)
+ALTER TABLE test_alter_identity ALTER COLUMN id TYPE bigint;
+ALTER TABLE
+-- Teardown
+DROP TABLE IF EXISTS test_alter_identity CASCADE;
+DROP TABLE
+-- ===== Test Case 121 (commit 139) =====
+-- Setup
+DROP TABLE IF EXISTS test_alter_nonexist CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1685: NOTICE:  table "test_alter_nonexist" does not exist, skipping
+DROP TABLE
+CREATE TABLE test_alter_nonexist (id INT);
+CREATE TABLE
+INSERT INTO test_alter_nonexist VALUES (1);
+INSERT 0 1
+-- Execution: Attempt to alter a non-existent column (should error out)
+ALTER TABLE test_alter_nonexist ALTER COLUMN nonexistent TYPE text;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1690: ERROR:  column "nonexistent" of relation "test_alter_nonexist" does not exist
+-- Teardown
+DROP TABLE IF EXISTS test_alter_nonexist CASCADE;
+DROP TABLE
+-- ===== Test Case 122 (commit 140) =====
+-- Setup
+DROP TABLE IF EXISTS test_lock CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1697: NOTICE:  table "test_lock" does not exist, skipping
+DROP TABLE
+CREATE TABLE test_lock (id INT PRIMARY KEY, val TEXT);
+CREATE TABLE
+INSERT INTO test_lock VALUES (1, 'initial');
+INSERT 0 1
+-- Execution: Use a concurrent transaction to lock and modify the tuple, then try to lock it again in a way that triggers heapam_tuple_lock() with keep_buf=true
+BEGIN;
+BEGIN
+UPDATE test_lock SET val = 'updated' WHERE id = 1;
+UPDATE 1
+-- In another session, this would trigger the code path; simulate with a self-contained approach using a savepoint and rollback
+SAVEPOINT sp;
+SAVEPOINT
+SELECT * FROM test_lock WHERE id = 1 FOR UPDATE;
+ id |   val   
+----+---------
+  1 | updated
+(1 row)
+
+ROLLBACK TO sp;
+ROLLBACK
+COMMIT;
+COMMIT
+-- Teardown
+DROP TABLE IF EXISTS test_lock CASCADE;
+DROP TABLE
+-- ===== Test Case 123 (commit 140) =====
+-- Setup
+DROP TABLE IF EXISTS test_fetch CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1715: NOTICE:  table "test_fetch" does not exist, skipping
+DROP TABLE
+CREATE TABLE test_fetch (id INT, val TEXT);
+CREATE TABLE
+INSERT INTO test_fetch VALUES (1, 'visible');
+INSERT 0 1
+-- Execution: Use a snapshot that sees the tuple as invisible (e.g., using a different transaction isolation level or explicit snapshot)
+BEGIN ISOLATION LEVEL REPEATABLE READ;
+BEGIN
+UPDATE test_fetch SET val = 'invisible' WHERE id = 1;
+UPDATE 1
+-- Now in the same transaction, the old snapshot sees the old tuple as invisible
+SELECT * FROM test_fetch WHERE id = 1;  -- This will use heap_fetch with keep_buf=false
+ id |    val    
+----+-----------
+  1 | invisible
+(1 row)
+
+COMMIT;
+COMMIT
+-- Teardown
+DROP TABLE IF EXISTS test_fetch CASCADE;
+DROP TABLE
+-- ===== Test Case 124 (commit 140) =====
+-- Setup
+DROP TABLE IF EXISTS test_lock2 CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1731: NOTICE:  table "test_lock2" does not exist, skipping
+DROP TABLE
+CREATE TABLE test_lock2 (id INT, val TEXT);
+CREATE TABLE
+INSERT INTO test_lock2 VALUES (1, 'original');
+INSERT 0 1
+-- Execution: Simulate a concurrent update that triggers heapam_tuple_lock with keep_buf=true
+BEGIN;
+BEGIN
+UPDATE test_lock2 SET val = 'modified' WHERE id = 1;
+UPDATE 1
+-- Use a subtransaction to simulate the EvalPlanQualFetch path
+SAVEPOINT sp1;
+SAVEPOINT
+SELECT * FROM test_lock2 WHERE id = 1 FOR UPDATE;
+ id |   val    
+----+----------
+  1 | modified
+(1 row)
+
+ROLLBACK TO sp1;
+ROLLBACK
+COMMIT;
+COMMIT
+-- Teardown
+DROP TABLE IF EXISTS test_lock2 CASCADE;
+DROP TABLE
+-- ===== Test Case 125 (commit 141) =====
+SELECT 1;
+ ?column? 
+----------
+        1
+(1 row)
+
+-- ===== Test Case 126 (commit 142) =====
+DROP VIEW IF EXISTS ruleutils_values_view CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1751: NOTICE:  view "ruleutils_values_view" does not exist, skipping
+DROP VIEW
+CREATE VIEW ruleutils_values_view AS VALUES (1, 'a'), (2, 'b');
+CREATE VIEW
+SELECT pg_get_viewdef('ruleutils_values_view'::regclass, true);
+            pg_get_viewdef             
+---------------------------------------
+  VALUES (1,'a'::text), (2,'b'::text);
+(1 row)
+
+DROP VIEW IF EXISTS ruleutils_values_view CASCADE;
+DROP VIEW
+-- ===== Test Case 127 (commit 142) =====
+DROP VIEW IF EXISTS ruleutils_subquery_view CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1757: NOTICE:  view "ruleutils_subquery_view" does not exist, skipping
+DROP VIEW
+CREATE VIEW ruleutils_subquery_view AS SELECT sq.x FROM (SELECT 1 AS x) AS sq;
+CREATE VIEW
+SELECT pg_get_viewdef('ruleutils_subquery_view'::regclass, true);
+        pg_get_viewdef        
+------------------------------
+  SELECT sq.x                +
+    FROM ( SELECT 1 AS x) sq;
+(1 row)
+
+DROP VIEW IF EXISTS ruleutils_subquery_view CASCADE;
+DROP VIEW
+-- ===== Test Case 128 (commit 142) =====
+DROP VIEW IF EXISTS ruleutils_plain_view CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1763: NOTICE:  view "ruleutils_plain_view" does not exist, skipping
+DROP VIEW
+CREATE VIEW ruleutils_plain_view AS SELECT * FROM (VALUES (1), (2)) AS v(x);
+CREATE VIEW
+SELECT pg_get_viewdef('ruleutils_plain_view'::regclass, false);
+          pg_get_viewdef          
+----------------------------------
+  SELECT v.x                     +
+    FROM ( VALUES (1), (2)) v(x);
+(1 row)
+
+DROP VIEW IF EXISTS ruleutils_plain_view CASCADE;
+DROP VIEW
+-- ===== Test Case 129 (commit 143) =====
+-- Setup
+DROP TABLE IF EXISTS parent_table CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1770: NOTICE:  table "parent_table" does not exist, skipping
+DROP TABLE
+CREATE TABLE parent_table (id INT, data TEXT) PARTITION BY RANGE (id);
+CREATE TABLE
+CREATE TABLE child_table PARTITION OF parent_table FOR VALUES FROM (1) TO (100);
+CREATE TABLE
+CREATE INDEX idx_parent ON parent_table(id);
+CREATE INDEX
+CREATE INDEX idx_child ON child_table(id);
+CREATE INDEX
+-- Execution
+DROP INDEX idx_parent;
+DROP INDEX
+-- Teardown
+DROP TABLE IF EXISTS parent_table CASCADE;
+DROP TABLE
+-- ===== Test Case 130 (commit 143) =====
+-- Setup
+DROP TABLE IF EXISTS parent_table2 CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1784: NOTICE:  table "parent_table2" does not exist, skipping
+DROP TABLE
+CREATE TABLE parent_table2 (id INT, data TEXT) PARTITION BY RANGE (id);
+CREATE TABLE
+CREATE TABLE child_table2 PARTITION OF parent_table2 FOR VALUES FROM (1) TO (100);
+CREATE TABLE
+CREATE INDEX idx_parent2 ON parent_table2(id);
+CREATE INDEX
+CREATE INDEX idx_child2 ON child_table2(id);
+CREATE INDEX
+-- Execution
+DROP INDEX CONCURRENTLY idx_parent2;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1791: ERROR:  cannot drop partitioned index "idx_parent2" concurrently
+-- Teardown
+DROP TABLE IF EXISTS parent_table2 CASCADE;
+DROP TABLE
+-- ===== Test Case 131 (commit 143) =====
+-- Setup
+DROP TABLE IF EXISTS plain_table CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1798: NOTICE:  table "plain_table" does not exist, skipping
+DROP TABLE
+CREATE TABLE plain_table (id INT, data TEXT);
+CREATE TABLE
+CREATE INDEX idx_plain ON plain_table(id);
+CREATE INDEX
+-- Execution
+DROP INDEX idx_plain;
+DROP INDEX
+-- Teardown
+DROP TABLE IF EXISTS plain_table CASCADE;
+DROP TABLE
+-- ===== Test Case 132 (commit 144) =====
+-- Setup: Create a table and ensure clean shutdown
+DROP TABLE IF EXISTS test_recovery CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1810: NOTICE:  table "test_recovery" does not exist, skipping
+DROP TABLE
+CREATE TABLE test_recovery (id INT);
+CREATE TABLE
+INSERT INTO test_recovery VALUES (1);
+INSERT 0 1
+CHECKPOINT;
+CHECKPOINT
+-- Simulate recovery signal file presence (requires pg_ctl or file manipulation)
+-- This test assumes the environment can create signal files; otherwise, it's a no-op.
+-- For coverage, we just need to reach the code path; actual recovery is triggered externally.
+-- We'll use a dummy query to ensure the database starts in recovery mode.
+SELECT pg_is_in_recovery();
+ pg_is_in_recovery 
+-------------------
+ f
+(1 row)
+
+-- Teardown
+DROP TABLE IF EXISTS test_recovery CASCADE;
+DROP TABLE
+-- ===== Test Case 133 (commit 144) =====
+-- Setup: Create a table and force a crash by killing the backend (simulated via pg_ctl stop -m immediate)
+DROP TABLE IF EXISTS test_crash CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1826: NOTICE:  table "test_crash" does not exist, skipping
+DROP TABLE
+CREATE TABLE test_crash (id INT);
+CREATE TABLE
+INSERT INTO test_crash VALUES (1);
+INSERT 0 1
+-- Force checkpoint to ensure WAL records exist
+CHECKPOINT;
+CHECKPOINT
+-- Simulate crash by immediate shutdown (requires external action; here we just ensure recovery is needed)
+-- For coverage, we rely on the test harness to restart after crash.
+SELECT pg_is_in_recovery();
+ pg_is_in_recovery 
+-------------------
+ f
+(1 row)
+
+-- Teardown
+DROP TABLE IF EXISTS test_crash CASCADE;
+DROP TABLE
+-- ===== Test Case 134 (commit 144) =====
+-- Setup: Create a table and simulate archive recovery with a new timeline
+DROP TABLE IF EXISTS test_archive CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1840: NOTICE:  table "test_archive" does not exist, skipping
+DROP TABLE
+CREATE TABLE test_archive (id INT);
+CREATE TABLE
+INSERT INTO test_archive VALUES (1);
+INSERT 0 1
+CHECKPOINT;
+CHECKPOINT
+-- This test requires archive recovery setup (signal files, archive command).
+-- For coverage, we assume the test environment triggers archive recovery.
+-- The code path includes XLogInitNewTimeline, signal file removal, and cleanup.
+SELECT pg_is_in_recovery();
+ pg_is_in_recovery 
+-------------------
+ f
+(1 row)
+
+-- Teardown
+DROP TABLE IF EXISTS test_archive CASCADE;
+DROP TABLE
+-- ===== Test Case 135 (commit 145) =====
+-- Setup
+DROP TABLE IF EXISTS test_reorder CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1855: NOTICE:  table "test_reorder" does not exist, skipping
+DROP TABLE
+CREATE TABLE test_reorder (id INT, val TEXT);
+CREATE TABLE
+INSERT INTO test_reorder SELECT generate_series(1, 100), 'data' || generate_series(1, 100);
+INSERT 0 100
+CREATE INDEX idx_test_reorder ON test_reorder (id);
+CREATE INDEX
+-- Execution: Use an index scan with reordering (e.g., ORDER BY) and then rescan via a cursor or multiple executions
+BEGIN;
+BEGIN
+DECLARE c CURSOR FOR SELECT * FROM test_reorder ORDER BY id;
+DECLARE CURSOR
+FETCH 10 FROM c;
+ id |  val   
+----+--------
+  1 | data1
+  2 | data2
+  3 | data3
+  4 | data4
+  5 | data5
+  6 | data6
+  7 | data7
+  8 | data8
+  9 | data9
+ 10 | data10
+(10 rows)
+
+FETCH 10 FROM c;  -- This triggers a rescan of the index scan
+ id |  val   
+----+--------
+ 11 | data11
+ 12 | data12
+ 13 | data13
+ 14 | data14
+ 15 | data15
+ 16 | data16
+ 17 | data17
+ 18 | data18
+ 19 | data19
+ 20 | data20
+(10 rows)
+
+CLOSE c;
+CLOSE CURSOR
+COMMIT;
+COMMIT
+-- Teardown
+DROP TABLE IF EXISTS test_reorder CASCADE;
+DROP TABLE
+-- ===== Test Case 136 (commit 145) =====
+-- Setup
+DROP TABLE IF EXISTS test_empty CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1873: NOTICE:  table "test_empty" does not exist, skipping
+DROP TABLE
+CREATE TABLE test_empty (id INT, val TEXT);
+CREATE TABLE
+CREATE INDEX idx_test_empty ON test_empty (id);
+CREATE INDEX
+-- Execution: Use an index scan with reordering on empty table, then rescan
+BEGIN;
+BEGIN
+DECLARE c CURSOR FOR SELECT * FROM test_empty ORDER BY id;
+DECLARE CURSOR
+FETCH 1 FROM c;  -- No rows, but rescan still occurs
+ id | val 
+----+-----
+(0 rows)
+
+CLOSE c;
+CLOSE CURSOR
+COMMIT;
+COMMIT
+-- Teardown
+DROP TABLE IF EXISTS test_empty CASCADE;
+DROP TABLE
+-- ===== Test Case 137 (commit 145) =====
+-- Setup
+DROP TABLE IF EXISTS test_dup CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1889: NOTICE:  table "test_dup" does not exist, skipping
+DROP TABLE
+CREATE TABLE test_dup (id INT, val TEXT);
+CREATE TABLE
+INSERT INTO test_dup VALUES (1, 'a'), (1, 'b'), (2, 'c'), (2, 'd');
+INSERT 0 4
+CREATE INDEX idx_test_dup ON test_dup (id);
+CREATE INDEX
+-- Execution: Use an index scan with reordering and rescan to trigger the fix
+BEGIN;
+BEGIN
+DECLARE c CURSOR FOR SELECT * FROM test_dup ORDER BY id;
+DECLARE CURSOR
+FETCH 2 FROM c;
+ id | val 
+----+-----
+  1 | a
+  1 | b
+(2 rows)
+
+FETCH 2 FROM c;  -- Rescan after partial fetch
+ id | val 
+----+-----
+  2 | c
+  2 | d
+(2 rows)
+
+CLOSE c;
+CLOSE CURSOR
+COMMIT;
+COMMIT
+-- Teardown
+DROP TABLE IF EXISTS test_dup CASCADE;
+DROP TABLE
+-- ===== Test Case 138 (commit 146) =====
+-- Setup
+DROP TABLE IF EXISTS merge_test_outer CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1907: NOTICE:  table "merge_test_outer" does not exist, skipping
+DROP TABLE
+DROP TABLE IF EXISTS merge_test_inner CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1908: NOTICE:  table "merge_test_inner" does not exist, skipping
+DROP TABLE
+CREATE TABLE merge_test_outer (id INT);
+CREATE TABLE
+CREATE TABLE merge_test_inner (id INT);
+CREATE TABLE
+INSERT INTO merge_test_outer VALUES (2), (1);
+INSERT 0 2
+INSERT INTO merge_test_inner VALUES (1), (2);
+INSERT 0 2
+-- Execution: Force mergejoin with out-of-order outer input
+SET enable_hashjoin = off;
+SET
+SET enable_nestloop = off;
+SET
+SET enable_mergejoin = on;
+SET
+SELECT * FROM merge_test_outer o JOIN merge_test_inner i ON o.id = i.id;
+ id | id 
+----+----
+  1 |  1
+  2 |  2
+(2 rows)
+
+-- Teardown
+DROP TABLE IF EXISTS merge_test_outer CASCADE;
+DROP TABLE
+DROP TABLE IF EXISTS merge_test_inner CASCADE;
+DROP TABLE
+-- ===== Test Case 139 (commit 146) =====
+-- Setup
+DROP TABLE IF EXISTS merge_test_outer2 CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1924: NOTICE:  table "merge_test_outer2" does not exist, skipping
+DROP TABLE
+DROP TABLE IF EXISTS merge_test_inner2 CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1925: NOTICE:  table "merge_test_inner2" does not exist, skipping
+DROP TABLE
+CREATE TABLE merge_test_outer2 (id INT);
+CREATE TABLE
+CREATE TABLE merge_test_inner2 (id INT);
+CREATE TABLE
+INSERT INTO merge_test_outer2 VALUES (1), (2);
+INSERT 0 2
+INSERT INTO merge_test_inner2 VALUES (2), (1);
+INSERT 0 2
+-- Execution: Force mergejoin with out-of-order inner input
+SET enable_hashjoin = off;
+SET
+SET enable_nestloop = off;
+SET
+SET enable_mergejoin = on;
+SET
+SELECT * FROM merge_test_outer2 o JOIN merge_test_inner2 i ON o.id = i.id;
+ id | id 
+----+----
+  1 |  1
+  2 |  2
+(2 rows)
+
+-- Teardown
+DROP TABLE IF EXISTS merge_test_outer2 CASCADE;
+DROP TABLE
+DROP TABLE IF EXISTS merge_test_inner2 CASCADE;
+DROP TABLE
+-- ===== Test Case 140 (commit 146) =====
+-- Setup
+DROP TABLE IF EXISTS merge_test_outer3 CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1941: NOTICE:  table "merge_test_outer3" does not exist, skipping
+DROP TABLE
+DROP TABLE IF EXISTS merge_test_inner3 CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1942: NOTICE:  table "merge_test_inner3" does not exist, skipping
+DROP TABLE
+CREATE TABLE merge_test_outer3 (id INT);
+CREATE TABLE
+CREATE TABLE merge_test_inner3 (id INT);
+CREATE TABLE
+INSERT INTO merge_test_outer3 VALUES (1), (2), (3);
+INSERT 0 3
+INSERT INTO merge_test_inner3 VALUES (1), (2), (3);
+INSERT 0 3
+-- Execution: Normal mergejoin with ordered data
+SET enable_hashjoin = off;
+SET
+SET enable_nestloop = off;
+SET
+SET enable_mergejoin = on;
+SET
+SELECT * FROM merge_test_outer3 o JOIN merge_test_inner3 i ON o.id = i.id;
+ id | id 
+----+----
+  1 |  1
+  2 |  2
+  3 |  3
+(3 rows)
+
+-- Teardown
+DROP TABLE IF EXISTS merge_test_outer3 CASCADE;
+DROP TABLE
+DROP TABLE IF EXISTS merge_test_inner3 CASCADE;
+DROP TABLE
+-- ===== Test Case 141 (commit 147) =====
+-- Setup
+DROP TABLE IF EXISTS test_t1 CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1958: NOTICE:  table "test_t1" does not exist, skipping
+DROP TABLE
+CREATE TABLE test_t1 (id INT);
+CREATE TABLE
+INSERT INTO test_t1 VALUES (1);
+INSERT 0 1
+CREATE UNIQUE INDEX idx_t1 ON test_t1 (id);
+CREATE INDEX
+-- Execution: This should mark the index as primary and flush the table's relcache
+ALTER TABLE test_t1 ADD PRIMARY KEY USING INDEX idx_t1;
+ALTER TABLE
+-- Teardown
+DROP TABLE IF EXISTS test_t1 CASCADE;
+DROP TABLE
+-- ===== Test Case 142 (commit 147) =====
+-- Setup
+DROP TABLE IF EXISTS test_t2 CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1971: NOTICE:  table "test_t2" does not exist, skipping
+DROP TABLE
+CREATE TABLE test_t2 (id INT);
+CREATE TABLE
+CREATE UNIQUE INDEX idx_t2 ON test_t2 (id);
+CREATE INDEX
+-- Execution: Empty table, still triggers the relcache flush
+ALTER TABLE test_t2 ADD PRIMARY KEY USING INDEX idx_t2;
+ALTER TABLE
+-- Teardown
+DROP TABLE IF EXISTS test_t2 CASCADE;
+DROP TABLE
+-- ===== Test Case 143 (commit 147) =====
+-- Setup
+DROP TABLE IF EXISTS test_t3 CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1983: NOTICE:  table "test_t3" does not exist, skipping
+DROP TABLE
+CREATE TABLE test_t3 (id INT PRIMARY KEY);
+CREATE TABLE
+INSERT INTO test_t3 VALUES (1);
+INSERT 0 1
+CREATE UNIQUE INDEX idx_t3 ON test_t3 (id);
+CREATE INDEX
+-- Execution: This will fail because the table already has a primary key, so the new code path is not executed
+ALTER TABLE test_t3 ADD PRIMARY KEY USING INDEX idx_t3;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1989: ERROR:  multiple primary keys for table "test_t3" are not allowed
+-- Teardown
+DROP TABLE IF EXISTS test_t3 CASCADE;
+DROP TABLE
+-- ===== Test Case 144 (commit 148) =====
+DROP TABLE IF EXISTS test_subxact CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:1995: NOTICE:  table "test_subxact" does not exist, skipping
+DROP TABLE
+CREATE TABLE test_subxact (id INT);
+CREATE TABLE
+BEGIN;
+BEGIN
+INSERT INTO test_subxact VALUES (1);
+INSERT 0 1
+SAVEPOINT sp1;
+SAVEPOINT
+INSERT INTO test_subxact VALUES (2);
+INSERT 0 1
+SAVEPOINT sp2;
+SAVEPOINT
+INSERT INTO test_subxact VALUES (3);
+INSERT 0 1
+RELEASE SAVEPOINT sp2;
+RELEASE
+RELEASE SAVEPOINT sp1;
+RELEASE
+COMMIT;
+COMMIT
+SELECT count(*) FROM test_subxact;
+ count 
+-------
+     3
+(1 row)
+
+DROP TABLE IF EXISTS test_subxact CASCADE;
+DROP TABLE
+-- ===== Test Case 145 (commit 148) =====
+DROP TABLE IF EXISTS test_no_subxact CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:2010: NOTICE:  table "test_no_subxact" does not exist, skipping
+DROP TABLE
+CREATE TABLE test_no_subxact (id INT);
+CREATE TABLE
+BEGIN;
+BEGIN
+INSERT INTO test_no_subxact VALUES (1);
+INSERT 0 1
+COMMIT;
+COMMIT
+SELECT count(*) FROM test_no_subxact;
+ count 
+-------
+     1
+(1 row)
+
+DROP TABLE IF EXISTS test_no_subxact CASCADE;
+DROP TABLE
+-- ===== Test Case 146 (commit 148) =====
+DROP TABLE IF EXISTS test_many_subxact CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:2019: NOTICE:  table "test_many_subxact" does not exist, skipping
+DROP TABLE
+CREATE TABLE test_many_subxact (id INT);
+CREATE TABLE
+BEGIN;
+BEGIN
+INSERT INTO test_many_subxact VALUES (1);
+INSERT 0 1
+SAVEPOINT sp1;
+SAVEPOINT
+INSERT INTO test_many_subxact VALUES (2);
+INSERT 0 1
+SAVEPOINT sp2;
+SAVEPOINT
+INSERT INTO test_many_subxact VALUES (3);
+INSERT 0 1
+SAVEPOINT sp3;
+SAVEPOINT
+INSERT INTO test_many_subxact VALUES (4);
+INSERT 0 1
+RELEASE SAVEPOINT sp3;
+RELEASE
+RELEASE SAVEPOINT sp2;
+RELEASE
+RELEASE SAVEPOINT sp1;
+RELEASE
+COMMIT;
+COMMIT
+SELECT count(*) FROM test_many_subxact;
+ count 
+-------
+     4
+(1 row)
+
+DROP TABLE IF EXISTS test_many_subxact CASCADE;
+DROP TABLE
+-- ===== Test Case 147 (commit 149) =====
+DROP VIEW IF EXISTS insert_rule_view CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:2037: NOTICE:  view "insert_rule_view" does not exist, skipping
+DROP VIEW
+DROP TABLE IF EXISTS insert_rule_base CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:2038: NOTICE:  table "insert_rule_base" does not exist, skipping
+DROP TABLE
+CREATE TABLE insert_rule_base (a int, b int);
+CREATE TABLE
+CREATE VIEW insert_rule_view AS SELECT * FROM insert_rule_base;
+CREATE VIEW
+CREATE RULE insert_rule_ins AS ON INSERT TO insert_rule_view DO INSTEAD INSERT INTO insert_rule_base VALUES (NEW.a, NEW.b);
+CREATE RULE
+SELECT pg_get_ruledef(oid, true) FROM pg_rewrite WHERE ev_class = 'insert_rule_view'::regclass AND rulename = 'insert_rule_ins';
+                                  pg_get_ruledef                                   
+-----------------------------------------------------------------------------------
+ CREATE RULE insert_rule_ins AS                                                   +
+     ON INSERT TO insert_rule_view DO INSTEAD  INSERT INTO insert_rule_base (a, b)+
+   VALUES (new.a, new.b);
+(1 row)
+
+DROP VIEW IF EXISTS insert_rule_view CASCADE;
+DROP VIEW
+DROP TABLE IF EXISTS insert_rule_base CASCADE;
+DROP TABLE
+-- ===== Test Case 148 (commit 149) =====
+DROP VIEW IF EXISTS rowcompare_view CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:2047: NOTICE:  view "rowcompare_view" does not exist, skipping
+DROP VIEW
+DROP TABLE IF EXISTS rowcompare_base CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:2048: NOTICE:  table "rowcompare_base" does not exist, skipping
+DROP TABLE
+CREATE TABLE rowcompare_base (a int, b int);
+CREATE TABLE
+CREATE VIEW rowcompare_view AS SELECT * FROM rowcompare_base t WHERE ROW(t.*) = ROW(t.*);
+CREATE VIEW
+SELECT pg_get_viewdef('rowcompare_view'::regclass, true);
+          pg_get_viewdef          
+----------------------------------
+  SELECT t.a,                    +
+     t.b                         +
+    FROM rowcompare_base t       +
+   WHERE t.a = t.a AND t.b = t.b;
+(1 row)
+
+DROP VIEW IF EXISTS rowcompare_view CASCADE;
+DROP VIEW
+DROP TABLE IF EXISTS rowcompare_base CASCADE;
+DROP TABLE
+-- ===== Test Case 149 (commit 149) =====
+DROP VIEW IF EXISTS values_row_view CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:2056: NOTICE:  view "values_row_view" does not exist, skipping
+DROP VIEW
+DROP TABLE IF EXISTS values_row_base CASCADE;
+psql:/workspaces/deep-learning_final/outputs/local_eval/opt_v4/all_gen_sql.sql:2057: NOTICE:  table "values_row_base" does not exist, skipping
+DROP TABLE
+CREATE TABLE values_row_base (x int);
+CREATE TABLE
+INSERT INTO values_row_base VALUES (1);
+INSERT 0 1
+CREATE VIEW values_row_view AS SELECT * FROM (VALUES ((SELECT values_row_base FROM values_row_base))) AS v(r);
+CREATE VIEW
+SELECT pg_get_viewdef('values_row_view'::regclass, true);
+                                  pg_get_viewdef                                  
+----------------------------------------------------------------------------------
+  SELECT v.r                                                                     +
+    FROM ( VALUES (( SELECT values_row_base.*::values_row_base AS values_row_base+
+                    FROM values_row_base))) v(r);
+(1 row)
+
+DROP VIEW IF EXISTS values_row_view CASCADE;
+DROP VIEW
+DROP TABLE IF EXISTS values_row_base CASCADE;
+DROP TABLE
+-- ===== Test Case 150 (commit 150) =====
+SELECT 1;
+ ?column? 
+----------
+        1
+(1 row)
+

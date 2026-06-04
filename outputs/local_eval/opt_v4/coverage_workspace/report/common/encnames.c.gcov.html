@@ -1,0 +1,674 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - coverage_filtered.info - common/encnames.c</title>
+  <link rel="stylesheet" type="text/css" href="../gcov.css">
+</head>
+
+<body>
+
+          <table width="100%" border=0 cellspacing=0 cellpadding=0>
+            <tr><td class="title">LCOV - code coverage report</td></tr>
+            <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+
+            <tr>
+              <td width="100%">
+                <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="10%" class="headerValue"><a href="../index.html">top level</a> - <a href="index.html">common</a> - encnames.c<span style="font-size: 80%;"> (source / <a href="encnames.c.func-c.html">functions</a>)</span></td>
+            <td width="5%"></td>
+            <td width="5%"></td>
+            <td width="5%" class="headerCovTableHead">Coverage</td>
+            <td width="5%" class="headerCovTableHead" title="Covered + Uncovered code">Total</td>
+            <td width="5%" class="headerCovTableHead" title="Exercised code only">Hit</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">coverage_filtered.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntryLo">63.6&nbsp;%</td>
+            <td class="headerCovTableEntry">55</td>
+            <td class="headerCovTableEntry">35</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test Date:</td>
+            <td class="headerValue">2026-06-04 06:56:47</td>
+            <td></td>
+            <td class="headerItem">Functions:</td>
+            <td class="headerCovTableEntryLo">62.5&nbsp;%</td>
+            <td class="headerCovTableEntry">8</td>
+            <td class="headerCovTableEntry">5</td>
+          </tr>
+                  <tr><td><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+                </table>
+              </td>
+            </tr>
+
+            <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+          </table>
+
+          <table cellpadding=0 cellspacing=0 border=0>
+            <tr>
+              <td><br></td>
+            </tr>
+            <tr>
+              <td>
+<pre class="sourceHeading">            Line data    Source code</pre>
+<pre class="source">
+<span id="L1"><span class="lineNum">       1</span>              : /*-------------------------------------------------------------------------</span>
+<span id="L2"><span class="lineNum">       2</span>              :  *</span>
+<span id="L3"><span class="lineNum">       3</span>              :  * encnames.c</span>
+<span id="L4"><span class="lineNum">       4</span>              :  *        Encoding names and routines for working with them.</span>
+<span id="L5"><span class="lineNum">       5</span>              :  *</span>
+<span id="L6"><span class="lineNum">       6</span>              :  * Portions Copyright (c) 2001-2020, PostgreSQL Global Development Group</span>
+<span id="L7"><span class="lineNum">       7</span>              :  *</span>
+<span id="L8"><span class="lineNum">       8</span>              :  * IDENTIFICATION</span>
+<span id="L9"><span class="lineNum">       9</span>              :  *        src/common/encnames.c</span>
+<span id="L10"><span class="lineNum">      10</span>              :  *</span>
+<span id="L11"><span class="lineNum">      11</span>              :  *-------------------------------------------------------------------------</span>
+<span id="L12"><span class="lineNum">      12</span>              :  */</span>
+<span id="L13"><span class="lineNum">      13</span>              : #include &quot;c.h&quot;</span>
+<span id="L14"><span class="lineNum">      14</span>              : </span>
+<span id="L15"><span class="lineNum">      15</span>              : #include &lt;ctype.h&gt;</span>
+<span id="L16"><span class="lineNum">      16</span>              : #include &lt;unistd.h&gt;</span>
+<span id="L17"><span class="lineNum">      17</span>              : </span>
+<span id="L18"><span class="lineNum">      18</span>              : #include &quot;mb/pg_wchar.h&quot;</span>
+<span id="L19"><span class="lineNum">      19</span>              : </span>
+<span id="L20"><span class="lineNum">      20</span>              : </span>
+<span id="L21"><span class="lineNum">      21</span>              : /* ----------</span>
+<span id="L22"><span class="lineNum">      22</span>              :  * All encoding names, sorted:           *** A L P H A B E T I C ***</span>
+<span id="L23"><span class="lineNum">      23</span>              :  *</span>
+<span id="L24"><span class="lineNum">      24</span>              :  * All names must be without irrelevant chars, search routines use</span>
+<span id="L25"><span class="lineNum">      25</span>              :  * isalnum() chars only. It means ISO-8859-1, iso_8859-1 and Iso8859_1</span>
+<span id="L26"><span class="lineNum">      26</span>              :  * are always converted to 'iso88591'. All must be lower case.</span>
+<span id="L27"><span class="lineNum">      27</span>              :  *</span>
+<span id="L28"><span class="lineNum">      28</span>              :  * The table doesn't contain 'cs' aliases (like csISOLatin1). It's needed?</span>
+<span id="L29"><span class="lineNum">      29</span>              :  *</span>
+<span id="L30"><span class="lineNum">      30</span>              :  * Karel Zak, Aug 2001</span>
+<span id="L31"><span class="lineNum">      31</span>              :  * ----------</span>
+<span id="L32"><span class="lineNum">      32</span>              :  */</span>
+<span id="L33"><span class="lineNum">      33</span>              : typedef struct pg_encname</span>
+<span id="L34"><span class="lineNum">      34</span>              : {</span>
+<span id="L35"><span class="lineNum">      35</span>              :         const char *name;</span>
+<span id="L36"><span class="lineNum">      36</span>              :         pg_enc          encoding;</span>
+<span id="L37"><span class="lineNum">      37</span>              : } pg_encname;</span>
+<span id="L38"><span class="lineNum">      38</span>              : </span>
+<span id="L39"><span class="lineNum">      39</span>              : static const pg_encname pg_encname_tbl[] =</span>
+<span id="L40"><span class="lineNum">      40</span>              : {</span>
+<span id="L41"><span class="lineNum">      41</span>              :         {</span>
+<span id="L42"><span class="lineNum">      42</span>              :                 &quot;abc&quot;, PG_WIN1258</span>
+<span id="L43"><span class="lineNum">      43</span>              :         },                                                      /* alias for WIN1258 */</span>
+<span id="L44"><span class="lineNum">      44</span>              :         {</span>
+<span id="L45"><span class="lineNum">      45</span>              :                 &quot;alt&quot;, PG_WIN866</span>
+<span id="L46"><span class="lineNum">      46</span>              :         },                                                      /* IBM866 */</span>
+<span id="L47"><span class="lineNum">      47</span>              :         {</span>
+<span id="L48"><span class="lineNum">      48</span>              :                 &quot;big5&quot;, PG_BIG5</span>
+<span id="L49"><span class="lineNum">      49</span>              :         },                                                      /* Big5; Chinese for Taiwan multibyte set */</span>
+<span id="L50"><span class="lineNum">      50</span>              :         {</span>
+<span id="L51"><span class="lineNum">      51</span>              :                 &quot;euccn&quot;, PG_EUC_CN</span>
+<span id="L52"><span class="lineNum">      52</span>              :         },                                                      /* EUC-CN; Extended Unix Code for simplified</span>
+<span id="L53"><span class="lineNum">      53</span>              :                                                                  * Chinese */</span>
+<span id="L54"><span class="lineNum">      54</span>              :         {</span>
+<span id="L55"><span class="lineNum">      55</span>              :                 &quot;eucjis2004&quot;, PG_EUC_JIS_2004</span>
+<span id="L56"><span class="lineNum">      56</span>              :         },                                                      /* EUC-JIS-2004; Extended UNIX Code fixed</span>
+<span id="L57"><span class="lineNum">      57</span>              :                                                                  * Width for Japanese, standard JIS X 0213 */</span>
+<span id="L58"><span class="lineNum">      58</span>              :         {</span>
+<span id="L59"><span class="lineNum">      59</span>              :                 &quot;eucjp&quot;, PG_EUC_JP</span>
+<span id="L60"><span class="lineNum">      60</span>              :         },                                                      /* EUC-JP; Extended UNIX Code fixed Width for</span>
+<span id="L61"><span class="lineNum">      61</span>              :                                                                  * Japanese, standard OSF */</span>
+<span id="L62"><span class="lineNum">      62</span>              :         {</span>
+<span id="L63"><span class="lineNum">      63</span>              :                 &quot;euckr&quot;, PG_EUC_KR</span>
+<span id="L64"><span class="lineNum">      64</span>              :         },                                                      /* EUC-KR; Extended Unix Code for Korean , KS</span>
+<span id="L65"><span class="lineNum">      65</span>              :                                                                  * X 1001 standard */</span>
+<span id="L66"><span class="lineNum">      66</span>              :         {</span>
+<span id="L67"><span class="lineNum">      67</span>              :                 &quot;euctw&quot;, PG_EUC_TW</span>
+<span id="L68"><span class="lineNum">      68</span>              :         },                                                      /* EUC-TW; Extended Unix Code for</span>
+<span id="L69"><span class="lineNum">      69</span>              :                                                                  *</span>
+<span id="L70"><span class="lineNum">      70</span>              :                                                                  * traditional Chinese */</span>
+<span id="L71"><span class="lineNum">      71</span>              :         {</span>
+<span id="L72"><span class="lineNum">      72</span>              :                 &quot;gb18030&quot;, PG_GB18030</span>
+<span id="L73"><span class="lineNum">      73</span>              :         },                                                      /* GB18030;GB18030 */</span>
+<span id="L74"><span class="lineNum">      74</span>              :         {</span>
+<span id="L75"><span class="lineNum">      75</span>              :                 &quot;gbk&quot;, PG_GBK</span>
+<span id="L76"><span class="lineNum">      76</span>              :         },                                                      /* GBK; Chinese Windows CodePage 936</span>
+<span id="L77"><span class="lineNum">      77</span>              :                                                                  * simplified Chinese */</span>
+<span id="L78"><span class="lineNum">      78</span>              :         {</span>
+<span id="L79"><span class="lineNum">      79</span>              :                 &quot;iso88591&quot;, PG_LATIN1</span>
+<span id="L80"><span class="lineNum">      80</span>              :         },                                                      /* ISO-8859-1; RFC1345,KXS2 */</span>
+<span id="L81"><span class="lineNum">      81</span>              :         {</span>
+<span id="L82"><span class="lineNum">      82</span>              :                 &quot;iso885910&quot;, PG_LATIN6</span>
+<span id="L83"><span class="lineNum">      83</span>              :         },                                                      /* ISO-8859-10; RFC1345,KXS2 */</span>
+<span id="L84"><span class="lineNum">      84</span>              :         {</span>
+<span id="L85"><span class="lineNum">      85</span>              :                 &quot;iso885913&quot;, PG_LATIN7</span>
+<span id="L86"><span class="lineNum">      86</span>              :         },                                                      /* ISO-8859-13; RFC1345,KXS2 */</span>
+<span id="L87"><span class="lineNum">      87</span>              :         {</span>
+<span id="L88"><span class="lineNum">      88</span>              :                 &quot;iso885914&quot;, PG_LATIN8</span>
+<span id="L89"><span class="lineNum">      89</span>              :         },                                                      /* ISO-8859-14; RFC1345,KXS2 */</span>
+<span id="L90"><span class="lineNum">      90</span>              :         {</span>
+<span id="L91"><span class="lineNum">      91</span>              :                 &quot;iso885915&quot;, PG_LATIN9</span>
+<span id="L92"><span class="lineNum">      92</span>              :         },                                                      /* ISO-8859-15; RFC1345,KXS2 */</span>
+<span id="L93"><span class="lineNum">      93</span>              :         {</span>
+<span id="L94"><span class="lineNum">      94</span>              :                 &quot;iso885916&quot;, PG_LATIN10</span>
+<span id="L95"><span class="lineNum">      95</span>              :         },                                                      /* ISO-8859-16; RFC1345,KXS2 */</span>
+<span id="L96"><span class="lineNum">      96</span>              :         {</span>
+<span id="L97"><span class="lineNum">      97</span>              :                 &quot;iso88592&quot;, PG_LATIN2</span>
+<span id="L98"><span class="lineNum">      98</span>              :         },                                                      /* ISO-8859-2; RFC1345,KXS2 */</span>
+<span id="L99"><span class="lineNum">      99</span>              :         {</span>
+<span id="L100"><span class="lineNum">     100</span>              :                 &quot;iso88593&quot;, PG_LATIN3</span>
+<span id="L101"><span class="lineNum">     101</span>              :         },                                                      /* ISO-8859-3; RFC1345,KXS2 */</span>
+<span id="L102"><span class="lineNum">     102</span>              :         {</span>
+<span id="L103"><span class="lineNum">     103</span>              :                 &quot;iso88594&quot;, PG_LATIN4</span>
+<span id="L104"><span class="lineNum">     104</span>              :         },                                                      /* ISO-8859-4; RFC1345,KXS2 */</span>
+<span id="L105"><span class="lineNum">     105</span>              :         {</span>
+<span id="L106"><span class="lineNum">     106</span>              :                 &quot;iso88595&quot;, PG_ISO_8859_5</span>
+<span id="L107"><span class="lineNum">     107</span>              :         },                                                      /* ISO-8859-5; RFC1345,KXS2 */</span>
+<span id="L108"><span class="lineNum">     108</span>              :         {</span>
+<span id="L109"><span class="lineNum">     109</span>              :                 &quot;iso88596&quot;, PG_ISO_8859_6</span>
+<span id="L110"><span class="lineNum">     110</span>              :         },                                                      /* ISO-8859-6; RFC1345,KXS2 */</span>
+<span id="L111"><span class="lineNum">     111</span>              :         {</span>
+<span id="L112"><span class="lineNum">     112</span>              :                 &quot;iso88597&quot;, PG_ISO_8859_7</span>
+<span id="L113"><span class="lineNum">     113</span>              :         },                                                      /* ISO-8859-7; RFC1345,KXS2 */</span>
+<span id="L114"><span class="lineNum">     114</span>              :         {</span>
+<span id="L115"><span class="lineNum">     115</span>              :                 &quot;iso88598&quot;, PG_ISO_8859_8</span>
+<span id="L116"><span class="lineNum">     116</span>              :         },                                                      /* ISO-8859-8; RFC1345,KXS2 */</span>
+<span id="L117"><span class="lineNum">     117</span>              :         {</span>
+<span id="L118"><span class="lineNum">     118</span>              :                 &quot;iso88599&quot;, PG_LATIN5</span>
+<span id="L119"><span class="lineNum">     119</span>              :         },                                                      /* ISO-8859-9; RFC1345,KXS2 */</span>
+<span id="L120"><span class="lineNum">     120</span>              :         {</span>
+<span id="L121"><span class="lineNum">     121</span>              :                 &quot;johab&quot;, PG_JOHAB</span>
+<span id="L122"><span class="lineNum">     122</span>              :         },                                                      /* JOHAB; Extended Unix Code for simplified</span>
+<span id="L123"><span class="lineNum">     123</span>              :                                                                  * Chinese */</span>
+<span id="L124"><span class="lineNum">     124</span>              :         {</span>
+<span id="L125"><span class="lineNum">     125</span>              :                 &quot;koi8&quot;, PG_KOI8R</span>
+<span id="L126"><span class="lineNum">     126</span>              :         },                                                      /* _dirty_ alias for KOI8-R (backward</span>
+<span id="L127"><span class="lineNum">     127</span>              :                                                                  * compatibility) */</span>
+<span id="L128"><span class="lineNum">     128</span>              :         {</span>
+<span id="L129"><span class="lineNum">     129</span>              :                 &quot;koi8r&quot;, PG_KOI8R</span>
+<span id="L130"><span class="lineNum">     130</span>              :         },                                                      /* KOI8-R; RFC1489 */</span>
+<span id="L131"><span class="lineNum">     131</span>              :         {</span>
+<span id="L132"><span class="lineNum">     132</span>              :                 &quot;koi8u&quot;, PG_KOI8U</span>
+<span id="L133"><span class="lineNum">     133</span>              :         },                                                      /* KOI8-U; RFC2319 */</span>
+<span id="L134"><span class="lineNum">     134</span>              :         {</span>
+<span id="L135"><span class="lineNum">     135</span>              :                 &quot;latin1&quot;, PG_LATIN1</span>
+<span id="L136"><span class="lineNum">     136</span>              :         },                                                      /* alias for ISO-8859-1 */</span>
+<span id="L137"><span class="lineNum">     137</span>              :         {</span>
+<span id="L138"><span class="lineNum">     138</span>              :                 &quot;latin10&quot;, PG_LATIN10</span>
+<span id="L139"><span class="lineNum">     139</span>              :         },                                                      /* alias for ISO-8859-16 */</span>
+<span id="L140"><span class="lineNum">     140</span>              :         {</span>
+<span id="L141"><span class="lineNum">     141</span>              :                 &quot;latin2&quot;, PG_LATIN2</span>
+<span id="L142"><span class="lineNum">     142</span>              :         },                                                      /* alias for ISO-8859-2 */</span>
+<span id="L143"><span class="lineNum">     143</span>              :         {</span>
+<span id="L144"><span class="lineNum">     144</span>              :                 &quot;latin3&quot;, PG_LATIN3</span>
+<span id="L145"><span class="lineNum">     145</span>              :         },                                                      /* alias for ISO-8859-3 */</span>
+<span id="L146"><span class="lineNum">     146</span>              :         {</span>
+<span id="L147"><span class="lineNum">     147</span>              :                 &quot;latin4&quot;, PG_LATIN4</span>
+<span id="L148"><span class="lineNum">     148</span>              :         },                                                      /* alias for ISO-8859-4 */</span>
+<span id="L149"><span class="lineNum">     149</span>              :         {</span>
+<span id="L150"><span class="lineNum">     150</span>              :                 &quot;latin5&quot;, PG_LATIN5</span>
+<span id="L151"><span class="lineNum">     151</span>              :         },                                                      /* alias for ISO-8859-9 */</span>
+<span id="L152"><span class="lineNum">     152</span>              :         {</span>
+<span id="L153"><span class="lineNum">     153</span>              :                 &quot;latin6&quot;, PG_LATIN6</span>
+<span id="L154"><span class="lineNum">     154</span>              :         },                                                      /* alias for ISO-8859-10 */</span>
+<span id="L155"><span class="lineNum">     155</span>              :         {</span>
+<span id="L156"><span class="lineNum">     156</span>              :                 &quot;latin7&quot;, PG_LATIN7</span>
+<span id="L157"><span class="lineNum">     157</span>              :         },                                                      /* alias for ISO-8859-13 */</span>
+<span id="L158"><span class="lineNum">     158</span>              :         {</span>
+<span id="L159"><span class="lineNum">     159</span>              :                 &quot;latin8&quot;, PG_LATIN8</span>
+<span id="L160"><span class="lineNum">     160</span>              :         },                                                      /* alias for ISO-8859-14 */</span>
+<span id="L161"><span class="lineNum">     161</span>              :         {</span>
+<span id="L162"><span class="lineNum">     162</span>              :                 &quot;latin9&quot;, PG_LATIN9</span>
+<span id="L163"><span class="lineNum">     163</span>              :         },                                                      /* alias for ISO-8859-15 */</span>
+<span id="L164"><span class="lineNum">     164</span>              :         {</span>
+<span id="L165"><span class="lineNum">     165</span>              :                 &quot;mskanji&quot;, PG_SJIS</span>
+<span id="L166"><span class="lineNum">     166</span>              :         },                                                      /* alias for Shift_JIS */</span>
+<span id="L167"><span class="lineNum">     167</span>              :         {</span>
+<span id="L168"><span class="lineNum">     168</span>              :                 &quot;muleinternal&quot;, PG_MULE_INTERNAL</span>
+<span id="L169"><span class="lineNum">     169</span>              :         },</span>
+<span id="L170"><span class="lineNum">     170</span>              :         {</span>
+<span id="L171"><span class="lineNum">     171</span>              :                 &quot;shiftjis&quot;, PG_SJIS</span>
+<span id="L172"><span class="lineNum">     172</span>              :         },                                                      /* Shift_JIS; JIS X 0202-1991 */</span>
+<span id="L173"><span class="lineNum">     173</span>              : </span>
+<span id="L174"><span class="lineNum">     174</span>              :         {</span>
+<span id="L175"><span class="lineNum">     175</span>              :                 &quot;shiftjis2004&quot;, PG_SHIFT_JIS_2004</span>
+<span id="L176"><span class="lineNum">     176</span>              :         },                                                      /* SHIFT-JIS-2004; Shift JIS for Japanese,</span>
+<span id="L177"><span class="lineNum">     177</span>              :                                                                  * standard JIS X 0213 */</span>
+<span id="L178"><span class="lineNum">     178</span>              :         {</span>
+<span id="L179"><span class="lineNum">     179</span>              :                 &quot;sjis&quot;, PG_SJIS</span>
+<span id="L180"><span class="lineNum">     180</span>              :         },                                                      /* alias for Shift_JIS */</span>
+<span id="L181"><span class="lineNum">     181</span>              :         {</span>
+<span id="L182"><span class="lineNum">     182</span>              :                 &quot;sqlascii&quot;, PG_SQL_ASCII</span>
+<span id="L183"><span class="lineNum">     183</span>              :         },</span>
+<span id="L184"><span class="lineNum">     184</span>              :         {</span>
+<span id="L185"><span class="lineNum">     185</span>              :                 &quot;tcvn&quot;, PG_WIN1258</span>
+<span id="L186"><span class="lineNum">     186</span>              :         },                                                      /* alias for WIN1258 */</span>
+<span id="L187"><span class="lineNum">     187</span>              :         {</span>
+<span id="L188"><span class="lineNum">     188</span>              :                 &quot;tcvn5712&quot;, PG_WIN1258</span>
+<span id="L189"><span class="lineNum">     189</span>              :         },                                                      /* alias for WIN1258 */</span>
+<span id="L190"><span class="lineNum">     190</span>              :         {</span>
+<span id="L191"><span class="lineNum">     191</span>              :                 &quot;uhc&quot;, PG_UHC</span>
+<span id="L192"><span class="lineNum">     192</span>              :         },                                                      /* UHC; Korean Windows CodePage 949 */</span>
+<span id="L193"><span class="lineNum">     193</span>              :         {</span>
+<span id="L194"><span class="lineNum">     194</span>              :                 &quot;unicode&quot;, PG_UTF8</span>
+<span id="L195"><span class="lineNum">     195</span>              :         },                                                      /* alias for UTF8 */</span>
+<span id="L196"><span class="lineNum">     196</span>              :         {</span>
+<span id="L197"><span class="lineNum">     197</span>              :                 &quot;utf8&quot;, PG_UTF8</span>
+<span id="L198"><span class="lineNum">     198</span>              :         },                                                      /* alias for UTF8 */</span>
+<span id="L199"><span class="lineNum">     199</span>              :         {</span>
+<span id="L200"><span class="lineNum">     200</span>              :                 &quot;vscii&quot;, PG_WIN1258</span>
+<span id="L201"><span class="lineNum">     201</span>              :         },                                                      /* alias for WIN1258 */</span>
+<span id="L202"><span class="lineNum">     202</span>              :         {</span>
+<span id="L203"><span class="lineNum">     203</span>              :                 &quot;win&quot;, PG_WIN1251</span>
+<span id="L204"><span class="lineNum">     204</span>              :         },                                                      /* _dirty_ alias for windows-1251 (backward</span>
+<span id="L205"><span class="lineNum">     205</span>              :                                                                  * compatibility) */</span>
+<span id="L206"><span class="lineNum">     206</span>              :         {</span>
+<span id="L207"><span class="lineNum">     207</span>              :                 &quot;win1250&quot;, PG_WIN1250</span>
+<span id="L208"><span class="lineNum">     208</span>              :         },                                                      /* alias for Windows-1250 */</span>
+<span id="L209"><span class="lineNum">     209</span>              :         {</span>
+<span id="L210"><span class="lineNum">     210</span>              :                 &quot;win1251&quot;, PG_WIN1251</span>
+<span id="L211"><span class="lineNum">     211</span>              :         },                                                      /* alias for Windows-1251 */</span>
+<span id="L212"><span class="lineNum">     212</span>              :         {</span>
+<span id="L213"><span class="lineNum">     213</span>              :                 &quot;win1252&quot;, PG_WIN1252</span>
+<span id="L214"><span class="lineNum">     214</span>              :         },                                                      /* alias for Windows-1252 */</span>
+<span id="L215"><span class="lineNum">     215</span>              :         {</span>
+<span id="L216"><span class="lineNum">     216</span>              :                 &quot;win1253&quot;, PG_WIN1253</span>
+<span id="L217"><span class="lineNum">     217</span>              :         },                                                      /* alias for Windows-1253 */</span>
+<span id="L218"><span class="lineNum">     218</span>              :         {</span>
+<span id="L219"><span class="lineNum">     219</span>              :                 &quot;win1254&quot;, PG_WIN1254</span>
+<span id="L220"><span class="lineNum">     220</span>              :         },                                                      /* alias for Windows-1254 */</span>
+<span id="L221"><span class="lineNum">     221</span>              :         {</span>
+<span id="L222"><span class="lineNum">     222</span>              :                 &quot;win1255&quot;, PG_WIN1255</span>
+<span id="L223"><span class="lineNum">     223</span>              :         },                                                      /* alias for Windows-1255 */</span>
+<span id="L224"><span class="lineNum">     224</span>              :         {</span>
+<span id="L225"><span class="lineNum">     225</span>              :                 &quot;win1256&quot;, PG_WIN1256</span>
+<span id="L226"><span class="lineNum">     226</span>              :         },                                                      /* alias for Windows-1256 */</span>
+<span id="L227"><span class="lineNum">     227</span>              :         {</span>
+<span id="L228"><span class="lineNum">     228</span>              :                 &quot;win1257&quot;, PG_WIN1257</span>
+<span id="L229"><span class="lineNum">     229</span>              :         },                                                      /* alias for Windows-1257 */</span>
+<span id="L230"><span class="lineNum">     230</span>              :         {</span>
+<span id="L231"><span class="lineNum">     231</span>              :                 &quot;win1258&quot;, PG_WIN1258</span>
+<span id="L232"><span class="lineNum">     232</span>              :         },                                                      /* alias for Windows-1258 */</span>
+<span id="L233"><span class="lineNum">     233</span>              :         {</span>
+<span id="L234"><span class="lineNum">     234</span>              :                 &quot;win866&quot;, PG_WIN866</span>
+<span id="L235"><span class="lineNum">     235</span>              :         },                                                      /* IBM866 */</span>
+<span id="L236"><span class="lineNum">     236</span>              :         {</span>
+<span id="L237"><span class="lineNum">     237</span>              :                 &quot;win874&quot;, PG_WIN874</span>
+<span id="L238"><span class="lineNum">     238</span>              :         },                                                      /* alias for Windows-874 */</span>
+<span id="L239"><span class="lineNum">     239</span>              :         {</span>
+<span id="L240"><span class="lineNum">     240</span>              :                 &quot;win932&quot;, PG_SJIS</span>
+<span id="L241"><span class="lineNum">     241</span>              :         },                                                      /* alias for Shift_JIS */</span>
+<span id="L242"><span class="lineNum">     242</span>              :         {</span>
+<span id="L243"><span class="lineNum">     243</span>              :                 &quot;win936&quot;, PG_GBK</span>
+<span id="L244"><span class="lineNum">     244</span>              :         },                                                      /* alias for GBK */</span>
+<span id="L245"><span class="lineNum">     245</span>              :         {</span>
+<span id="L246"><span class="lineNum">     246</span>              :                 &quot;win949&quot;, PG_UHC</span>
+<span id="L247"><span class="lineNum">     247</span>              :         },                                                      /* alias for UHC */</span>
+<span id="L248"><span class="lineNum">     248</span>              :         {</span>
+<span id="L249"><span class="lineNum">     249</span>              :                 &quot;win950&quot;, PG_BIG5</span>
+<span id="L250"><span class="lineNum">     250</span>              :         },                                                      /* alias for BIG5 */</span>
+<span id="L251"><span class="lineNum">     251</span>              :         {</span>
+<span id="L252"><span class="lineNum">     252</span>              :                 &quot;windows1250&quot;, PG_WIN1250</span>
+<span id="L253"><span class="lineNum">     253</span>              :         },                                                      /* Windows-1251; Microsoft */</span>
+<span id="L254"><span class="lineNum">     254</span>              :         {</span>
+<span id="L255"><span class="lineNum">     255</span>              :                 &quot;windows1251&quot;, PG_WIN1251</span>
+<span id="L256"><span class="lineNum">     256</span>              :         },                                                      /* Windows-1251; Microsoft */</span>
+<span id="L257"><span class="lineNum">     257</span>              :         {</span>
+<span id="L258"><span class="lineNum">     258</span>              :                 &quot;windows1252&quot;, PG_WIN1252</span>
+<span id="L259"><span class="lineNum">     259</span>              :         },                                                      /* Windows-1252; Microsoft */</span>
+<span id="L260"><span class="lineNum">     260</span>              :         {</span>
+<span id="L261"><span class="lineNum">     261</span>              :                 &quot;windows1253&quot;, PG_WIN1253</span>
+<span id="L262"><span class="lineNum">     262</span>              :         },                                                      /* Windows-1253; Microsoft */</span>
+<span id="L263"><span class="lineNum">     263</span>              :         {</span>
+<span id="L264"><span class="lineNum">     264</span>              :                 &quot;windows1254&quot;, PG_WIN1254</span>
+<span id="L265"><span class="lineNum">     265</span>              :         },                                                      /* Windows-1254; Microsoft */</span>
+<span id="L266"><span class="lineNum">     266</span>              :         {</span>
+<span id="L267"><span class="lineNum">     267</span>              :                 &quot;windows1255&quot;, PG_WIN1255</span>
+<span id="L268"><span class="lineNum">     268</span>              :         },                                                      /* Windows-1255; Microsoft */</span>
+<span id="L269"><span class="lineNum">     269</span>              :         {</span>
+<span id="L270"><span class="lineNum">     270</span>              :                 &quot;windows1256&quot;, PG_WIN1256</span>
+<span id="L271"><span class="lineNum">     271</span>              :         },                                                      /* Windows-1256; Microsoft */</span>
+<span id="L272"><span class="lineNum">     272</span>              :         {</span>
+<span id="L273"><span class="lineNum">     273</span>              :                 &quot;windows1257&quot;, PG_WIN1257</span>
+<span id="L274"><span class="lineNum">     274</span>              :         },                                                      /* Windows-1257; Microsoft */</span>
+<span id="L275"><span class="lineNum">     275</span>              :         {</span>
+<span id="L276"><span class="lineNum">     276</span>              :                 &quot;windows1258&quot;, PG_WIN1258</span>
+<span id="L277"><span class="lineNum">     277</span>              :         },                                                      /* Windows-1258; Microsoft */</span>
+<span id="L278"><span class="lineNum">     278</span>              :         {</span>
+<span id="L279"><span class="lineNum">     279</span>              :                 &quot;windows866&quot;, PG_WIN866</span>
+<span id="L280"><span class="lineNum">     280</span>              :         },                                                      /* IBM866 */</span>
+<span id="L281"><span class="lineNum">     281</span>              :         {</span>
+<span id="L282"><span class="lineNum">     282</span>              :                 &quot;windows874&quot;, PG_WIN874</span>
+<span id="L283"><span class="lineNum">     283</span>              :         },                                                      /* Windows-874; Microsoft */</span>
+<span id="L284"><span class="lineNum">     284</span>              :         {</span>
+<span id="L285"><span class="lineNum">     285</span>              :                 &quot;windows932&quot;, PG_SJIS</span>
+<span id="L286"><span class="lineNum">     286</span>              :         },                                                      /* alias for Shift_JIS */</span>
+<span id="L287"><span class="lineNum">     287</span>              :         {</span>
+<span id="L288"><span class="lineNum">     288</span>              :                 &quot;windows936&quot;, PG_GBK</span>
+<span id="L289"><span class="lineNum">     289</span>              :         },                                                      /* alias for GBK */</span>
+<span id="L290"><span class="lineNum">     290</span>              :         {</span>
+<span id="L291"><span class="lineNum">     291</span>              :                 &quot;windows949&quot;, PG_UHC</span>
+<span id="L292"><span class="lineNum">     292</span>              :         },                                                      /* alias for UHC */</span>
+<span id="L293"><span class="lineNum">     293</span>              :         {</span>
+<span id="L294"><span class="lineNum">     294</span>              :                 &quot;windows950&quot;, PG_BIG5</span>
+<span id="L295"><span class="lineNum">     295</span>              :         }                                                       /* alias for BIG5 */</span>
+<span id="L296"><span class="lineNum">     296</span>              : };</span>
+<span id="L297"><span class="lineNum">     297</span>              : </span>
+<span id="L298"><span class="lineNum">     298</span>              : /* ----------</span>
+<span id="L299"><span class="lineNum">     299</span>              :  * These are &quot;official&quot; encoding names.</span>
+<span id="L300"><span class="lineNum">     300</span>              :  * XXX must be sorted by the same order as enum pg_enc (in mb/pg_wchar.h)</span>
+<span id="L301"><span class="lineNum">     301</span>              :  * ----------</span>
+<span id="L302"><span class="lineNum">     302</span>              :  */</span>
+<span id="L303"><span class="lineNum">     303</span>              : #ifndef WIN32</span>
+<span id="L304"><span class="lineNum">     304</span>              : #define DEF_ENC2NAME(name, codepage) { #name, PG_##name }</span>
+<span id="L305"><span class="lineNum">     305</span>              : #else</span>
+<span id="L306"><span class="lineNum">     306</span>              : #define DEF_ENC2NAME(name, codepage) { #name, PG_##name, codepage }</span>
+<span id="L307"><span class="lineNum">     307</span>              : #endif</span>
+<span id="L308"><span class="lineNum">     308</span>              : </span>
+<span id="L309"><span class="lineNum">     309</span>              : const pg_enc2name pg_enc2name_tbl[] =</span>
+<span id="L310"><span class="lineNum">     310</span>              : {</span>
+<span id="L311"><span class="lineNum">     311</span>              :         DEF_ENC2NAME(SQL_ASCII, 0),</span>
+<span id="L312"><span class="lineNum">     312</span>              :         DEF_ENC2NAME(EUC_JP, 20932),</span>
+<span id="L313"><span class="lineNum">     313</span>              :         DEF_ENC2NAME(EUC_CN, 20936),</span>
+<span id="L314"><span class="lineNum">     314</span>              :         DEF_ENC2NAME(EUC_KR, 51949),</span>
+<span id="L315"><span class="lineNum">     315</span>              :         DEF_ENC2NAME(EUC_TW, 0),</span>
+<span id="L316"><span class="lineNum">     316</span>              :         DEF_ENC2NAME(EUC_JIS_2004, 20932),</span>
+<span id="L317"><span class="lineNum">     317</span>              :         DEF_ENC2NAME(UTF8, 65001),</span>
+<span id="L318"><span class="lineNum">     318</span>              :         DEF_ENC2NAME(MULE_INTERNAL, 0),</span>
+<span id="L319"><span class="lineNum">     319</span>              :         DEF_ENC2NAME(LATIN1, 28591),</span>
+<span id="L320"><span class="lineNum">     320</span>              :         DEF_ENC2NAME(LATIN2, 28592),</span>
+<span id="L321"><span class="lineNum">     321</span>              :         DEF_ENC2NAME(LATIN3, 28593),</span>
+<span id="L322"><span class="lineNum">     322</span>              :         DEF_ENC2NAME(LATIN4, 28594),</span>
+<span id="L323"><span class="lineNum">     323</span>              :         DEF_ENC2NAME(LATIN5, 28599),</span>
+<span id="L324"><span class="lineNum">     324</span>              :         DEF_ENC2NAME(LATIN6, 0),</span>
+<span id="L325"><span class="lineNum">     325</span>              :         DEF_ENC2NAME(LATIN7, 0),</span>
+<span id="L326"><span class="lineNum">     326</span>              :         DEF_ENC2NAME(LATIN8, 0),</span>
+<span id="L327"><span class="lineNum">     327</span>              :         DEF_ENC2NAME(LATIN9, 28605),</span>
+<span id="L328"><span class="lineNum">     328</span>              :         DEF_ENC2NAME(LATIN10, 0),</span>
+<span id="L329"><span class="lineNum">     329</span>              :         DEF_ENC2NAME(WIN1256, 1256),</span>
+<span id="L330"><span class="lineNum">     330</span>              :         DEF_ENC2NAME(WIN1258, 1258),</span>
+<span id="L331"><span class="lineNum">     331</span>              :         DEF_ENC2NAME(WIN866, 866),</span>
+<span id="L332"><span class="lineNum">     332</span>              :         DEF_ENC2NAME(WIN874, 874),</span>
+<span id="L333"><span class="lineNum">     333</span>              :         DEF_ENC2NAME(KOI8R, 20866),</span>
+<span id="L334"><span class="lineNum">     334</span>              :         DEF_ENC2NAME(WIN1251, 1251),</span>
+<span id="L335"><span class="lineNum">     335</span>              :         DEF_ENC2NAME(WIN1252, 1252),</span>
+<span id="L336"><span class="lineNum">     336</span>              :         DEF_ENC2NAME(ISO_8859_5, 28595),</span>
+<span id="L337"><span class="lineNum">     337</span>              :         DEF_ENC2NAME(ISO_8859_6, 28596),</span>
+<span id="L338"><span class="lineNum">     338</span>              :         DEF_ENC2NAME(ISO_8859_7, 28597),</span>
+<span id="L339"><span class="lineNum">     339</span>              :         DEF_ENC2NAME(ISO_8859_8, 28598),</span>
+<span id="L340"><span class="lineNum">     340</span>              :         DEF_ENC2NAME(WIN1250, 1250),</span>
+<span id="L341"><span class="lineNum">     341</span>              :         DEF_ENC2NAME(WIN1253, 1253),</span>
+<span id="L342"><span class="lineNum">     342</span>              :         DEF_ENC2NAME(WIN1254, 1254),</span>
+<span id="L343"><span class="lineNum">     343</span>              :         DEF_ENC2NAME(WIN1255, 1255),</span>
+<span id="L344"><span class="lineNum">     344</span>              :         DEF_ENC2NAME(WIN1257, 1257),</span>
+<span id="L345"><span class="lineNum">     345</span>              :         DEF_ENC2NAME(KOI8U, 21866),</span>
+<span id="L346"><span class="lineNum">     346</span>              :         DEF_ENC2NAME(SJIS, 932),</span>
+<span id="L347"><span class="lineNum">     347</span>              :         DEF_ENC2NAME(BIG5, 950),</span>
+<span id="L348"><span class="lineNum">     348</span>              :         DEF_ENC2NAME(GBK, 936),</span>
+<span id="L349"><span class="lineNum">     349</span>              :         DEF_ENC2NAME(UHC, 949),</span>
+<span id="L350"><span class="lineNum">     350</span>              :         DEF_ENC2NAME(GB18030, 54936),</span>
+<span id="L351"><span class="lineNum">     351</span>              :         DEF_ENC2NAME(JOHAB, 0),</span>
+<span id="L352"><span class="lineNum">     352</span>              :         DEF_ENC2NAME(SHIFT_JIS_2004, 932)</span>
+<span id="L353"><span class="lineNum">     353</span>              : };</span>
+<span id="L354"><span class="lineNum">     354</span>              : </span>
+<span id="L355"><span class="lineNum">     355</span>              : /* ----------</span>
+<span id="L356"><span class="lineNum">     356</span>              :  * These are encoding names for gettext.</span>
+<span id="L357"><span class="lineNum">     357</span>              :  *</span>
+<span id="L358"><span class="lineNum">     358</span>              :  * This covers all encodings except MULE_INTERNAL, which is alien to gettext.</span>
+<span id="L359"><span class="lineNum">     359</span>              :  * ----------</span>
+<span id="L360"><span class="lineNum">     360</span>              :  */</span>
+<span id="L361"><span class="lineNum">     361</span>              : const pg_enc2gettext pg_enc2gettext_tbl[] =</span>
+<span id="L362"><span class="lineNum">     362</span>              : {</span>
+<span id="L363"><span class="lineNum">     363</span>              :         {PG_SQL_ASCII, &quot;US-ASCII&quot;},</span>
+<span id="L364"><span class="lineNum">     364</span>              :         {PG_UTF8, &quot;UTF-8&quot;},</span>
+<span id="L365"><span class="lineNum">     365</span>              :         {PG_LATIN1, &quot;LATIN1&quot;},</span>
+<span id="L366"><span class="lineNum">     366</span>              :         {PG_LATIN2, &quot;LATIN2&quot;},</span>
+<span id="L367"><span class="lineNum">     367</span>              :         {PG_LATIN3, &quot;LATIN3&quot;},</span>
+<span id="L368"><span class="lineNum">     368</span>              :         {PG_LATIN4, &quot;LATIN4&quot;},</span>
+<span id="L369"><span class="lineNum">     369</span>              :         {PG_ISO_8859_5, &quot;ISO-8859-5&quot;},</span>
+<span id="L370"><span class="lineNum">     370</span>              :         {PG_ISO_8859_6, &quot;ISO_8859-6&quot;},</span>
+<span id="L371"><span class="lineNum">     371</span>              :         {PG_ISO_8859_7, &quot;ISO-8859-7&quot;},</span>
+<span id="L372"><span class="lineNum">     372</span>              :         {PG_ISO_8859_8, &quot;ISO-8859-8&quot;},</span>
+<span id="L373"><span class="lineNum">     373</span>              :         {PG_LATIN5, &quot;LATIN5&quot;},</span>
+<span id="L374"><span class="lineNum">     374</span>              :         {PG_LATIN6, &quot;LATIN6&quot;},</span>
+<span id="L375"><span class="lineNum">     375</span>              :         {PG_LATIN7, &quot;LATIN7&quot;},</span>
+<span id="L376"><span class="lineNum">     376</span>              :         {PG_LATIN8, &quot;LATIN8&quot;},</span>
+<span id="L377"><span class="lineNum">     377</span>              :         {PG_LATIN9, &quot;LATIN-9&quot;},</span>
+<span id="L378"><span class="lineNum">     378</span>              :         {PG_LATIN10, &quot;LATIN10&quot;},</span>
+<span id="L379"><span class="lineNum">     379</span>              :         {PG_KOI8R, &quot;KOI8-R&quot;},</span>
+<span id="L380"><span class="lineNum">     380</span>              :         {PG_KOI8U, &quot;KOI8-U&quot;},</span>
+<span id="L381"><span class="lineNum">     381</span>              :         {PG_WIN1250, &quot;CP1250&quot;},</span>
+<span id="L382"><span class="lineNum">     382</span>              :         {PG_WIN1251, &quot;CP1251&quot;},</span>
+<span id="L383"><span class="lineNum">     383</span>              :         {PG_WIN1252, &quot;CP1252&quot;},</span>
+<span id="L384"><span class="lineNum">     384</span>              :         {PG_WIN1253, &quot;CP1253&quot;},</span>
+<span id="L385"><span class="lineNum">     385</span>              :         {PG_WIN1254, &quot;CP1254&quot;},</span>
+<span id="L386"><span class="lineNum">     386</span>              :         {PG_WIN1255, &quot;CP1255&quot;},</span>
+<span id="L387"><span class="lineNum">     387</span>              :         {PG_WIN1256, &quot;CP1256&quot;},</span>
+<span id="L388"><span class="lineNum">     388</span>              :         {PG_WIN1257, &quot;CP1257&quot;},</span>
+<span id="L389"><span class="lineNum">     389</span>              :         {PG_WIN1258, &quot;CP1258&quot;},</span>
+<span id="L390"><span class="lineNum">     390</span>              :         {PG_WIN866, &quot;CP866&quot;},</span>
+<span id="L391"><span class="lineNum">     391</span>              :         {PG_WIN874, &quot;CP874&quot;},</span>
+<span id="L392"><span class="lineNum">     392</span>              :         {PG_EUC_CN, &quot;EUC-CN&quot;},</span>
+<span id="L393"><span class="lineNum">     393</span>              :         {PG_EUC_JP, &quot;EUC-JP&quot;},</span>
+<span id="L394"><span class="lineNum">     394</span>              :         {PG_EUC_KR, &quot;EUC-KR&quot;},</span>
+<span id="L395"><span class="lineNum">     395</span>              :         {PG_EUC_TW, &quot;EUC-TW&quot;},</span>
+<span id="L396"><span class="lineNum">     396</span>              :         {PG_EUC_JIS_2004, &quot;EUC-JP&quot;},</span>
+<span id="L397"><span class="lineNum">     397</span>              :         {PG_SJIS, &quot;SHIFT-JIS&quot;},</span>
+<span id="L398"><span class="lineNum">     398</span>              :         {PG_BIG5, &quot;BIG5&quot;},</span>
+<span id="L399"><span class="lineNum">     399</span>              :         {PG_GBK, &quot;GBK&quot;},</span>
+<span id="L400"><span class="lineNum">     400</span>              :         {PG_UHC, &quot;UHC&quot;},</span>
+<span id="L401"><span class="lineNum">     401</span>              :         {PG_GB18030, &quot;GB18030&quot;},</span>
+<span id="L402"><span class="lineNum">     402</span>              :         {PG_JOHAB, &quot;JOHAB&quot;},</span>
+<span id="L403"><span class="lineNum">     403</span>              :         {PG_SHIFT_JIS_2004, &quot;SHIFT_JISX0213&quot;},</span>
+<span id="L404"><span class="lineNum">     404</span>              :         {0, NULL}</span>
+<span id="L405"><span class="lineNum">     405</span>              : };</span>
+<span id="L406"><span class="lineNum">     406</span>              : </span>
+<span id="L407"><span class="lineNum">     407</span>              : </span>
+<span id="L408"><span class="lineNum">     408</span>              : /*</span>
+<span id="L409"><span class="lineNum">     409</span>              :  * Table of encoding names for ICU (currently covers backend encodings only)</span>
+<span id="L410"><span class="lineNum">     410</span>              :  *</span>
+<span id="L411"><span class="lineNum">     411</span>              :  * Reference: &lt;https://ssl.icu-project.org/icu-bin/convexp&gt;</span>
+<span id="L412"><span class="lineNum">     412</span>              :  *</span>
+<span id="L413"><span class="lineNum">     413</span>              :  * NULL entries are not supported by ICU, or their mapping is unclear.</span>
+<span id="L414"><span class="lineNum">     414</span>              :  */</span>
+<span id="L415"><span class="lineNum">     415</span>              : static const char *const pg_enc2icu_tbl[] =</span>
+<span id="L416"><span class="lineNum">     416</span>              : {</span>
+<span id="L417"><span class="lineNum">     417</span>              :         NULL,                                           /* PG_SQL_ASCII */</span>
+<span id="L418"><span class="lineNum">     418</span>              :         &quot;EUC-JP&quot;,                                     /* PG_EUC_JP */</span>
+<span id="L419"><span class="lineNum">     419</span>              :         &quot;EUC-CN&quot;,                                     /* PG_EUC_CN */</span>
+<span id="L420"><span class="lineNum">     420</span>              :         &quot;EUC-KR&quot;,                                     /* PG_EUC_KR */</span>
+<span id="L421"><span class="lineNum">     421</span>              :         &quot;EUC-TW&quot;,                                     /* PG_EUC_TW */</span>
+<span id="L422"><span class="lineNum">     422</span>              :         NULL,                                           /* PG_EUC_JIS_2004 */</span>
+<span id="L423"><span class="lineNum">     423</span>              :         &quot;UTF-8&quot;,                                      /* PG_UTF8 */</span>
+<span id="L424"><span class="lineNum">     424</span>              :         NULL,                                           /* PG_MULE_INTERNAL */</span>
+<span id="L425"><span class="lineNum">     425</span>              :         &quot;ISO-8859-1&quot;,                         /* PG_LATIN1 */</span>
+<span id="L426"><span class="lineNum">     426</span>              :         &quot;ISO-8859-2&quot;,                         /* PG_LATIN2 */</span>
+<span id="L427"><span class="lineNum">     427</span>              :         &quot;ISO-8859-3&quot;,                         /* PG_LATIN3 */</span>
+<span id="L428"><span class="lineNum">     428</span>              :         &quot;ISO-8859-4&quot;,                         /* PG_LATIN4 */</span>
+<span id="L429"><span class="lineNum">     429</span>              :         &quot;ISO-8859-9&quot;,                         /* PG_LATIN5 */</span>
+<span id="L430"><span class="lineNum">     430</span>              :         &quot;ISO-8859-10&quot;,                                /* PG_LATIN6 */</span>
+<span id="L431"><span class="lineNum">     431</span>              :         &quot;ISO-8859-13&quot;,                                /* PG_LATIN7 */</span>
+<span id="L432"><span class="lineNum">     432</span>              :         &quot;ISO-8859-14&quot;,                                /* PG_LATIN8 */</span>
+<span id="L433"><span class="lineNum">     433</span>              :         &quot;ISO-8859-15&quot;,                                /* PG_LATIN9 */</span>
+<span id="L434"><span class="lineNum">     434</span>              :         NULL,                                           /* PG_LATIN10 */</span>
+<span id="L435"><span class="lineNum">     435</span>              :         &quot;CP1256&quot;,                                     /* PG_WIN1256 */</span>
+<span id="L436"><span class="lineNum">     436</span>              :         &quot;CP1258&quot;,                                     /* PG_WIN1258 */</span>
+<span id="L437"><span class="lineNum">     437</span>              :         &quot;CP866&quot;,                                      /* PG_WIN866 */</span>
+<span id="L438"><span class="lineNum">     438</span>              :         NULL,                                           /* PG_WIN874 */</span>
+<span id="L439"><span class="lineNum">     439</span>              :         &quot;KOI8-R&quot;,                                     /* PG_KOI8R */</span>
+<span id="L440"><span class="lineNum">     440</span>              :         &quot;CP1251&quot;,                                     /* PG_WIN1251 */</span>
+<span id="L441"><span class="lineNum">     441</span>              :         &quot;CP1252&quot;,                                     /* PG_WIN1252 */</span>
+<span id="L442"><span class="lineNum">     442</span>              :         &quot;ISO-8859-5&quot;,                         /* PG_ISO_8859_5 */</span>
+<span id="L443"><span class="lineNum">     443</span>              :         &quot;ISO-8859-6&quot;,                         /* PG_ISO_8859_6 */</span>
+<span id="L444"><span class="lineNum">     444</span>              :         &quot;ISO-8859-7&quot;,                         /* PG_ISO_8859_7 */</span>
+<span id="L445"><span class="lineNum">     445</span>              :         &quot;ISO-8859-8&quot;,                         /* PG_ISO_8859_8 */</span>
+<span id="L446"><span class="lineNum">     446</span>              :         &quot;CP1250&quot;,                                     /* PG_WIN1250 */</span>
+<span id="L447"><span class="lineNum">     447</span>              :         &quot;CP1253&quot;,                                     /* PG_WIN1253 */</span>
+<span id="L448"><span class="lineNum">     448</span>              :         &quot;CP1254&quot;,                                     /* PG_WIN1254 */</span>
+<span id="L449"><span class="lineNum">     449</span>              :         &quot;CP1255&quot;,                                     /* PG_WIN1255 */</span>
+<span id="L450"><span class="lineNum">     450</span>              :         &quot;CP1257&quot;,                                     /* PG_WIN1257 */</span>
+<span id="L451"><span class="lineNum">     451</span>              :         &quot;KOI8-U&quot;,                                     /* PG_KOI8U */</span>
+<span id="L452"><span class="lineNum">     452</span>              : };</span>
+<span id="L453"><span class="lineNum">     453</span>              : </span>
+<span id="L454"><span class="lineNum">     454</span>              : </span>
+<span id="L455"><span class="lineNum">     455</span>              : /*</span>
+<span id="L456"><span class="lineNum">     456</span>              :  * Is this encoding supported by ICU?</span>
+<span id="L457"><span class="lineNum">     457</span>              :  */</span>
+<span id="L458"><span class="lineNum">     458</span>              : bool</span>
+<span id="L459"><span class="lineNum">     459</span> <span class="tlaUNC tlaBgUNC">           0 : is_encoding_supported_by_icu(int encoding)</span></span>
+<span id="L460"><span class="lineNum">     460</span>              : {</span>
+<span id="L461"><span class="lineNum">     461</span> <span class="tlaUNC">           0 :         if (!PG_VALID_BE_ENCODING(encoding))</span></span>
+<span id="L462"><span class="lineNum">     462</span> <span class="tlaUNC">           0 :                 return false;</span></span>
+<span id="L463"><span class="lineNum">     463</span> <span class="tlaUNC">           0 :         return (pg_enc2icu_tbl[encoding] != NULL);</span></span>
+<span id="L464"><span class="lineNum">     464</span>              : }</span>
+<span id="L465"><span class="lineNum">     465</span>              : </span>
+<span id="L466"><span class="lineNum">     466</span>              : /*</span>
+<span id="L467"><span class="lineNum">     467</span>              :  * Returns ICU's name for encoding, or NULL if not supported</span>
+<span id="L468"><span class="lineNum">     468</span>              :  */</span>
+<span id="L469"><span class="lineNum">     469</span>              : const char *</span>
+<span id="L470"><span class="lineNum">     470</span> <span class="tlaUNC">           0 : get_encoding_name_for_icu(int encoding)</span></span>
+<span id="L471"><span class="lineNum">     471</span>              : {</span>
+<span id="L472"><span class="lineNum">     472</span>              :         StaticAssertStmt(lengthof(pg_enc2icu_tbl) == PG_ENCODING_BE_LAST + 1,</span>
+<span id="L473"><span class="lineNum">     473</span>              :                                          &quot;pg_enc2icu_tbl incomplete&quot;);</span>
+<span id="L474"><span class="lineNum">     474</span>              : </span>
+<span id="L475"><span class="lineNum">     475</span> <span class="tlaUNC">           0 :         if (!PG_VALID_BE_ENCODING(encoding))</span></span>
+<span id="L476"><span class="lineNum">     476</span> <span class="tlaUNC">           0 :                 return NULL;</span></span>
+<span id="L477"><span class="lineNum">     477</span> <span class="tlaUNC">           0 :         return pg_enc2icu_tbl[encoding];</span></span>
+<span id="L478"><span class="lineNum">     478</span>              : }</span>
+<span id="L479"><span class="lineNum">     479</span>              : </span>
+<span id="L480"><span class="lineNum">     480</span>              : </span>
+<span id="L481"><span class="lineNum">     481</span>              : /* ----------</span>
+<span id="L482"><span class="lineNum">     482</span>              :  * Encoding checks, for error returns -1 else encoding id</span>
+<span id="L483"><span class="lineNum">     483</span>              :  * ----------</span>
+<span id="L484"><span class="lineNum">     484</span>              :  */</span>
+<span id="L485"><span class="lineNum">     485</span>              : int</span>
+<span id="L486"><span class="lineNum">     486</span> <span class="tlaGNC tlaBgGNC">          10 : pg_valid_client_encoding(const char *name)</span></span>
+<span id="L487"><span class="lineNum">     487</span>              : {</span>
+<span id="L488"><span class="lineNum">     488</span>              :         int                     enc;</span>
+<span id="L489"><span class="lineNum">     489</span>              : </span>
+<span id="L490"><span class="lineNum">     490</span> <span class="tlaGNC">          10 :         if ((enc = pg_char_to_encoding(name)) &lt; 0)</span></span>
+<span id="L491"><span class="lineNum">     491</span> <span class="tlaUNC tlaBgUNC">           0 :                 return -1;</span></span>
+<span id="L492"><span class="lineNum">     492</span>              : </span>
+<span id="L493"><span class="lineNum">     493</span> <span class="tlaGNC tlaBgGNC">          10 :         if (!PG_VALID_FE_ENCODING(enc))</span></span>
+<span id="L494"><span class="lineNum">     494</span> <span class="tlaUNC tlaBgUNC">           0 :                 return -1;</span></span>
+<span id="L495"><span class="lineNum">     495</span>              : </span>
+<span id="L496"><span class="lineNum">     496</span> <span class="tlaGNC tlaBgGNC">          10 :         return enc;</span></span>
+<span id="L497"><span class="lineNum">     497</span>              : }</span>
+<span id="L498"><span class="lineNum">     498</span>              : </span>
+<span id="L499"><span class="lineNum">     499</span>              : int</span>
+<span id="L500"><span class="lineNum">     500</span> <span class="tlaUNC tlaBgUNC">           0 : pg_valid_server_encoding(const char *name)</span></span>
+<span id="L501"><span class="lineNum">     501</span>              : {</span>
+<span id="L502"><span class="lineNum">     502</span>              :         int                     enc;</span>
+<span id="L503"><span class="lineNum">     503</span>              : </span>
+<span id="L504"><span class="lineNum">     504</span> <span class="tlaUNC">           0 :         if ((enc = pg_char_to_encoding(name)) &lt; 0)</span></span>
+<span id="L505"><span class="lineNum">     505</span> <span class="tlaUNC">           0 :                 return -1;</span></span>
+<span id="L506"><span class="lineNum">     506</span>              : </span>
+<span id="L507"><span class="lineNum">     507</span> <span class="tlaUNC">           0 :         if (!PG_VALID_BE_ENCODING(enc))</span></span>
+<span id="L508"><span class="lineNum">     508</span> <span class="tlaUNC">           0 :                 return -1;</span></span>
+<span id="L509"><span class="lineNum">     509</span>              : </span>
+<span id="L510"><span class="lineNum">     510</span> <span class="tlaUNC">           0 :         return enc;</span></span>
+<span id="L511"><span class="lineNum">     511</span>              : }</span>
+<span id="L512"><span class="lineNum">     512</span>              : </span>
+<span id="L513"><span class="lineNum">     513</span>              : int</span>
+<span id="L514"><span class="lineNum">     514</span> <span class="tlaGNC tlaBgGNC">        1736 : pg_valid_server_encoding_id(int encoding)</span></span>
+<span id="L515"><span class="lineNum">     515</span>              : {</span>
+<span id="L516"><span class="lineNum">     516</span> <span class="tlaGNC">        1736 :         return PG_VALID_BE_ENCODING(encoding);</span></span>
+<span id="L517"><span class="lineNum">     517</span>              : }</span>
+<span id="L518"><span class="lineNum">     518</span>              : </span>
+<span id="L519"><span class="lineNum">     519</span>              : /*</span>
+<span id="L520"><span class="lineNum">     520</span>              :  * Remove irrelevant chars from encoding name, store at *newkey</span>
+<span id="L521"><span class="lineNum">     521</span>              :  *</span>
+<span id="L522"><span class="lineNum">     522</span>              :  * (Caller's responsibility to provide a large enough buffer)</span>
+<span id="L523"><span class="lineNum">     523</span>              :  */</span>
+<span id="L524"><span class="lineNum">     524</span>              : static char *</span>
+<span id="L525"><span class="lineNum">     525</span> <span class="tlaGNC">          15 : clean_encoding_name(const char *key, char *newkey)</span></span>
+<span id="L526"><span class="lineNum">     526</span>              : {</span>
+<span id="L527"><span class="lineNum">     527</span>              :         const char *p;</span>
+<span id="L528"><span class="lineNum">     528</span>              :         char       *np;</span>
+<span id="L529"><span class="lineNum">     529</span>              : </span>
+<span id="L530"><span class="lineNum">     530</span> <span class="tlaGNC">         100 :         for (p = key, np = newkey; *p != '\0'; p++)</span></span>
+<span id="L531"><span class="lineNum">     531</span>              :         {</span>
+<span id="L532"><span class="lineNum">     532</span> <span class="tlaGNC">          85 :                 if (isalnum((unsigned char) *p))</span></span>
+<span id="L533"><span class="lineNum">     533</span>              :                 {</span>
+<span id="L534"><span class="lineNum">     534</span> <span class="tlaGNC">          80 :                         if (*p &gt;= 'A' &amp;&amp; *p &lt;= 'Z')</span></span>
+<span id="L535"><span class="lineNum">     535</span> <span class="tlaGNC">          64 :                                 *np++ = *p + 'a' - 'A';</span></span>
+<span id="L536"><span class="lineNum">     536</span>              :                         else</span>
+<span id="L537"><span class="lineNum">     537</span> <span class="tlaGNC">          16 :                                 *np++ = *p;</span></span>
+<span id="L538"><span class="lineNum">     538</span>              :                 }</span>
+<span id="L539"><span class="lineNum">     539</span>              :         }</span>
+<span id="L540"><span class="lineNum">     540</span> <span class="tlaGNC">          15 :         *np = '\0';</span></span>
+<span id="L541"><span class="lineNum">     541</span> <span class="tlaGNC">          15 :         return newkey;</span></span>
+<span id="L542"><span class="lineNum">     542</span>              : }</span>
+<span id="L543"><span class="lineNum">     543</span>              : </span>
+<span id="L544"><span class="lineNum">     544</span>              : /*</span>
+<span id="L545"><span class="lineNum">     545</span>              :  * Search encoding by encoding name</span>
+<span id="L546"><span class="lineNum">     546</span>              :  *</span>
+<span id="L547"><span class="lineNum">     547</span>              :  * Returns encoding ID, or -1 if not recognized</span>
+<span id="L548"><span class="lineNum">     548</span>              :  */</span>
+<span id="L549"><span class="lineNum">     549</span>              : int</span>
+<span id="L550"><span class="lineNum">     550</span> <span class="tlaGNC">          15 : pg_char_to_encoding(const char *name)</span></span>
+<span id="L551"><span class="lineNum">     551</span>              : {</span>
+<span id="L552"><span class="lineNum">     552</span> <span class="tlaGNC">          15 :         unsigned int nel = lengthof(pg_encname_tbl);</span></span>
+<span id="L553"><span class="lineNum">     553</span> <span class="tlaGNC">          15 :         const pg_encname *base = pg_encname_tbl,</span></span>
+<span id="L554"><span class="lineNum">     554</span> <span class="tlaGNC">          15 :                            *last = base + nel - 1,</span></span>
+<span id="L555"><span class="lineNum">     555</span>              :                            *position;</span>
+<span id="L556"><span class="lineNum">     556</span>              :         int                     result;</span>
+<span id="L557"><span class="lineNum">     557</span>              :         char            buff[NAMEDATALEN],</span>
+<span id="L558"><span class="lineNum">     558</span>              :                            *key;</span>
+<span id="L559"><span class="lineNum">     559</span>              : </span>
+<span id="L560"><span class="lineNum">     560</span> <span class="tlaGNC">          15 :         if (name == NULL || *name == '\0')</span></span>
+<span id="L561"><span class="lineNum">     561</span> <span class="tlaUNC tlaBgUNC">           0 :                 return -1;</span></span>
+<span id="L562"><span class="lineNum">     562</span>              : </span>
+<span id="L563"><span class="lineNum">     563</span> <span class="tlaGNC tlaBgGNC">          15 :         if (strlen(name) &gt;= NAMEDATALEN)</span></span>
+<span id="L564"><span class="lineNum">     564</span> <span class="tlaUNC tlaBgUNC">           0 :                 return -1;                              /* it's certainly not in the table */</span></span>
+<span id="L565"><span class="lineNum">     565</span>              : </span>
+<span id="L566"><span class="lineNum">     566</span> <span class="tlaGNC tlaBgGNC">          15 :         key = clean_encoding_name(name, buff);</span></span>
+<span id="L567"><span class="lineNum">     567</span>              : </span>
+<span id="L568"><span class="lineNum">     568</span> <span class="tlaGNC">          90 :         while (last &gt;= base)</span></span>
+<span id="L569"><span class="lineNum">     569</span>              :         {</span>
+<span id="L570"><span class="lineNum">     570</span> <span class="tlaGNC">          90 :                 position = base + ((last - base) &gt;&gt; 1);</span></span>
+<span id="L571"><span class="lineNum">     571</span> <span class="tlaGNC">          90 :                 result = key[0] - position-&gt;name[0];</span></span>
+<span id="L572"><span class="lineNum">     572</span>              : </span>
+<span id="L573"><span class="lineNum">     573</span> <span class="tlaGNC">          90 :                 if (result == 0)</span></span>
+<span id="L574"><span class="lineNum">     574</span>              :                 {</span>
+<span id="L575"><span class="lineNum">     575</span> <span class="tlaGNC">          35 :                         result = strcmp(key, position-&gt;name);</span></span>
+<span id="L576"><span class="lineNum">     576</span> <span class="tlaGNC">          35 :                         if (result == 0)</span></span>
+<span id="L577"><span class="lineNum">     577</span> <span class="tlaGNC">          15 :                                 return position-&gt;encoding;</span></span>
+<span id="L578"><span class="lineNum">     578</span>              :                 }</span>
+<span id="L579"><span class="lineNum">     579</span> <span class="tlaGNC">          75 :                 if (result &lt; 0)</span></span>
+<span id="L580"><span class="lineNum">     580</span> <span class="tlaGNC">          35 :                         last = position - 1;</span></span>
+<span id="L581"><span class="lineNum">     581</span>              :                 else</span>
+<span id="L582"><span class="lineNum">     582</span> <span class="tlaGNC">          40 :                         base = position + 1;</span></span>
+<span id="L583"><span class="lineNum">     583</span>              :         }</span>
+<span id="L584"><span class="lineNum">     584</span> <span class="tlaUNC tlaBgUNC">           0 :         return -1;</span></span>
+<span id="L585"><span class="lineNum">     585</span>              : }</span>
+<span id="L586"><span class="lineNum">     586</span>              : </span>
+<span id="L587"><span class="lineNum">     587</span>              : const char *</span>
+<span id="L588"><span class="lineNum">     588</span> <span class="tlaGNC tlaBgGNC">          13 : pg_encoding_to_char(int encoding)</span></span>
+<span id="L589"><span class="lineNum">     589</span>              : {</span>
+<span id="L590"><span class="lineNum">     590</span> <span class="tlaGNC">          13 :         if (PG_VALID_ENCODING(encoding))</span></span>
+<span id="L591"><span class="lineNum">     591</span>              :         {</span>
+<span id="L592"><span class="lineNum">     592</span> <span class="tlaGNC">          13 :                 const pg_enc2name *p = &amp;pg_enc2name_tbl[encoding];</span></span>
+<span id="L593"><span class="lineNum">     593</span>              : </span>
+<span id="L594"><span class="lineNum">     594</span>              :                 Assert(encoding == p-&gt;encoding);</span>
+<span id="L595"><span class="lineNum">     595</span> <span class="tlaGNC">          13 :                 return p-&gt;name;</span></span>
+<span id="L596"><span class="lineNum">     596</span>              :         }</span>
+<span id="L597"><span class="lineNum">     597</span> <span class="tlaUNC tlaBgUNC">           0 :         return &quot;&quot;;</span></span>
+<span id="L598"><span class="lineNum">     598</span>              : }</span>
+        </pre>
+              </td>
+            </tr>
+          </table>
+          <br>
+
+          <table width="100%" border=0 cellspacing=0 cellpadding=0>
+            <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+            <tr><td class="versionInfo">Generated by: <a href="https://github.com//linux-test-project/lcov" target="_parent">LCOV version 2.0-1</a></td></tr>
+          </table>
+          <br>
+
+</body>
+</html>
