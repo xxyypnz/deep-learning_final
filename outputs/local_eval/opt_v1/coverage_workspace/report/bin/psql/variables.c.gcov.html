@@ -1,0 +1,498 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - coverage_filtered.info - bin/psql/variables.c</title>
+  <link rel="stylesheet" type="text/css" href="../../gcov.css">
+</head>
+
+<body>
+
+          <table width="100%" border=0 cellspacing=0 cellpadding=0>
+            <tr><td class="title">LCOV - code coverage report</td></tr>
+            <tr><td class="ruler"><img src="../../glass.png" width=3 height=3 alt=""></td></tr>
+
+            <tr>
+              <td width="100%">
+                <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="10%" class="headerValue"><a href="../../index.html">top level</a> - <a href="index.html">bin/psql</a> - variables.c<span style="font-size: 80%;"> (source / <a href="variables.c.func-c.html">functions</a>)</span></td>
+            <td width="5%"></td>
+            <td width="5%"></td>
+            <td width="5%" class="headerCovTableHead">Coverage</td>
+            <td width="5%" class="headerCovTableHead" title="Covered + Uncovered code">Total</td>
+            <td width="5%" class="headerCovTableHead" title="Exercised code only">Hit</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">coverage_filtered.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntryLo">56.2&nbsp;%</td>
+            <td class="headerCovTableEntry">162</td>
+            <td class="headerCovTableEntry">91</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test Date:</td>
+            <td class="headerValue">2026-06-04 03:12:19</td>
+            <td></td>
+            <td class="headerItem">Functions:</td>
+            <td class="headerCovTableEntryLo">58.3&nbsp;%</td>
+            <td class="headerCovTableEntry">12</td>
+            <td class="headerCovTableEntry">7</td>
+          </tr>
+                  <tr><td><img src="../../glass.png" width=3 height=3 alt=""></td></tr>
+                </table>
+              </td>
+            </tr>
+
+            <tr><td class="ruler"><img src="../../glass.png" width=3 height=3 alt=""></td></tr>
+          </table>
+
+          <table cellpadding=0 cellspacing=0 border=0>
+            <tr>
+              <td><br></td>
+            </tr>
+            <tr>
+              <td>
+<pre class="sourceHeading">            Line data    Source code</pre>
+<pre class="source">
+<span id="L1"><span class="lineNum">       1</span>              : /*</span>
+<span id="L2"><span class="lineNum">       2</span>              :  * psql - the PostgreSQL interactive terminal</span>
+<span id="L3"><span class="lineNum">       3</span>              :  *</span>
+<span id="L4"><span class="lineNum">       4</span>              :  * Copyright (c) 2000-2020, PostgreSQL Global Development Group</span>
+<span id="L5"><span class="lineNum">       5</span>              :  *</span>
+<span id="L6"><span class="lineNum">       6</span>              :  * src/bin/psql/variables.c</span>
+<span id="L7"><span class="lineNum">       7</span>              :  */</span>
+<span id="L8"><span class="lineNum">       8</span>              : #include &quot;postgres_fe.h&quot;</span>
+<span id="L9"><span class="lineNum">       9</span>              : </span>
+<span id="L10"><span class="lineNum">      10</span>              : #include &quot;common.h&quot;</span>
+<span id="L11"><span class="lineNum">      11</span>              : #include &quot;common/logging.h&quot;</span>
+<span id="L12"><span class="lineNum">      12</span>              : #include &quot;variables.h&quot;</span>
+<span id="L13"><span class="lineNum">      13</span>              : </span>
+<span id="L14"><span class="lineNum">      14</span>              : /*</span>
+<span id="L15"><span class="lineNum">      15</span>              :  * Check whether a variable's name is allowed.</span>
+<span id="L16"><span class="lineNum">      16</span>              :  *</span>
+<span id="L17"><span class="lineNum">      17</span>              :  * We allow any non-ASCII character, as well as ASCII letters, digits, and</span>
+<span id="L18"><span class="lineNum">      18</span>              :  * underscore.  Keep this in sync with the definition of variable_char in</span>
+<span id="L19"><span class="lineNum">      19</span>              :  * psqlscan.l and psqlscanslash.l.</span>
+<span id="L20"><span class="lineNum">      20</span>              :  */</span>
+<span id="L21"><span class="lineNum">      21</span>              : static bool</span>
+<span id="L22"><span class="lineNum">      22</span> <span class="tlaGNC tlaBgGNC">        3778 : valid_variable_name(const char *name)</span></span>
+<span id="L23"><span class="lineNum">      23</span>              : {</span>
+<span id="L24"><span class="lineNum">      24</span> <span class="tlaGNC">        3778 :         const unsigned char *ptr = (const unsigned char *) name;</span></span>
+<span id="L25"><span class="lineNum">      25</span>              : </span>
+<span id="L26"><span class="lineNum">      26</span>              :         /* Mustn't be zero-length */</span>
+<span id="L27"><span class="lineNum">      27</span> <span class="tlaGNC">        3778 :         if (*ptr == '\0')</span></span>
+<span id="L28"><span class="lineNum">      28</span> <span class="tlaUNC tlaBgUNC">           0 :                 return false;</span></span>
+<span id="L29"><span class="lineNum">      29</span>              : </span>
+<span id="L30"><span class="lineNum">      30</span> <span class="tlaGNC tlaBgGNC">       31859 :         while (*ptr)</span></span>
+<span id="L31"><span class="lineNum">      31</span>              :         {</span>
+<span id="L32"><span class="lineNum">      32</span> <span class="tlaGNC">       28081 :                 if (IS_HIGHBIT_SET(*ptr) ||</span></span>
+<span id="L33"><span class="lineNum">      33</span> <span class="tlaGNC">       28081 :                         strchr(&quot;ABCDEFGHIJKLMNOPQRSTUVWXYZ&quot; &quot;abcdefghijklmnopqrstuvwxyz&quot;</span></span>
+<span id="L34"><span class="lineNum">      34</span> <span class="tlaGNC">       28081 :                                    &quot;_0123456789&quot;, *ptr) != NULL)</span></span>
+<span id="L35"><span class="lineNum">      35</span> <span class="tlaGNC">       28081 :                         ptr++;</span></span>
+<span id="L36"><span class="lineNum">      36</span>              :                 else</span>
+<span id="L37"><span class="lineNum">      37</span> <span class="tlaUNC tlaBgUNC">           0 :                         return false;</span></span>
+<span id="L38"><span class="lineNum">      38</span>              :         }</span>
+<span id="L39"><span class="lineNum">      39</span>              : </span>
+<span id="L40"><span class="lineNum">      40</span> <span class="tlaGNC tlaBgGNC">        3778 :         return true;</span></span>
+<span id="L41"><span class="lineNum">      41</span>              : }</span>
+<span id="L42"><span class="lineNum">      42</span>              : </span>
+<span id="L43"><span class="lineNum">      43</span>              : /*</span>
+<span id="L44"><span class="lineNum">      44</span>              :  * A &quot;variable space&quot; is represented by an otherwise-unused struct _variable</span>
+<span id="L45"><span class="lineNum">      45</span>              :  * that serves as list header.</span>
+<span id="L46"><span class="lineNum">      46</span>              :  *</span>
+<span id="L47"><span class="lineNum">      47</span>              :  * The list entries are kept in name order (according to strcmp).  This</span>
+<span id="L48"><span class="lineNum">      48</span>              :  * is mainly to make the results of PrintVariables() more pleasing.</span>
+<span id="L49"><span class="lineNum">      49</span>              :  */</span>
+<span id="L50"><span class="lineNum">      50</span>              : VariableSpace</span>
+<span id="L51"><span class="lineNum">      51</span> <span class="tlaGNC">           2 : CreateVariableSpace(void)</span></span>
+<span id="L52"><span class="lineNum">      52</span>              : {</span>
+<span id="L53"><span class="lineNum">      53</span>              :         struct _variable *ptr;</span>
+<span id="L54"><span class="lineNum">      54</span>              : </span>
+<span id="L55"><span class="lineNum">      55</span> <span class="tlaGNC">           2 :         ptr = pg_malloc(sizeof *ptr);</span></span>
+<span id="L56"><span class="lineNum">      56</span> <span class="tlaGNC">           2 :         ptr-&gt;name = NULL;</span></span>
+<span id="L57"><span class="lineNum">      57</span> <span class="tlaGNC">           2 :         ptr-&gt;value = NULL;</span></span>
+<span id="L58"><span class="lineNum">      58</span> <span class="tlaGNC">           2 :         ptr-&gt;substitute_hook = NULL;</span></span>
+<span id="L59"><span class="lineNum">      59</span> <span class="tlaGNC">           2 :         ptr-&gt;assign_hook = NULL;</span></span>
+<span id="L60"><span class="lineNum">      60</span> <span class="tlaGNC">           2 :         ptr-&gt;next = NULL;</span></span>
+<span id="L61"><span class="lineNum">      61</span>              : </span>
+<span id="L62"><span class="lineNum">      62</span> <span class="tlaGNC">           2 :         return ptr;</span></span>
+<span id="L63"><span class="lineNum">      63</span>              : }</span>
+<span id="L64"><span class="lineNum">      64</span>              : </span>
+<span id="L65"><span class="lineNum">      65</span>              : /*</span>
+<span id="L66"><span class="lineNum">      66</span>              :  * Get string value of variable, or NULL if it's not defined.</span>
+<span id="L67"><span class="lineNum">      67</span>              :  *</span>
+<span id="L68"><span class="lineNum">      68</span>              :  * Note: result is valid until variable is next assigned to.</span>
+<span id="L69"><span class="lineNum">      69</span>              :  */</span>
+<span id="L70"><span class="lineNum">      70</span>              : const char *</span>
+<span id="L71"><span class="lineNum">      71</span> <span class="tlaUNC tlaBgUNC">           0 : GetVariable(VariableSpace space, const char *name)</span></span>
+<span id="L72"><span class="lineNum">      72</span>              : {</span>
+<span id="L73"><span class="lineNum">      73</span>              :         struct _variable *current;</span>
+<span id="L74"><span class="lineNum">      74</span>              : </span>
+<span id="L75"><span class="lineNum">      75</span> <span class="tlaUNC">           0 :         if (!space)</span></span>
+<span id="L76"><span class="lineNum">      76</span> <span class="tlaUNC">           0 :                 return NULL;</span></span>
+<span id="L77"><span class="lineNum">      77</span>              : </span>
+<span id="L78"><span class="lineNum">      78</span> <span class="tlaUNC">           0 :         for (current = space-&gt;next; current; current = current-&gt;next)</span></span>
+<span id="L79"><span class="lineNum">      79</span>              :         {</span>
+<span id="L80"><span class="lineNum">      80</span> <span class="tlaUNC">           0 :                 int                     cmp = strcmp(current-&gt;name, name);</span></span>
+<span id="L81"><span class="lineNum">      81</span>              : </span>
+<span id="L82"><span class="lineNum">      82</span> <span class="tlaUNC">           0 :                 if (cmp == 0)</span></span>
+<span id="L83"><span class="lineNum">      83</span>              :                 {</span>
+<span id="L84"><span class="lineNum">      84</span>              :                         /* this is correct answer when value is NULL, too */</span>
+<span id="L85"><span class="lineNum">      85</span> <span class="tlaUNC">           0 :                         return current-&gt;value;</span></span>
+<span id="L86"><span class="lineNum">      86</span>              :                 }</span>
+<span id="L87"><span class="lineNum">      87</span> <span class="tlaUNC">           0 :                 if (cmp &gt; 0)</span></span>
+<span id="L88"><span class="lineNum">      88</span> <span class="tlaUNC">           0 :                         break;                          /* it's not there */</span></span>
+<span id="L89"><span class="lineNum">      89</span>              :         }</span>
+<span id="L90"><span class="lineNum">      90</span>              : </span>
+<span id="L91"><span class="lineNum">      91</span> <span class="tlaUNC">           0 :         return NULL;</span></span>
+<span id="L92"><span class="lineNum">      92</span>              : }</span>
+<span id="L93"><span class="lineNum">      93</span>              : </span>
+<span id="L94"><span class="lineNum">      94</span>              : /*</span>
+<span id="L95"><span class="lineNum">      95</span>              :  * Try to interpret &quot;value&quot; as a boolean value, and if successful,</span>
+<span id="L96"><span class="lineNum">      96</span>              :  * store it in *result.  Otherwise don't clobber *result.</span>
+<span id="L97"><span class="lineNum">      97</span>              :  *</span>
+<span id="L98"><span class="lineNum">      98</span>              :  * Valid values are: true, false, yes, no, on, off, 1, 0; as well as unique</span>
+<span id="L99"><span class="lineNum">      99</span>              :  * prefixes thereof.</span>
+<span id="L100"><span class="lineNum">     100</span>              :  *</span>
+<span id="L101"><span class="lineNum">     101</span>              :  * &quot;name&quot; is the name of the variable we're assigning to, to use in error</span>
+<span id="L102"><span class="lineNum">     102</span>              :  * report if any.  Pass name == NULL to suppress the error report.</span>
+<span id="L103"><span class="lineNum">     103</span>              :  *</span>
+<span id="L104"><span class="lineNum">     104</span>              :  * Return true when &quot;value&quot; is syntactically valid, false otherwise.</span>
+<span id="L105"><span class="lineNum">     105</span>              :  */</span>
+<span id="L106"><span class="lineNum">     106</span>              : bool</span>
+<span id="L107"><span class="lineNum">     107</span> <span class="tlaGNC tlaBgGNC">          19 : ParseVariableBool(const char *value, const char *name, bool *result)</span></span>
+<span id="L108"><span class="lineNum">     108</span>              : {</span>
+<span id="L109"><span class="lineNum">     109</span>              :         size_t          len;</span>
+<span id="L110"><span class="lineNum">     110</span> <span class="tlaGNC">          19 :         bool            valid = true;</span></span>
+<span id="L111"><span class="lineNum">     111</span>              : </span>
+<span id="L112"><span class="lineNum">     112</span>              :         /* Treat &quot;unset&quot; as an empty string, which will lead to error below */</span>
+<span id="L113"><span class="lineNum">     113</span> <span class="tlaGNC">          19 :         if (value == NULL)</span></span>
+<span id="L114"><span class="lineNum">     114</span> <span class="tlaUNC tlaBgUNC">           0 :                 value = &quot;&quot;;</span></span>
+<span id="L115"><span class="lineNum">     115</span>              : </span>
+<span id="L116"><span class="lineNum">     116</span> <span class="tlaGNC tlaBgGNC">          19 :         len = strlen(value);</span></span>
+<span id="L117"><span class="lineNum">     117</span>              : </span>
+<span id="L118"><span class="lineNum">     118</span> <span class="tlaGNC">          19 :         if (len &gt; 0 &amp;&amp; pg_strncasecmp(value, &quot;true&quot;, len) == 0)</span></span>
+<span id="L119"><span class="lineNum">     119</span> <span class="tlaUNC tlaBgUNC">           0 :                 *result = true;</span></span>
+<span id="L120"><span class="lineNum">     120</span> <span class="tlaGNC tlaBgGNC">          19 :         else if (len &gt; 0 &amp;&amp; pg_strncasecmp(value, &quot;false&quot;, len) == 0)</span></span>
+<span id="L121"><span class="lineNum">     121</span> <span class="tlaUNC tlaBgUNC">           0 :                 *result = false;</span></span>
+<span id="L122"><span class="lineNum">     122</span> <span class="tlaGNC tlaBgGNC">          19 :         else if (len &gt; 0 &amp;&amp; pg_strncasecmp(value, &quot;yes&quot;, len) == 0)</span></span>
+<span id="L123"><span class="lineNum">     123</span> <span class="tlaUNC tlaBgUNC">           0 :                 *result = true;</span></span>
+<span id="L124"><span class="lineNum">     124</span> <span class="tlaGNC tlaBgGNC">          19 :         else if (len &gt; 0 &amp;&amp; pg_strncasecmp(value, &quot;no&quot;, len) == 0)</span></span>
+<span id="L125"><span class="lineNum">     125</span> <span class="tlaUNC tlaBgUNC">           0 :                 *result = false;</span></span>
+<span id="L126"><span class="lineNum">     126</span>              :         /* 'o' is not unique enough */</span>
+<span id="L127"><span class="lineNum">     127</span> <span class="tlaGNC tlaBgGNC">          19 :         else if (pg_strncasecmp(value, &quot;on&quot;, (len &gt; 2 ? len : 2)) == 0)</span></span>
+<span id="L128"><span class="lineNum">     128</span> <span class="tlaGNC">           2 :                 *result = true;</span></span>
+<span id="L129"><span class="lineNum">     129</span> <span class="tlaGNC">          17 :         else if (pg_strncasecmp(value, &quot;off&quot;, (len &gt; 2 ? len : 2)) == 0)</span></span>
+<span id="L130"><span class="lineNum">     130</span> <span class="tlaGNC">          17 :                 *result = false;</span></span>
+<span id="L131"><span class="lineNum">     131</span> <span class="tlaUNC tlaBgUNC">           0 :         else if (pg_strcasecmp(value, &quot;1&quot;) == 0)</span></span>
+<span id="L132"><span class="lineNum">     132</span> <span class="tlaUNC">           0 :                 *result = true;</span></span>
+<span id="L133"><span class="lineNum">     133</span> <span class="tlaUNC">           0 :         else if (pg_strcasecmp(value, &quot;0&quot;) == 0)</span></span>
+<span id="L134"><span class="lineNum">     134</span> <span class="tlaUNC">           0 :                 *result = false;</span></span>
+<span id="L135"><span class="lineNum">     135</span>              :         else</span>
+<span id="L136"><span class="lineNum">     136</span>              :         {</span>
+<span id="L137"><span class="lineNum">     137</span>              :                 /* string is not recognized; don't clobber *result */</span>
+<span id="L138"><span class="lineNum">     138</span> <span class="tlaUNC">           0 :                 if (name)</span></span>
+<span id="L139"><span class="lineNum">     139</span> <span class="tlaUNC">           0 :                         pg_log_error(&quot;unrecognized value \&quot;%s\&quot; for \&quot;%s\&quot;: Boolean expected&quot;,</span></span>
+<span id="L140"><span class="lineNum">     140</span>              :                                                  value, name);</span>
+<span id="L141"><span class="lineNum">     141</span> <span class="tlaUNC">           0 :                 valid = false;</span></span>
+<span id="L142"><span class="lineNum">     142</span>              :         }</span>
+<span id="L143"><span class="lineNum">     143</span> <span class="tlaGNC tlaBgGNC">          19 :         return valid;</span></span>
+<span id="L144"><span class="lineNum">     144</span>              : }</span>
+<span id="L145"><span class="lineNum">     145</span>              : </span>
+<span id="L146"><span class="lineNum">     146</span>              : /*</span>
+<span id="L147"><span class="lineNum">     147</span>              :  * Try to interpret &quot;value&quot; as an integer value, and if successful,</span>
+<span id="L148"><span class="lineNum">     148</span>              :  * store it in *result.  Otherwise don't clobber *result.</span>
+<span id="L149"><span class="lineNum">     149</span>              :  *</span>
+<span id="L150"><span class="lineNum">     150</span>              :  * &quot;name&quot; is the name of the variable we're assigning to, to use in error</span>
+<span id="L151"><span class="lineNum">     151</span>              :  * report if any.  Pass name == NULL to suppress the error report.</span>
+<span id="L152"><span class="lineNum">     152</span>              :  *</span>
+<span id="L153"><span class="lineNum">     153</span>              :  * Return true when &quot;value&quot; is syntactically valid, false otherwise.</span>
+<span id="L154"><span class="lineNum">     154</span>              :  */</span>
+<span id="L155"><span class="lineNum">     155</span>              : bool</span>
+<span id="L156"><span class="lineNum">     156</span> <span class="tlaGNC">           6 : ParseVariableNum(const char *value, const char *name, int *result)</span></span>
+<span id="L157"><span class="lineNum">     157</span>              : {</span>
+<span id="L158"><span class="lineNum">     158</span>              :         char       *end;</span>
+<span id="L159"><span class="lineNum">     159</span>              :         long            numval;</span>
+<span id="L160"><span class="lineNum">     160</span>              : </span>
+<span id="L161"><span class="lineNum">     161</span>              :         /* Treat &quot;unset&quot; as an empty string, which will lead to error below */</span>
+<span id="L162"><span class="lineNum">     162</span> <span class="tlaGNC">           6 :         if (value == NULL)</span></span>
+<span id="L163"><span class="lineNum">     163</span> <span class="tlaUNC tlaBgUNC">           0 :                 value = &quot;&quot;;</span></span>
+<span id="L164"><span class="lineNum">     164</span>              : </span>
+<span id="L165"><span class="lineNum">     165</span> <span class="tlaGNC tlaBgGNC">           6 :         errno = 0;</span></span>
+<span id="L166"><span class="lineNum">     166</span> <span class="tlaGNC">           6 :         numval = strtol(value, &amp;end, 0);</span></span>
+<span id="L167"><span class="lineNum">     167</span> <span class="tlaGNC">           6 :         if (errno == 0 &amp;&amp; *end == '\0' &amp;&amp; end != value &amp;&amp; numval == (int) numval)</span></span>
+<span id="L168"><span class="lineNum">     168</span>              :         {</span>
+<span id="L169"><span class="lineNum">     169</span> <span class="tlaGNC">           6 :                 *result = (int) numval;</span></span>
+<span id="L170"><span class="lineNum">     170</span> <span class="tlaGNC">           6 :                 return true;</span></span>
+<span id="L171"><span class="lineNum">     171</span>              :         }</span>
+<span id="L172"><span class="lineNum">     172</span>              :         else</span>
+<span id="L173"><span class="lineNum">     173</span>              :         {</span>
+<span id="L174"><span class="lineNum">     174</span>              :                 /* string is not recognized; don't clobber *result */</span>
+<span id="L175"><span class="lineNum">     175</span> <span class="tlaUNC tlaBgUNC">           0 :                 if (name)</span></span>
+<span id="L176"><span class="lineNum">     176</span> <span class="tlaUNC">           0 :                         pg_log_error(&quot;invalid value \&quot;%s\&quot; for \&quot;%s\&quot;: integer expected&quot;,</span></span>
+<span id="L177"><span class="lineNum">     177</span>              :                                                  value, name);</span>
+<span id="L178"><span class="lineNum">     178</span> <span class="tlaUNC">           0 :                 return false;</span></span>
+<span id="L179"><span class="lineNum">     179</span>              :         }</span>
+<span id="L180"><span class="lineNum">     180</span>              : }</span>
+<span id="L181"><span class="lineNum">     181</span>              : </span>
+<span id="L182"><span class="lineNum">     182</span>              : /*</span>
+<span id="L183"><span class="lineNum">     183</span>              :  * Print values of all variables.</span>
+<span id="L184"><span class="lineNum">     184</span>              :  */</span>
+<span id="L185"><span class="lineNum">     185</span>              : void</span>
+<span id="L186"><span class="lineNum">     186</span> <span class="tlaUNC">           0 : PrintVariables(VariableSpace space)</span></span>
+<span id="L187"><span class="lineNum">     187</span>              : {</span>
+<span id="L188"><span class="lineNum">     188</span>              :         struct _variable *ptr;</span>
+<span id="L189"><span class="lineNum">     189</span>              : </span>
+<span id="L190"><span class="lineNum">     190</span> <span class="tlaUNC">           0 :         if (!space)</span></span>
+<span id="L191"><span class="lineNum">     191</span> <span class="tlaUNC">           0 :                 return;</span></span>
+<span id="L192"><span class="lineNum">     192</span>              : </span>
+<span id="L193"><span class="lineNum">     193</span> <span class="tlaUNC">           0 :         for (ptr = space-&gt;next; ptr; ptr = ptr-&gt;next)</span></span>
+<span id="L194"><span class="lineNum">     194</span>              :         {</span>
+<span id="L195"><span class="lineNum">     195</span> <span class="tlaUNC">           0 :                 if (ptr-&gt;value)</span></span>
+<span id="L196"><span class="lineNum">     196</span> <span class="tlaUNC">           0 :                         printf(&quot;%s = '%s'\n&quot;, ptr-&gt;name, ptr-&gt;value);</span></span>
+<span id="L197"><span class="lineNum">     197</span> <span class="tlaUNC">           0 :                 if (cancel_pressed)</span></span>
+<span id="L198"><span class="lineNum">     198</span> <span class="tlaUNC">           0 :                         break;</span></span>
+<span id="L199"><span class="lineNum">     199</span>              :         }</span>
+<span id="L200"><span class="lineNum">     200</span>              : }</span>
+<span id="L201"><span class="lineNum">     201</span>              : </span>
+<span id="L202"><span class="lineNum">     202</span>              : /*</span>
+<span id="L203"><span class="lineNum">     203</span>              :  * Set the variable named &quot;name&quot; to value &quot;value&quot;,</span>
+<span id="L204"><span class="lineNum">     204</span>              :  * or delete it if &quot;value&quot; is NULL.</span>
+<span id="L205"><span class="lineNum">     205</span>              :  *</span>
+<span id="L206"><span class="lineNum">     206</span>              :  * Returns true if successful, false if not; in the latter case a suitable</span>
+<span id="L207"><span class="lineNum">     207</span>              :  * error message has been printed, except for the unexpected case of</span>
+<span id="L208"><span class="lineNum">     208</span>              :  * space or name being NULL.</span>
+<span id="L209"><span class="lineNum">     209</span>              :  */</span>
+<span id="L210"><span class="lineNum">     210</span>              : bool</span>
+<span id="L211"><span class="lineNum">     211</span> <span class="tlaGNC tlaBgGNC">        3738 : SetVariable(VariableSpace space, const char *name, const char *value)</span></span>
+<span id="L212"><span class="lineNum">     212</span>              : {</span>
+<span id="L213"><span class="lineNum">     213</span>              :         struct _variable *current,</span>
+<span id="L214"><span class="lineNum">     214</span>              :                            *previous;</span>
+<span id="L215"><span class="lineNum">     215</span>              : </span>
+<span id="L216"><span class="lineNum">     216</span> <span class="tlaGNC">        3738 :         if (!space || !name)</span></span>
+<span id="L217"><span class="lineNum">     217</span> <span class="tlaUNC tlaBgUNC">           0 :                 return false;</span></span>
+<span id="L218"><span class="lineNum">     218</span>              : </span>
+<span id="L219"><span class="lineNum">     219</span> <span class="tlaGNC tlaBgGNC">        3738 :         if (!valid_variable_name(name))</span></span>
+<span id="L220"><span class="lineNum">     220</span>              :         {</span>
+<span id="L221"><span class="lineNum">     221</span>              :                 /* Deletion of non-existent variable is not an error */</span>
+<span id="L222"><span class="lineNum">     222</span> <span class="tlaUNC tlaBgUNC">           0 :                 if (!value)</span></span>
+<span id="L223"><span class="lineNum">     223</span> <span class="tlaUNC">           0 :                         return true;</span></span>
+<span id="L224"><span class="lineNum">     224</span> <span class="tlaUNC">           0 :                 pg_log_error(&quot;invalid variable name: \&quot;%s\&quot;&quot;, name);</span></span>
+<span id="L225"><span class="lineNum">     225</span> <span class="tlaUNC">           0 :                 return false;</span></span>
+<span id="L226"><span class="lineNum">     226</span>              :         }</span>
+<span id="L227"><span class="lineNum">     227</span>              : </span>
+<span id="L228"><span class="lineNum">     228</span> <span class="tlaGNC tlaBgGNC">        3738 :         for (previous = space, current = space-&gt;next;</span></span>
+<span id="L229"><span class="lineNum">     229</span> <span class="tlaGNC">       73063 :                  current;</span></span>
+<span id="L230"><span class="lineNum">     230</span> <span class="tlaGNC">       69325 :                  previous = current, current = current-&gt;next)</span></span>
+<span id="L231"><span class="lineNum">     231</span>              :         {</span>
+<span id="L232"><span class="lineNum">     232</span> <span class="tlaGNC">       73057 :                 int                     cmp = strcmp(current-&gt;name, name);</span></span>
+<span id="L233"><span class="lineNum">     233</span>              : </span>
+<span id="L234"><span class="lineNum">     234</span> <span class="tlaGNC">       73057 :                 if (cmp == 0)</span></span>
+<span id="L235"><span class="lineNum">     235</span>              :                 {</span>
+<span id="L236"><span class="lineNum">     236</span>              :                         /*</span>
+<span id="L237"><span class="lineNum">     237</span>              :                          * Found entry, so update, unless assign hook returns false.</span>
+<span id="L238"><span class="lineNum">     238</span>              :                          *</span>
+<span id="L239"><span class="lineNum">     239</span>              :                          * We must duplicate the passed value to start with.  This</span>
+<span id="L240"><span class="lineNum">     240</span>              :                          * simplifies the API for substitute hooks.  Moreover, some assign</span>
+<span id="L241"><span class="lineNum">     241</span>              :                          * hooks assume that the passed value has the same lifespan as the</span>
+<span id="L242"><span class="lineNum">     242</span>              :                          * variable.  Having to free the string again on failure is a</span>
+<span id="L243"><span class="lineNum">     243</span>              :                          * small price to pay for keeping these APIs simple.</span>
+<span id="L244"><span class="lineNum">     244</span>              :                          */</span>
+<span id="L245"><span class="lineNum">     245</span> <span class="tlaGNC">        3707 :                         char       *new_value = value ? pg_strdup(value) : NULL;</span></span>
+<span id="L246"><span class="lineNum">     246</span>              :                         bool            confirmed;</span>
+<span id="L247"><span class="lineNum">     247</span>              : </span>
+<span id="L248"><span class="lineNum">     248</span> <span class="tlaGNC">        3707 :                         if (current-&gt;substitute_hook)</span></span>
+<span id="L249"><span class="lineNum">     249</span> <span class="tlaGNC">           3 :                                 new_value = current-&gt;substitute_hook(new_value);</span></span>
+<span id="L250"><span class="lineNum">     250</span>              : </span>
+<span id="L251"><span class="lineNum">     251</span> <span class="tlaGNC">        3707 :                         if (current-&gt;assign_hook)</span></span>
+<span id="L252"><span class="lineNum">     252</span> <span class="tlaGNC">           9 :                                 confirmed = current-&gt;assign_hook(new_value);</span></span>
+<span id="L253"><span class="lineNum">     253</span>              :                         else</span>
+<span id="L254"><span class="lineNum">     254</span> <span class="tlaGNC">        3698 :                                 confirmed = true;</span></span>
+<span id="L255"><span class="lineNum">     255</span>              : </span>
+<span id="L256"><span class="lineNum">     256</span> <span class="tlaGNC">        3707 :                         if (confirmed)</span></span>
+<span id="L257"><span class="lineNum">     257</span>              :                         {</span>
+<span id="L258"><span class="lineNum">     258</span> <span class="tlaGNC">        3707 :                                 if (current-&gt;value)</span></span>
+<span id="L259"><span class="lineNum">     259</span> <span class="tlaGNC">        3701 :                                         pg_free(current-&gt;value);</span></span>
+<span id="L260"><span class="lineNum">     260</span> <span class="tlaGNC">        3707 :                                 current-&gt;value = new_value;</span></span>
+<span id="L261"><span class="lineNum">     261</span>              : </span>
+<span id="L262"><span class="lineNum">     262</span>              :                                 /*</span>
+<span id="L263"><span class="lineNum">     263</span>              :                                  * If we deleted the value, and there are no hooks to</span>
+<span id="L264"><span class="lineNum">     264</span>              :                                  * remember, we can discard the variable altogether.</span>
+<span id="L265"><span class="lineNum">     265</span>              :                                  */</span>
+<span id="L266"><span class="lineNum">     266</span> <span class="tlaGNC">        3707 :                                 if (new_value == NULL &amp;&amp;</span></span>
+<span id="L267"><span class="lineNum">     267</span> <span class="tlaUNC tlaBgUNC">           0 :                                         current-&gt;substitute_hook == NULL &amp;&amp;</span></span>
+<span id="L268"><span class="lineNum">     268</span> <span class="tlaUNC">           0 :                                         current-&gt;assign_hook == NULL)</span></span>
+<span id="L269"><span class="lineNum">     269</span>              :                                 {</span>
+<span id="L270"><span class="lineNum">     270</span> <span class="tlaUNC">           0 :                                         previous-&gt;next = current-&gt;next;</span></span>
+<span id="L271"><span class="lineNum">     271</span> <span class="tlaUNC">           0 :                                         free(current-&gt;name);</span></span>
+<span id="L272"><span class="lineNum">     272</span> <span class="tlaUNC">           0 :                                         free(current);</span></span>
+<span id="L273"><span class="lineNum">     273</span>              :                                 }</span>
+<span id="L274"><span class="lineNum">     274</span>              :                         }</span>
+<span id="L275"><span class="lineNum">     275</span> <span class="tlaUNC">           0 :                         else if (new_value)</span></span>
+<span id="L276"><span class="lineNum">     276</span> <span class="tlaUNC">           0 :                                 pg_free(new_value); /* current-&gt;value is left unchanged */</span></span>
+<span id="L277"><span class="lineNum">     277</span>              : </span>
+<span id="L278"><span class="lineNum">     278</span> <span class="tlaGNC tlaBgGNC">        3707 :                         return confirmed;</span></span>
+<span id="L279"><span class="lineNum">     279</span>              :                 }</span>
+<span id="L280"><span class="lineNum">     280</span> <span class="tlaGNC">       69350 :                 if (cmp &gt; 0)</span></span>
+<span id="L281"><span class="lineNum">     281</span> <span class="tlaGNC">          25 :                         break;                          /* it's not there */</span></span>
+<span id="L282"><span class="lineNum">     282</span>              :         }</span>
+<span id="L283"><span class="lineNum">     283</span>              : </span>
+<span id="L284"><span class="lineNum">     284</span>              :         /* not present, make new entry ... unless we were asked to delete */</span>
+<span id="L285"><span class="lineNum">     285</span> <span class="tlaGNC">          31 :         if (value)</span></span>
+<span id="L286"><span class="lineNum">     286</span>              :         {</span>
+<span id="L287"><span class="lineNum">     287</span> <span class="tlaGNC">          31 :                 current = pg_malloc(sizeof *current);</span></span>
+<span id="L288"><span class="lineNum">     288</span> <span class="tlaGNC">          31 :                 current-&gt;name = pg_strdup(name);</span></span>
+<span id="L289"><span class="lineNum">     289</span> <span class="tlaGNC">          31 :                 current-&gt;value = pg_strdup(value);</span></span>
+<span id="L290"><span class="lineNum">     290</span> <span class="tlaGNC">          31 :                 current-&gt;substitute_hook = NULL;</span></span>
+<span id="L291"><span class="lineNum">     291</span> <span class="tlaGNC">          31 :                 current-&gt;assign_hook = NULL;</span></span>
+<span id="L292"><span class="lineNum">     292</span> <span class="tlaGNC">          31 :                 current-&gt;next = previous-&gt;next;</span></span>
+<span id="L293"><span class="lineNum">     293</span> <span class="tlaGNC">          31 :                 previous-&gt;next = current;</span></span>
+<span id="L294"><span class="lineNum">     294</span>              :         }</span>
+<span id="L295"><span class="lineNum">     295</span> <span class="tlaGNC">          31 :         return true;</span></span>
+<span id="L296"><span class="lineNum">     296</span>              : }</span>
+<span id="L297"><span class="lineNum">     297</span>              : </span>
+<span id="L298"><span class="lineNum">     298</span>              : /*</span>
+<span id="L299"><span class="lineNum">     299</span>              :  * Attach substitute and/or assign hook functions to the named variable.</span>
+<span id="L300"><span class="lineNum">     300</span>              :  * If you need only one hook, pass NULL for the other.</span>
+<span id="L301"><span class="lineNum">     301</span>              :  *</span>
+<span id="L302"><span class="lineNum">     302</span>              :  * If the variable doesn't already exist, create it with value NULL, just so</span>
+<span id="L303"><span class="lineNum">     303</span>              :  * we have a place to store the hook function(s).  (The substitute hook might</span>
+<span id="L304"><span class="lineNum">     304</span>              :  * immediately change the NULL to something else; if not, this state is</span>
+<span id="L305"><span class="lineNum">     305</span>              :  * externally the same as the variable not being defined.)</span>
+<span id="L306"><span class="lineNum">     306</span>              :  *</span>
+<span id="L307"><span class="lineNum">     307</span>              :  * The substitute hook, if given, is immediately called on the variable's</span>
+<span id="L308"><span class="lineNum">     308</span>              :  * value.  Then the assign hook, if given, is called on the variable's value.</span>
+<span id="L309"><span class="lineNum">     309</span>              :  * This is meant to let it update any derived psql state.  If the assign hook</span>
+<span id="L310"><span class="lineNum">     310</span>              :  * doesn't like the current value, it will print a message to that effect,</span>
+<span id="L311"><span class="lineNum">     311</span>              :  * but we'll ignore it.  Generally we do not expect any such failure here,</span>
+<span id="L312"><span class="lineNum">     312</span>              :  * because this should get called before any user-supplied value is assigned.</span>
+<span id="L313"><span class="lineNum">     313</span>              :  */</span>
+<span id="L314"><span class="lineNum">     314</span>              : void</span>
+<span id="L315"><span class="lineNum">     315</span> <span class="tlaGNC">          40 : SetVariableHooks(VariableSpace space, const char *name,</span></span>
+<span id="L316"><span class="lineNum">     316</span>              :                                  VariableSubstituteHook shook,</span>
+<span id="L317"><span class="lineNum">     317</span>              :                                  VariableAssignHook ahook)</span>
+<span id="L318"><span class="lineNum">     318</span>              : {</span>
+<span id="L319"><span class="lineNum">     319</span>              :         struct _variable *current,</span>
+<span id="L320"><span class="lineNum">     320</span>              :                            *previous;</span>
+<span id="L321"><span class="lineNum">     321</span>              : </span>
+<span id="L322"><span class="lineNum">     322</span> <span class="tlaGNC">          40 :         if (!space || !name)</span></span>
+<span id="L323"><span class="lineNum">     323</span> <span class="tlaUNC tlaBgUNC">           0 :                 return;</span></span>
+<span id="L324"><span class="lineNum">     324</span>              : </span>
+<span id="L325"><span class="lineNum">     325</span> <span class="tlaGNC tlaBgGNC">          40 :         if (!valid_variable_name(name))</span></span>
+<span id="L326"><span class="lineNum">     326</span> <span class="tlaUNC tlaBgUNC">           0 :                 return;</span></span>
+<span id="L327"><span class="lineNum">     327</span>              : </span>
+<span id="L328"><span class="lineNum">     328</span> <span class="tlaGNC tlaBgGNC">          40 :         for (previous = space, current = space-&gt;next;</span></span>
+<span id="L329"><span class="lineNum">     329</span> <span class="tlaGNC">         258 :                  current;</span></span>
+<span id="L330"><span class="lineNum">     330</span> <span class="tlaGNC">         218 :                  previous = current, current = current-&gt;next)</span></span>
+<span id="L331"><span class="lineNum">     331</span>              :         {</span>
+<span id="L332"><span class="lineNum">     332</span> <span class="tlaGNC">         246 :                 int                     cmp = strcmp(current-&gt;name, name);</span></span>
+<span id="L333"><span class="lineNum">     333</span>              : </span>
+<span id="L334"><span class="lineNum">     334</span> <span class="tlaGNC">         246 :                 if (cmp == 0)</span></span>
+<span id="L335"><span class="lineNum">     335</span>              :                 {</span>
+<span id="L336"><span class="lineNum">     336</span>              :                         /* found entry, so update */</span>
+<span id="L337"><span class="lineNum">     337</span> <span class="tlaUNC tlaBgUNC">           0 :                         current-&gt;substitute_hook = shook;</span></span>
+<span id="L338"><span class="lineNum">     338</span> <span class="tlaUNC">           0 :                         current-&gt;assign_hook = ahook;</span></span>
+<span id="L339"><span class="lineNum">     339</span> <span class="tlaUNC">           0 :                         if (shook)</span></span>
+<span id="L340"><span class="lineNum">     340</span> <span class="tlaUNC">           0 :                                 current-&gt;value = (*shook) (current-&gt;value);</span></span>
+<span id="L341"><span class="lineNum">     341</span> <span class="tlaUNC">           0 :                         if (ahook)</span></span>
+<span id="L342"><span class="lineNum">     342</span> <span class="tlaUNC">           0 :                                 (void) (*ahook) (current-&gt;value);</span></span>
+<span id="L343"><span class="lineNum">     343</span> <span class="tlaUNC">           0 :                         return;</span></span>
+<span id="L344"><span class="lineNum">     344</span>              :                 }</span>
+<span id="L345"><span class="lineNum">     345</span> <span class="tlaGNC tlaBgGNC">         246 :                 if (cmp &gt; 0)</span></span>
+<span id="L346"><span class="lineNum">     346</span> <span class="tlaGNC">          28 :                         break;                          /* it's not there */</span></span>
+<span id="L347"><span class="lineNum">     347</span>              :         }</span>
+<span id="L348"><span class="lineNum">     348</span>              : </span>
+<span id="L349"><span class="lineNum">     349</span>              :         /* not present, make new entry */</span>
+<span id="L350"><span class="lineNum">     350</span> <span class="tlaGNC">          40 :         current = pg_malloc(sizeof *current);</span></span>
+<span id="L351"><span class="lineNum">     351</span> <span class="tlaGNC">          40 :         current-&gt;name = pg_strdup(name);</span></span>
+<span id="L352"><span class="lineNum">     352</span> <span class="tlaGNC">          40 :         current-&gt;value = NULL;</span></span>
+<span id="L353"><span class="lineNum">     353</span> <span class="tlaGNC">          40 :         current-&gt;substitute_hook = shook;</span></span>
+<span id="L354"><span class="lineNum">     354</span> <span class="tlaGNC">          40 :         current-&gt;assign_hook = ahook;</span></span>
+<span id="L355"><span class="lineNum">     355</span> <span class="tlaGNC">          40 :         current-&gt;next = previous-&gt;next;</span></span>
+<span id="L356"><span class="lineNum">     356</span> <span class="tlaGNC">          40 :         previous-&gt;next = current;</span></span>
+<span id="L357"><span class="lineNum">     357</span> <span class="tlaGNC">          40 :         if (shook)</span></span>
+<span id="L358"><span class="lineNum">     358</span> <span class="tlaGNC">          32 :                 current-&gt;value = (*shook) (current-&gt;value);</span></span>
+<span id="L359"><span class="lineNum">     359</span> <span class="tlaGNC">          40 :         if (ahook)</span></span>
+<span id="L360"><span class="lineNum">     360</span> <span class="tlaGNC">          40 :                 (void) (*ahook) (current-&gt;value);</span></span>
+<span id="L361"><span class="lineNum">     361</span>              : }</span>
+<span id="L362"><span class="lineNum">     362</span>              : </span>
+<span id="L363"><span class="lineNum">     363</span>              : /*</span>
+<span id="L364"><span class="lineNum">     364</span>              :  * Return true iff the named variable has substitute and/or assign hook</span>
+<span id="L365"><span class="lineNum">     365</span>              :  * functions.</span>
+<span id="L366"><span class="lineNum">     366</span>              :  */</span>
+<span id="L367"><span class="lineNum">     367</span>              : bool</span>
+<span id="L368"><span class="lineNum">     368</span> <span class="tlaUNC tlaBgUNC">           0 : VariableHasHook(VariableSpace space, const char *name)</span></span>
+<span id="L369"><span class="lineNum">     369</span>              : {</span>
+<span id="L370"><span class="lineNum">     370</span>              :         struct _variable *current;</span>
+<span id="L371"><span class="lineNum">     371</span>              : </span>
+<span id="L372"><span class="lineNum">     372</span>              :         Assert(space);</span>
+<span id="L373"><span class="lineNum">     373</span>              :         Assert(name);</span>
+<span id="L374"><span class="lineNum">     374</span>              : </span>
+<span id="L375"><span class="lineNum">     375</span> <span class="tlaUNC">           0 :         for (current = space-&gt;next; current; current = current-&gt;next)</span></span>
+<span id="L376"><span class="lineNum">     376</span>              :         {</span>
+<span id="L377"><span class="lineNum">     377</span> <span class="tlaUNC">           0 :                 int                     cmp = strcmp(current-&gt;name, name);</span></span>
+<span id="L378"><span class="lineNum">     378</span>              : </span>
+<span id="L379"><span class="lineNum">     379</span> <span class="tlaUNC">           0 :                 if (cmp == 0)</span></span>
+<span id="L380"><span class="lineNum">     380</span> <span class="tlaUNC">           0 :                         return (current-&gt;substitute_hook != NULL ||</span></span>
+<span id="L381"><span class="lineNum">     381</span> <span class="tlaUNC">           0 :                                         current-&gt;assign_hook != NULL);</span></span>
+<span id="L382"><span class="lineNum">     382</span> <span class="tlaUNC">           0 :                 if (cmp &gt; 0)</span></span>
+<span id="L383"><span class="lineNum">     383</span> <span class="tlaUNC">           0 :                         break;                          /* it's not there */</span></span>
+<span id="L384"><span class="lineNum">     384</span>              :         }</span>
+<span id="L385"><span class="lineNum">     385</span>              : </span>
+<span id="L386"><span class="lineNum">     386</span> <span class="tlaUNC">           0 :         return false;</span></span>
+<span id="L387"><span class="lineNum">     387</span>              : }</span>
+<span id="L388"><span class="lineNum">     388</span>              : </span>
+<span id="L389"><span class="lineNum">     389</span>              : /*</span>
+<span id="L390"><span class="lineNum">     390</span>              :  * Convenience function to set a variable's value to &quot;on&quot;.</span>
+<span id="L391"><span class="lineNum">     391</span>              :  */</span>
+<span id="L392"><span class="lineNum">     392</span>              : bool</span>
+<span id="L393"><span class="lineNum">     393</span> <span class="tlaGNC tlaBgGNC">           2 : SetVariableBool(VariableSpace space, const char *name)</span></span>
+<span id="L394"><span class="lineNum">     394</span>              : {</span>
+<span id="L395"><span class="lineNum">     395</span> <span class="tlaGNC">           2 :         return SetVariable(space, name, &quot;on&quot;);</span></span>
+<span id="L396"><span class="lineNum">     396</span>              : }</span>
+<span id="L397"><span class="lineNum">     397</span>              : </span>
+<span id="L398"><span class="lineNum">     398</span>              : /*</span>
+<span id="L399"><span class="lineNum">     399</span>              :  * Attempt to delete variable.</span>
+<span id="L400"><span class="lineNum">     400</span>              :  *</span>
+<span id="L401"><span class="lineNum">     401</span>              :  * If unsuccessful, print a message and return &quot;false&quot;.</span>
+<span id="L402"><span class="lineNum">     402</span>              :  * Deleting a nonexistent variable is not an error.</span>
+<span id="L403"><span class="lineNum">     403</span>              :  */</span>
+<span id="L404"><span class="lineNum">     404</span>              : bool</span>
+<span id="L405"><span class="lineNum">     405</span> <span class="tlaUNC tlaBgUNC">           0 : DeleteVariable(VariableSpace space, const char *name)</span></span>
+<span id="L406"><span class="lineNum">     406</span>              : {</span>
+<span id="L407"><span class="lineNum">     407</span> <span class="tlaUNC">           0 :         return SetVariable(space, name, NULL);</span></span>
+<span id="L408"><span class="lineNum">     408</span>              : }</span>
+<span id="L409"><span class="lineNum">     409</span>              : </span>
+<span id="L410"><span class="lineNum">     410</span>              : /*</span>
+<span id="L411"><span class="lineNum">     411</span>              :  * Emit error with suggestions for variables or commands</span>
+<span id="L412"><span class="lineNum">     412</span>              :  * accepting enum-style arguments.</span>
+<span id="L413"><span class="lineNum">     413</span>              :  * This function just exists to standardize the wording.</span>
+<span id="L414"><span class="lineNum">     414</span>              :  * suggestions should follow the format &quot;fee, fi, fo, fum&quot;.</span>
+<span id="L415"><span class="lineNum">     415</span>              :  */</span>
+<span id="L416"><span class="lineNum">     416</span>              : void</span>
+<span id="L417"><span class="lineNum">     417</span> <span class="tlaUNC">           0 : PsqlVarEnumError(const char *name, const char *value, const char *suggestions)</span></span>
+<span id="L418"><span class="lineNum">     418</span>              : {</span>
+<span id="L419"><span class="lineNum">     419</span> <span class="tlaUNC">           0 :         pg_log_error(&quot;unrecognized value \&quot;%s\&quot; for \&quot;%s\&quot;\n&quot;</span></span>
+<span id="L420"><span class="lineNum">     420</span>              :                                  &quot;Available values are: %s.&quot;,</span>
+<span id="L421"><span class="lineNum">     421</span>              :                                  value, name, suggestions);</span>
+<span id="L422"><span class="lineNum">     422</span> <span class="tlaUNC">           0 : }</span></span>
+        </pre>
+              </td>
+            </tr>
+          </table>
+          <br>
+
+          <table width="100%" border=0 cellspacing=0 cellpadding=0>
+            <tr><td class="ruler"><img src="../../glass.png" width=3 height=3 alt=""></td></tr>
+            <tr><td class="versionInfo">Generated by: <a href="https://github.com//linux-test-project/lcov" target="_parent">LCOV version 2.0-1</a></td></tr>
+          </table>
+          <br>
+
+</body>
+</html>

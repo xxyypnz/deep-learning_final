@@ -215,6 +215,9 @@ log "=== Step 3: 初始化数据库 ==="
 MY_TEST_DATA="${WORKSPACE_DIR}/data"
 initdb -D "$MY_TEST_DATA"
 echo "listen_addresses = ''" >> "$MY_TEST_DATA/postgresql.conf"
+if [ -n "${PG_EXTRA_CONF:-}" ]; then
+    printf "%s\n" "$PG_EXTRA_CONF" >> "$MY_TEST_DATA/postgresql.conf"
+fi
 
 # ================= Step 4: 启动 postgres =================
 log "=== Step 4: 启动 PostgreSQL ==="
