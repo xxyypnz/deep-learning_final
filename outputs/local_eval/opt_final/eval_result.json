@@ -1,0 +1,2656 @@
+{
+  "results": {
+    "101": {
+      "subject": "pgsql: Print the correct aliases for DML target tables in ruleutils.",
+      "total_added": 38,
+      "total_matched": 27,
+      "not_found": 0,
+      "covered": 20,
+      "recall": 0.7105,
+      "precision": 0.7407,
+      "precision_excl_ctrl": 0.7407,
+      "precision_excl_not_found": 0.7407,
+      "line_details": [
+        {
+          "file": "src/backend/utils/adt/ruleutils.c",
+          "line_no": 466,
+          "gcov_line_no": 466,
+          "code": "deparse_context *context);",
+          "gcov_code": "                                                  deparse_context *context);",
+          "gcov_count": 0,
+          "covered": false,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/utils/adt/ruleutils.c",
+          "line_no": 6229,
+          "gcov_line_no": 6229,
+          "code": "get_rte_alias(rte, query->resultRelation, true, context);",
+          "gcov_code": "        get_rte_alias(rte, query->resultRelation, true, context);",
+          "gcov_count": 2,
+          "covered": true,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/utils/adt/ruleutils.c",
+          "line_no": 6232,
+          "gcov_line_no": 6232,
+          "code": "appendStringInfoChar(buf, ' ');",
+          "gcov_code": "        appendStringInfoChar(buf, ' ');",
+          "gcov_count": 2,
+          "covered": true,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/utils/adt/ruleutils.c",
+          "line_no": 10510,
+          "gcov_line_no": 10510,
+          "code": "static void",
+          "gcov_code": "static void",
+          "gcov_count": 0,
+          "covered": false,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/utils/adt/ruleutils.c",
+          "line_no": 10511,
+          "gcov_line_no": 10511,
+          "code": "get_rte_alias(RangeTblEntry *rte, int varno, bool use_as,",
+          "gcov_code": "get_rte_alias(RangeTblEntry *rte, int varno, bool use_as,",
+          "gcov_count": 22,
+          "covered": true,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/utils/adt/ruleutils.c",
+          "line_no": 10512,
+          "gcov_line_no": 10512,
+          "code": "deparse_context *context)",
+          "gcov_code": "                          deparse_context *context)",
+          "gcov_count": 0,
+          "covered": false,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/utils/adt/ruleutils.c",
+          "line_no": 10514,
+          "gcov_line_no": 10514,
+          "code": "deparse_namespace *dpns = (deparse_namespace *) linitial(context->namespaces);",
+          "gcov_code": "        deparse_namespace *dpns = (deparse_namespace *) linitial(context->namespaces);",
+          "gcov_count": 22,
+          "covered": true,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/utils/adt/ruleutils.c",
+          "line_no": 10516,
+          "gcov_line_no": 10516,
+          "code": "deparse_columns *colinfo = deparse_columns_fetch(varno, dpns);",
+          "gcov_code": "        deparse_columns *colinfo = deparse_columns_fetch(varno, dpns);",
+          "gcov_count": 22,
+          "covered": true,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/utils/adt/ruleutils.c",
+          "line_no": 10519,
+          "gcov_line_no": 10519,
+          "code": "if (rte->alias != NULL)",
+          "gcov_code": "        if (rte->alias != NULL)",
+          "gcov_count": 22,
+          "covered": true,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/utils/adt/ruleutils.c",
+          "line_no": 10522,
+          "gcov_line_no": 10522,
+          "code": "printalias = true;",
+          "gcov_code": "                printalias = true;",
+          "gcov_count": 10,
+          "covered": true,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/utils/adt/ruleutils.c",
+          "line_no": 10524,
+          "gcov_line_no": 10524,
+          "code": "else if (colinfo->printaliases)",
+          "gcov_code": "        else if (colinfo->printaliases)",
+          "gcov_count": 12,
+          "covered": true,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/utils/adt/ruleutils.c",
+          "line_no": 10527,
+          "gcov_line_no": 10527,
+          "code": "printalias = true;",
+          "gcov_code": "                printalias = true;",
+          "gcov_count": 1,
+          "covered": true,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/utils/adt/ruleutils.c",
+          "line_no": 10529,
+          "gcov_line_no": 10529,
+          "code": "else if (rte->rtekind == RTE_RELATION)",
+          "gcov_code": "        else if (rte->rtekind == RTE_RELATION)",
+          "gcov_count": 11,
+          "covered": true,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/utils/adt/ruleutils.c",
+          "line_no": 10536,
+          "gcov_line_no": 10536,
+          "code": "if (strcmp(refname, get_relation_name(rte->relid)) != 0)",
+          "gcov_code": "                if (strcmp(refname, get_relation_name(rte->relid)) != 0)",
+          "gcov_count": 7,
+          "covered": true,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/utils/adt/ruleutils.c",
+          "line_no": 10537,
+          "gcov_line_no": 10537,
+          "code": "printalias = true;",
+          "gcov_code": "                        printalias = true;",
+          "gcov_count": 1,
+          "covered": true,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/utils/adt/ruleutils.c",
+          "line_no": 10539,
+          "gcov_line_no": 10539,
+          "code": "else if (rte->rtekind == RTE_FUNCTION)",
+          "gcov_code": "        else if (rte->rtekind == RTE_FUNCTION)",
+          "gcov_count": 4,
+          "covered": true,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/utils/adt/ruleutils.c",
+          "line_no": 10547,
+          "gcov_line_no": 10547,
+          "code": "printalias = true;",
+          "gcov_code": "                printalias = true;",
+          "gcov_count": 0,
+          "covered": false,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/utils/adt/ruleutils.c",
+          "line_no": 10549,
+          "gcov_line_no": 10549,
+          "code": "else if (rte->rtekind == RTE_SUBQUERY ||",
+          "gcov_code": "        else if (rte->rtekind == RTE_SUBQUERY ||",
+          "gcov_count": 4,
+          "covered": true,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/utils/adt/ruleutils.c",
+          "line_no": 10550,
+          "gcov_line_no": 10550,
+          "code": "rte->rtekind == RTE_VALUES)",
+          "gcov_code": "                         rte->rtekind == RTE_VALUES)",
+          "gcov_count": 4,
+          "covered": true,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/utils/adt/ruleutils.c",
+          "line_no": 10553,
+          "gcov_line_no": 10553,
+          "code": "printalias = true;",
+          "gcov_code": "                printalias = true;",
+          "gcov_count": 0,
+          "covered": false,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/utils/adt/ruleutils.c",
+          "line_no": 10555,
+          "gcov_line_no": 10555,
+          "code": "else if (rte->rtekind == RTE_CTE)",
+          "gcov_code": "        else if (rte->rtekind == RTE_CTE)",
+          "gcov_count": 4,
+          "covered": true,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/utils/adt/ruleutils.c",
+          "line_no": 10562,
+          "gcov_line_no": 10562,
+          "code": "if (strcmp(refname, rte->ctename) != 0)",
+          "gcov_code": "                if (strcmp(refname, rte->ctename) != 0)",
+          "gcov_count": 4,
+          "covered": true,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/utils/adt/ruleutils.c",
+          "line_no": 10563,
+          "gcov_line_no": 10563,
+          "code": "printalias = true;",
+          "gcov_code": "                        printalias = true;",
+          "gcov_count": 1,
+          "covered": true,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/utils/adt/ruleutils.c",
+          "line_no": 10566,
+          "gcov_line_no": 10566,
+          "code": "if (printalias)",
+          "gcov_code": "        if (printalias)",
+          "gcov_count": 22,
+          "covered": true,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/utils/adt/ruleutils.c",
+          "line_no": 10567,
+          "gcov_line_no": 10567,
+          "code": "appendStringInfo(context->buf, \"%s%s\",",
+          "gcov_code": "                appendStringInfo(context->buf, \"%s%s\",",
+          "gcov_count": 13,
+          "covered": true,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/utils/adt/ruleutils.c",
+          "line_no": 10568,
+          "gcov_line_no": 10568,
+          "code": "use_as ? \" AS \" : \" \",",
+          "gcov_code": "                                                 use_as ? \" AS \" : \" \",",
+          "gcov_count": 0,
+          "covered": false,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/utils/adt/ruleutils.c",
+          "line_no": 10569,
+          "gcov_line_no": 10569,
+          "code": "quote_identifier(refname));",
+          "gcov_code": "                                                 quote_identifier(refname));",
+          "gcov_count": 0,
+          "covered": false,
+          "match_type": "exact"
+        }
+      ]
+    },
+    "102": {
+      "subject": "pgsql: Fix thinkos in have_unsafe_outer_join_ref; reduce to Assert chec",
+      "total_added": 6,
+      "total_matched": 0,
+      "not_found": 0,
+      "covered": 0,
+      "recall": 0.0,
+      "precision": 0.0,
+      "precision_excl_ctrl": 0.0,
+      "precision_excl_not_found": 0.0,
+      "line_details": []
+    },
+    "103": {
+      "subject": "pgsql: Allow REPLICA IDENTITY to be set on an index that's not (yet) va",
+      "total_added": 0,
+      "total_matched": 0,
+      "not_found": 0,
+      "covered": 0,
+      "recall": 0.0,
+      "precision": 0.0,
+      "precision_excl_ctrl": 0.0,
+      "precision_excl_not_found": 0.0,
+      "line_details": []
+    },
+    "104": {
+      "subject": "pgsql: Keep perl style checker happy",
+      "total_added": 2,
+      "total_matched": 2,
+      "not_found": 2,
+      "covered": 0,
+      "recall": 1.0,
+      "precision": 0.0,
+      "precision_excl_ctrl": 0.0,
+      "precision_excl_not_found": 0.0,
+      "line_details": [
+        {
+          "file": "src/backend/catalog/genbki.pl",
+          "line_no": 16,
+          "gcov_line_no": null,
+          "code": "use strict;",
+          "gcov_code": null,
+          "gcov_count": null,
+          "covered": false,
+          "match_type": "gcov_not_found"
+        },
+        {
+          "file": "src/backend/catalog/genbki.pl",
+          "line_no": 17,
+          "gcov_line_no": null,
+          "code": "use warnings;",
+          "gcov_code": null,
+          "gcov_count": null,
+          "covered": false,
+          "match_type": "gcov_not_found"
+        }
+      ]
+    },
+    "105": {
+      "subject": "pgsql: Make new GENERATED-expressions code more bulletproof.",
+      "total_added": 2,
+      "total_matched": 1,
+      "not_found": 0,
+      "covered": 1,
+      "recall": 0.5,
+      "precision": 1.0,
+      "precision_excl_ctrl": 1.0,
+      "precision_excl_not_found": 1.0,
+      "line_details": [
+        {
+          "file": "src/backend/executor/execUtils.c",
+          "line_no": 1290,
+          "gcov_line_no": 1290,
+          "code": "if (relinfo->ri_GeneratedExprs == NULL)",
+          "gcov_code": "                if (relinfo->ri_GeneratedExprs == NULL)",
+          "gcov_count": 6,
+          "covered": true,
+          "match_type": "exact"
+        }
+      ]
+    },
+    "106": {
+      "subject": "pgsql: Avoid reference to nonexistent array element in ExecInitAgg().",
+      "total_added": 2,
+      "total_matched": 2,
+      "not_found": 0,
+      "covered": 2,
+      "recall": 1.0,
+      "precision": 1.0,
+      "precision_excl_ctrl": 1.0,
+      "precision_excl_not_found": 1.0,
+      "line_details": [
+        {
+          "file": "src/backend/executor/nodeAgg.c",
+          "line_no": 3574,
+          "gcov_line_no": 3574,
+          "code": "if (length == 0)",
+          "gcov_code": "                                        if (length == 0)",
+          "gcov_count": 12,
+          "covered": true,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/executor/nodeAgg.c",
+          "line_no": 3575,
+          "gcov_line_no": 3575,
+          "code": "continue;",
+          "gcov_code": "                                                continue;",
+          "gcov_count": 4,
+          "covered": true,
+          "match_type": "exact"
+        }
+      ]
+    },
+    "107": {
+      "subject": "pgsql: Add some recursion and looping defenses in prepjointree.c.",
+      "total_added": 5,
+      "total_matched": 2,
+      "not_found": 0,
+      "covered": 2,
+      "recall": 0.4,
+      "precision": 1.0,
+      "precision_excl_ctrl": 1.0,
+      "precision_excl_not_found": 1.0,
+      "line_details": [
+        {
+          "file": "src/backend/optimizer/prep/prepjointree.c",
+          "line_no": 750,
+          "gcov_line_no": 750,
+          "code": "check_stack_depth();",
+          "gcov_code": "        check_stack_depth();",
+          "gcov_count": 1140,
+          "covered": true,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/optimizer/prep/prepjointree.c",
+          "line_no": 752,
+          "gcov_line_no": 752,
+          "code": "CHECK_FOR_INTERRUPTS();",
+          "gcov_code": "        CHECK_FOR_INTERRUPTS();",
+          "gcov_count": 1140,
+          "covered": true,
+          "match_type": "exact"
+        }
+      ]
+    },
+    "108": {
+      "subject": "pgsql: Avoid O(N^2) cost when pulling up lots of UNION ALL subqueries.",
+      "total_added": 17,
+      "total_matched": 2,
+      "not_found": 0,
+      "covered": 1,
+      "recall": 0.1176,
+      "precision": 0.5,
+      "precision_excl_ctrl": 0.5,
+      "precision_excl_not_found": 0.5,
+      "line_details": [
+        {
+          "file": "src/backend/optimizer/prep/prepjointree.c",
+          "line_no": 3542,
+          "gcov_line_no": 3542,
+          "code": "substitute_phv_relids((Node *) appinfo->translated_vars,",
+          "gcov_code": "                substitute_phv_relids((Node *) appinfo->translated_vars,",
+          "gcov_count": 21,
+          "covered": true,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/optimizer/prep/prepjointree.c",
+          "line_no": 3543,
+          "gcov_line_no": 3543,
+          "code": "varno, subrelids);",
+          "gcov_code": "                                                          varno, subrelids);",
+          "gcov_count": 0,
+          "covered": false,
+          "match_type": "exact"
+        }
+      ]
+    },
+    "109": {
+      "subject": "pgsql: Fix broken MemoizePath support in reparameterize_path().",
+      "total_added": 5,
+      "total_matched": 4,
+      "not_found": 0,
+      "covered": 0,
+      "recall": 0.8,
+      "precision": 0.0,
+      "precision_excl_ctrl": 0.0,
+      "precision_excl_not_found": 0.0,
+      "line_details": [
+        {
+          "file": "src/backend/optimizer/util/pathnode.c",
+          "line_no": 3857,
+          "gcov_line_no": 3857,
+          "code": "spath = reparameterize_path(root, spath,",
+          "gcov_code": "                                        spath = reparameterize_path(root, spath,",
+          "gcov_count": 0,
+          "covered": false,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/optimizer/util/pathnode.c",
+          "line_no": 3858,
+          "gcov_line_no": 3858,
+          "code": "required_outer,",
+          "gcov_code": "                                                                                                required_outer,",
+          "gcov_count": 0,
+          "covered": false,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/optimizer/util/pathnode.c",
+          "line_no": 3859,
+          "gcov_line_no": 3859,
+          "code": "loop_count);",
+          "gcov_code": "                                                                                                loop_count);",
+          "gcov_count": 0,
+          "covered": false,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/optimizer/util/pathnode.c",
+          "line_no": 3860,
+          "gcov_line_no": 3860,
+          "code": "if (spath == NULL)",
+          "gcov_code": "                                        if (spath == NULL)",
+          "gcov_count": 0,
+          "covered": false,
+          "match_type": "exact"
+        }
+      ]
+    },
+    "110": {
+      "subject": "pgsql: Remove bogus Assert and dead code in remove_useless_results_recu",
+      "total_added": 0,
+      "total_matched": 0,
+      "not_found": 0,
+      "covered": 0,
+      "recall": 0.0,
+      "precision": 0.0,
+      "precision_excl_ctrl": 0.0,
+      "precision_excl_not_found": 0.0,
+      "line_details": []
+    },
+    "111": {
+      "subject": "pgsql: Make multixact error message more explicit",
+      "total_added": 2,
+      "total_matched": 2,
+      "not_found": 0,
+      "covered": 0,
+      "recall": 1.0,
+      "precision": 0.0,
+      "precision_excl_ctrl": 0.0,
+      "precision_excl_not_found": 0.0,
+      "line_details": [
+        {
+          "file": "src/backend/access/transam/multixact.c",
+          "line_no": 784,
+          "gcov_line_no": 784,
+          "code": "elog(ERROR, \"new multixact has more than one updating member: %s\",",
+          "gcov_code": "                                        elog(ERROR, \"new multixact has more than one updating member: %s\",",
+          "gcov_count": 0,
+          "covered": false,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/access/transam/multixact.c",
+          "line_no": 785,
+          "gcov_line_no": 785,
+          "code": "mxid_to_string(InvalidMultiXactId, nmembers, members));",
+          "gcov_code": "                                                 mxid_to_string(InvalidMultiXactId, nmembers, members));",
+          "gcov_count": 0,
+          "covered": false,
+          "match_type": "exact"
+        }
+      ]
+    },
+    "112": {
+      "subject": "pgsql: Simplify WARNING messages from skipped vacuum/analyze on a table",
+      "total_added": 6,
+      "total_matched": 2,
+      "not_found": 0,
+      "covered": 1,
+      "recall": 0.3333,
+      "precision": 0.5,
+      "precision_excl_ctrl": 0.5,
+      "precision_excl_not_found": 0.5,
+      "line_details": [
+        {
+          "file": "src/backend/commands/vacuum.c",
+          "line_no": 569,
+          "gcov_line_no": 569,
+          "code": "ereport(WARNING,",
+          "gcov_code": "                        ereport(WARNING,",
+          "gcov_count": 2,
+          "covered": true,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/commands/vacuum.c",
+          "line_no": 571,
+          "gcov_line_no": 571,
+          "code": "relname)));",
+          "gcov_code": "                                                        relname)));",
+          "gcov_count": 0,
+          "covered": false,
+          "match_type": "exact"
+        }
+      ]
+    },
+    "113": {
+      "subject": "pgsql: YA attempt at taming worst-case behavior of get_actual_variable_",
+      "total_added": 9,
+      "total_matched": 5,
+      "not_found": 0,
+      "covered": 4,
+      "recall": 0.5556,
+      "precision": 0.8,
+      "precision_excl_ctrl": 1.0,
+      "precision_excl_not_found": 0.8,
+      "line_details": [
+        {
+          "file": "src/backend/utils/adt/selfuncs.c",
+          "line_no": 5964,
+          "gcov_line_no": 5964,
+          "code": "if (block != last_heap_block)",
+          "gcov_code": "                                if (block != last_heap_block)",
+          "gcov_count": 140,
+          "covered": true,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/utils/adt/selfuncs.c",
+          "line_no": 5966,
+          "gcov_line_no": 5966,
+          "code": "last_heap_block = block;",
+          "gcov_code": "                                        last_heap_block = block;",
+          "gcov_count": 24,
+          "covered": true,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/utils/adt/selfuncs.c",
+          "line_no": 5967,
+          "gcov_line_no": 5967,
+          "code": "n_visited_heap_pages++;",
+          "gcov_code": "                                        n_visited_heap_pages++;",
+          "gcov_count": 24,
+          "covered": true,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/utils/adt/selfuncs.c",
+          "line_no": 5968,
+          "gcov_line_no": 5968,
+          "code": "if (n_visited_heap_pages > VISITED_PAGES_LIMIT)",
+          "gcov_code": "                                        if (n_visited_heap_pages > VISITED_PAGES_LIMIT)",
+          "gcov_count": 24,
+          "covered": true,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/utils/adt/selfuncs.c",
+          "line_no": 5969,
+          "gcov_line_no": 5969,
+          "code": "break;",
+          "gcov_code": "                                                break;",
+          "gcov_count": 0,
+          "covered": false,
+          "match_type": "exact"
+        }
+      ]
+    },
+    "114": {
+      "subject": "pgsql: Fix cleanup lock acquisition in SPLIT_ALLOCATE_PAGE replay.",
+      "total_added": 1,
+      "total_matched": 1,
+      "not_found": 0,
+      "covered": 0,
+      "recall": 1.0,
+      "precision": 0.0,
+      "precision_excl_ctrl": 0.0,
+      "precision_excl_not_found": 0.0,
+      "line_details": [
+        {
+          "file": "src/backend/access/hash/hash_xlog.c",
+          "line_no": 356,
+          "gcov_line_no": 356,
+          "code": "&newbuf);",
+          "gcov_code": "                                                                  &newbuf);",
+          "gcov_count": 0,
+          "covered": false,
+          "match_type": "exact"
+        }
+      ]
+    },
+    "115": {
+      "subject": "pgsql: Fix theoretical torn page hazard.",
+      "total_added": 1,
+      "total_matched": 1,
+      "not_found": 0,
+      "covered": 0,
+      "recall": 1.0,
+      "precision": 0.0,
+      "precision_excl_ctrl": 0.0,
+      "precision_excl_not_found": 0.0,
+      "line_details": [
+        {
+          "file": "src/backend/access/heap/heapam.c",
+          "line_no": 8400,
+          "gcov_line_no": 8400,
+          "code": "if (XLogHintBitIsNeeded())",
+          "gcov_code": "                if (XLogHintBitIsNeeded())",
+          "gcov_count": 0,
+          "covered": false,
+          "match_type": "exact"
+        }
+      ]
+    },
+    "116": {
+      "subject": "pgsql: Avoid crash after function syntax error in a replication worker.",
+      "total_added": 7,
+      "total_matched": 5,
+      "not_found": 0,
+      "covered": 2,
+      "recall": 0.7143,
+      "precision": 0.4,
+      "precision_excl_ctrl": 0.5,
+      "precision_excl_not_found": 0.4,
+      "line_details": [
+        {
+          "file": "src/backend/catalog/pg_proc.c",
+          "line_no": 992,
+          "gcov_line_no": 992,
+          "code": "if (ActivePortal && ActivePortal->status == PORTAL_ACTIVE)",
+          "gcov_code": "        if (ActivePortal && ActivePortal->status == PORTAL_ACTIVE)",
+          "gcov_count": 3,
+          "covered": true,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/catalog/pg_proc.c",
+          "line_no": 997,
+          "gcov_line_no": 997,
+          "code": "newerrposition = match_prosrc_to_query(prosrc, queryText,",
+          "gcov_code": "                newerrposition = match_prosrc_to_query(prosrc, queryText,",
+          "gcov_count": 3,
+          "covered": true,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/catalog/pg_proc.c",
+          "line_no": 998,
+          "gcov_line_no": 998,
+          "code": "origerrposition);",
+          "gcov_code": "                                                                                           origerrposition);",
+          "gcov_count": 0,
+          "covered": false,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/catalog/pg_proc.c",
+          "line_no": 1000,
+          "gcov_line_no": 1000,
+          "code": "else",
+          "gcov_code": "        else",
+          "gcov_count": 0,
+          "covered": false,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/catalog/pg_proc.c",
+          "line_no": 1006,
+          "gcov_line_no": 1006,
+          "code": "newerrposition = -1;",
+          "gcov_code": "                newerrposition = -1;",
+          "gcov_count": 0,
+          "covered": false,
+          "match_type": "exact"
+        }
+      ]
+    },
+    "117": {
+      "subject": "pgsql: Create FKs properly when attaching table as partition",
+      "total_added": 32,
+      "total_matched": 17,
+      "not_found": 0,
+      "covered": 17,
+      "recall": 0.5312,
+      "precision": 1.0,
+      "precision_excl_ctrl": 1.0,
+      "precision_excl_not_found": 1.0,
+      "line_details": [
+        {
+          "file": "src/backend/commands/tablecmds.c",
+          "line_no": 9703,
+          "gcov_line_no": 9703,
+          "code": "fkconstraint->fk_upd_action = constrForm->confupdtype;",
+          "gcov_code": "                fkconstraint->fk_upd_action = constrForm->confupdtype;",
+          "gcov_count": 11,
+          "covered": true,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/commands/tablecmds.c",
+          "line_no": 9704,
+          "gcov_line_no": 9704,
+          "code": "fkconstraint->fk_del_action = constrForm->confdeltype;",
+          "gcov_code": "                fkconstraint->fk_del_action = constrForm->confdeltype;",
+          "gcov_count": 11,
+          "covered": true,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/commands/tablecmds.c",
+          "line_no": 9705,
+          "gcov_line_no": 9705,
+          "code": "fkconstraint->old_conpfeqop = NIL;",
+          "gcov_code": "                fkconstraint->old_conpfeqop = NIL;",
+          "gcov_count": 11,
+          "covered": true,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/commands/tablecmds.c",
+          "line_no": 9706,
+          "gcov_line_no": 9706,
+          "code": "fkconstraint->old_pktable_oid = InvalidOid;",
+          "gcov_code": "                fkconstraint->old_pktable_oid = InvalidOid;",
+          "gcov_count": 11,
+          "covered": true,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/commands/tablecmds.c",
+          "line_no": 9707,
+          "gcov_line_no": 9707,
+          "code": "fkconstraint->skip_validation = false;",
+          "gcov_code": "                fkconstraint->skip_validation = false;",
+          "gcov_count": 11,
+          "covered": true,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/commands/tablecmds.c",
+          "line_no": 9708,
+          "gcov_line_no": 9708,
+          "code": "fkconstraint->initially_valid = true;",
+          "gcov_code": "                fkconstraint->initially_valid = true;",
+          "gcov_count": 11,
+          "covered": true,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/commands/tablecmds.c",
+          "line_no": 17749,
+          "gcov_line_no": 17749,
+          "code": "fkconstraint->location = -1;",
+          "gcov_code": "                        fkconstraint->location = -1;",
+          "gcov_count": 1,
+          "covered": true,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/commands/tablecmds.c",
+          "line_no": 17750,
+          "gcov_line_no": 17750,
+          "code": "fkconstraint->pktable = NULL;",
+          "gcov_code": "                        fkconstraint->pktable = NULL;",
+          "gcov_count": 1,
+          "covered": true,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/commands/tablecmds.c",
+          "line_no": 17751,
+          "gcov_line_no": 17751,
+          "code": "fkconstraint->fk_attrs = NIL;",
+          "gcov_code": "                        fkconstraint->fk_attrs = NIL;",
+          "gcov_count": 1,
+          "covered": true,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/commands/tablecmds.c",
+          "line_no": 17752,
+          "gcov_line_no": 17752,
+          "code": "fkconstraint->pk_attrs = NIL;",
+          "gcov_code": "                        fkconstraint->pk_attrs = NIL;",
+          "gcov_count": 1,
+          "covered": true,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/commands/tablecmds.c",
+          "line_no": 17753,
+          "gcov_line_no": 17753,
+          "code": "fkconstraint->fk_matchtype = conform->confmatchtype;",
+          "gcov_code": "                        fkconstraint->fk_matchtype = conform->confmatchtype;",
+          "gcov_count": 1,
+          "covered": true,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/commands/tablecmds.c",
+          "line_no": 17754,
+          "gcov_line_no": 17754,
+          "code": "fkconstraint->fk_upd_action = conform->confupdtype;",
+          "gcov_code": "                        fkconstraint->fk_upd_action = conform->confupdtype;",
+          "gcov_count": 1,
+          "covered": true,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/commands/tablecmds.c",
+          "line_no": 17755,
+          "gcov_line_no": 17755,
+          "code": "fkconstraint->fk_del_action = conform->confdeltype;",
+          "gcov_code": "                        fkconstraint->fk_del_action = conform->confdeltype;",
+          "gcov_count": 1,
+          "covered": true,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/commands/tablecmds.c",
+          "line_no": 17756,
+          "gcov_line_no": 17756,
+          "code": "fkconstraint->old_conpfeqop = NIL;",
+          "gcov_code": "                        fkconstraint->old_conpfeqop = NIL;",
+          "gcov_count": 1,
+          "covered": true,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/commands/tablecmds.c",
+          "line_no": 17757,
+          "gcov_line_no": 17757,
+          "code": "fkconstraint->old_pktable_oid = InvalidOid;",
+          "gcov_code": "                        fkconstraint->old_pktable_oid = InvalidOid;",
+          "gcov_count": 1,
+          "covered": true,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/commands/tablecmds.c",
+          "line_no": 17758,
+          "gcov_line_no": 17758,
+          "code": "fkconstraint->skip_validation = false;",
+          "gcov_code": "                        fkconstraint->skip_validation = false;",
+          "gcov_count": 1,
+          "covered": true,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/commands/tablecmds.c",
+          "line_no": 17759,
+          "gcov_line_no": 17759,
+          "code": "fkconstraint->initially_valid = true;",
+          "gcov_code": "                        fkconstraint->initially_valid = true;",
+          "gcov_count": 1,
+          "covered": true,
+          "match_type": "exact"
+        }
+      ]
+    },
+    "118": {
+      "subject": "pgsql: Reject non-ON-SELECT rules that are named \"_RETURN\".",
+      "total_added": 6,
+      "total_matched": 6,
+      "not_found": 0,
+      "covered": 2,
+      "recall": 1.0,
+      "precision": 0.3333,
+      "precision_excl_ctrl": 0.3333,
+      "precision_excl_not_found": 0.3333,
+      "line_details": [
+        {
+          "file": "src/backend/rewrite/rewriteDefine.c",
+          "line_no": 547,
+          "gcov_line_no": 547,
+          "code": "if (strcmp(rulename, ViewSelectRuleName) == 0)",
+          "gcov_code": "                if (strcmp(rulename, ViewSelectRuleName) == 0)",
+          "gcov_count": 14,
+          "covered": true,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/rewrite/rewriteDefine.c",
+          "line_no": 548,
+          "gcov_line_no": 548,
+          "code": "ereport(ERROR,",
+          "gcov_code": "                        ereport(ERROR,",
+          "gcov_count": 3,
+          "covered": true,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/rewrite/rewriteDefine.c",
+          "line_no": 549,
+          "gcov_line_no": 549,
+          "code": "(errcode(ERRCODE_INVALID_OBJECT_DEFINITION),",
+          "gcov_code": "                                        (errcode(ERRCODE_INVALID_OBJECT_DEFINITION),",
+          "gcov_count": 0,
+          "covered": false,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/rewrite/rewriteDefine.c",
+          "line_no": 550,
+          "gcov_line_no": 550,
+          "code": "errmsg(\"non-view rule for \\\"%s\\\" must not be named \\\"%s\\\"\",",
+          "gcov_code": "                                         errmsg(\"non-view rule for \\\"%s\\\" must not be named \\\"%s\\\"\",",
+          "gcov_count": 0,
+          "covered": false,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/rewrite/rewriteDefine.c",
+          "line_no": 551,
+          "gcov_line_no": 551,
+          "code": "RelationGetRelationName(event_relation),",
+          "gcov_code": "                                                        RelationGetRelationName(event_relation),",
+          "gcov_count": 0,
+          "covered": false,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/rewrite/rewriteDefine.c",
+          "line_no": 552,
+          "gcov_line_no": 552,
+          "code": "ViewSelectRuleName)));",
+          "gcov_code": "                                                        ViewSelectRuleName)));",
+          "gcov_count": 0,
+          "covered": false,
+          "match_type": "exact"
+        }
+      ]
+    },
+    "119": {
+      "subject": "pgsql: Fix EXPLAIN of SEARCH BREADTH FIRST with a constant initial valu",
+      "total_added": 0,
+      "total_matched": 0,
+      "not_found": 0,
+      "covered": 0,
+      "recall": 0.0,
+      "precision": 0.0,
+      "precision_excl_ctrl": 0.0,
+      "precision_excl_not_found": 0.0,
+      "line_details": []
+    },
+    "120": {
+      "subject": "pgsql: Yet further fixes for multi-row VALUES lists for updatable views",
+      "total_added": 25,
+      "total_matched": 14,
+      "not_found": 0,
+      "covered": 9,
+      "recall": 0.56,
+      "precision": 0.6429,
+      "precision_excl_ctrl": 0.6923,
+      "precision_excl_not_found": 0.6429,
+      "line_details": [
+        {
+          "file": "src/backend/rewrite/rewriteHandler.c",
+          "line_no": 1316,
+          "gcov_line_no": 1316,
+          "code": "Assert(parsetree->commandType == CMD_INSERT);",
+          "gcov_code": "        Assert(parsetree->commandType == CMD_INSERT);",
+          "gcov_count": 0,
+          "covered": false,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/rewrite/rewriteHandler.c",
+          "line_no": 1317,
+          "gcov_line_no": 1317,
+          "code": "Assert(rte->rtekind == RTE_VALUES);",
+          "gcov_code": "        Assert(rte->rtekind == RTE_VALUES);",
+          "gcov_count": 0,
+          "covered": false,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/rewrite/rewriteHandler.c",
+          "line_no": 1324,
+          "gcov_line_no": 1324,
+          "code": "if (!searchForDefault(rte))",
+          "gcov_code": "        if (!searchForDefault(rte))",
+          "gcov_count": 34,
+          "covered": true,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/rewrite/rewriteHandler.c",
+          "line_no": 1488,
+          "gcov_line_no": 1488,
+          "code": "newValues = NIL;",
+          "gcov_code": "        newValues = NIL;",
+          "gcov_count": 4,
+          "covered": true,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/rewrite/rewriteHandler.c",
+          "line_no": 1489,
+          "gcov_line_no": 1489,
+          "code": "foreach(lc, rte->values_lists)",
+          "gcov_code": "        foreach(lc, rte->values_lists)",
+          "gcov_count": 13,
+          "covered": true,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/rewrite/rewriteHandler.c",
+          "line_no": 1495,
+          "gcov_line_no": 1495,
+          "code": "foreach(lc2, sublist)",
+          "gcov_code": "                foreach(lc2, sublist)",
+          "gcov_count": 27,
+          "covered": true,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/rewrite/rewriteHandler.c",
+          "line_no": 1499,
+          "gcov_line_no": 1499,
+          "code": "if (IsA(col, SetToDefault))",
+          "gcov_code": "                        if (IsA(col, SetToDefault))",
+          "gcov_count": 18,
+          "covered": true,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/rewrite/rewriteHandler.c",
+          "line_no": 1503,
+          "gcov_line_no": 1503,
+          "code": "newList = lappend(newList, makeNullConst(def->typeId,",
+          "gcov_code": "                                newList = lappend(newList, makeNullConst(def->typeId,",
+          "gcov_count": 11,
+          "covered": true,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/rewrite/rewriteHandler.c",
+          "line_no": 1504,
+          "gcov_line_no": 1504,
+          "code": "def->typeMod,",
+          "gcov_code": "                                                                                                                 def->typeMod,",
+          "gcov_count": 0,
+          "covered": false,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/rewrite/rewriteHandler.c",
+          "line_no": 1505,
+          "gcov_line_no": 1505,
+          "code": "def->collation));",
+          "gcov_code": "                                                                                                                 def->collation));",
+          "gcov_count": 0,
+          "covered": false,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/rewrite/rewriteHandler.c",
+          "line_no": 1507,
+          "gcov_line_no": 1507,
+          "code": "else",
+          "gcov_code": "                        else",
+          "gcov_count": 0,
+          "covered": false,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/rewrite/rewriteHandler.c",
+          "line_no": 1508,
+          "gcov_line_no": 1508,
+          "code": "newList = lappend(newList, col);",
+          "gcov_code": "                                newList = lappend(newList, col);",
+          "gcov_count": 7,
+          "covered": true,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/rewrite/rewriteHandler.c",
+          "line_no": 1510,
+          "gcov_line_no": 1510,
+          "code": "newValues = lappend(newValues, newList);",
+          "gcov_code": "                newValues = lappend(newValues, newList);",
+          "gcov_count": 9,
+          "covered": true,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/rewrite/rewriteHandler.c",
+          "line_no": 1512,
+          "gcov_line_no": 1512,
+          "code": "rte->values_lists = newValues;",
+          "gcov_code": "        rte->values_lists = newValues;",
+          "gcov_count": 4,
+          "covered": true,
+          "match_type": "exact"
+        }
+      ]
+    },
+    "121": {
+      "subject": "pgsql: Fix self-referencing foreign keys with partitioned tables",
+      "total_added": 4,
+      "total_matched": 4,
+      "not_found": 0,
+      "covered": 4,
+      "recall": 1.0,
+      "precision": 1.0,
+      "precision_excl_ctrl": 1.0,
+      "precision_excl_not_found": 1.0,
+      "line_details": [
+        {
+          "file": "src/backend/catalog/pg_constraint.c",
+          "line_no": 1008,
+          "gcov_line_no": 1008,
+          "code": "if (constrForm->contype != CONSTRAINT_PRIMARY &&",
+          "gcov_code": "                if (constrForm->contype != CONSTRAINT_PRIMARY &&",
+          "gcov_count": 42,
+          "covered": true,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/catalog/pg_constraint.c",
+          "line_no": 1009,
+          "gcov_line_no": 1009,
+          "code": "constrForm->contype != CONSTRAINT_UNIQUE &&",
+          "gcov_code": "                        constrForm->contype != CONSTRAINT_UNIQUE &&",
+          "gcov_count": 24,
+          "covered": true,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/catalog/pg_constraint.c",
+          "line_no": 1010,
+          "gcov_line_no": 1010,
+          "code": "constrForm->contype != CONSTRAINT_EXCLUSION)",
+          "gcov_code": "                        constrForm->contype != CONSTRAINT_EXCLUSION)",
+          "gcov_count": 24,
+          "covered": true,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/catalog/pg_constraint.c",
+          "line_no": 1011,
+          "gcov_line_no": 1011,
+          "code": "continue;",
+          "gcov_code": "                        continue;",
+          "gcov_count": 24,
+          "covered": true,
+          "match_type": "exact"
+        }
+      ]
+    },
+    "122": {
+      "subject": "pgsql: Remove uses of MemoryContextContains in nodeAgg.c and nodeWindow",
+      "total_added": 6,
+      "total_matched": 3,
+      "not_found": 0,
+      "covered": 1,
+      "recall": 0.5,
+      "precision": 0.3333,
+      "precision_excl_ctrl": 0.3333,
+      "precision_excl_not_found": 0.3333,
+      "line_details": [
+        {
+          "file": "src/backend/executor/nodeAgg.c",
+          "line_no": 1113,
+          "gcov_line_no": 1113,
+          "code": "MakeExpandedObjectReadOnly(pergroupstate->transValue,",
+          "gcov_code": "                        MakeExpandedObjectReadOnly(pergroupstate->transValue,",
+          "gcov_count": 123,
+          "covered": true,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/executor/nodeAgg.c",
+          "line_no": 1114,
+          "gcov_line_no": 1114,
+          "code": "pergroupstate->transValueIsNull,",
+          "gcov_code": "                                                                           pergroupstate->transValueIsNull,",
+          "gcov_count": 0,
+          "covered": false,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/executor/nodeAgg.c",
+          "line_no": 1115,
+          "gcov_line_no": 1115,
+          "code": "pertrans->transtypeLen);",
+          "gcov_code": "                                                                           pertrans->transtypeLen);",
+          "gcov_count": 0,
+          "covered": false,
+          "match_type": "exact"
+        }
+      ]
+    },
+    "123": {
+      "subject": "pgsql: Avoid improbable PANIC during heap_update, redux.",
+      "total_added": 7,
+      "total_matched": 6,
+      "not_found": 0,
+      "covered": 2,
+      "recall": 0.8571,
+      "precision": 0.3333,
+      "precision_excl_ctrl": 0.4,
+      "precision_excl_not_found": 0.3333,
+      "line_details": [
+        {
+          "file": "src/backend/access/heap/hio.c",
+          "line_no": 656,
+          "gcov_line_no": 656,
+          "code": "otherBlock, targetBlock, vmbuffer_other,",
+          "gcov_code": "                                                         otherBlock, targetBlock, vmbuffer_other,",
+          "gcov_count": 0,
+          "covered": false,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/access/heap/hio.c",
+          "line_no": 657,
+          "gcov_line_no": 657,
+          "code": "vmbuffer);",
+          "gcov_code": "                                                         vmbuffer);",
+          "gcov_count": 0,
+          "covered": false,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/access/heap/hio.c",
+          "line_no": 665,
+          "gcov_line_no": 665,
+          "code": "if (len > PageGetHeapFreeSpace(page))",
+          "gcov_code": "                if (len > PageGetHeapFreeSpace(page))",
+          "gcov_count": 5,
+          "covered": true,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/access/heap/hio.c",
+          "line_no": 668,
+          "gcov_line_no": 668,
+          "code": "UnlockReleaseBuffer(buffer);",
+          "gcov_code": "                        UnlockReleaseBuffer(buffer);",
+          "gcov_count": 0,
+          "covered": false,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/access/heap/hio.c",
+          "line_no": 670,
+          "gcov_line_no": 670,
+          "code": "goto loop;",
+          "gcov_code": "                        goto loop;",
+          "gcov_count": 0,
+          "covered": false,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/access/heap/hio.c",
+          "line_no": 673,
+          "gcov_line_no": 673,
+          "code": "else if (len > PageGetHeapFreeSpace(page))",
+          "gcov_code": "        else if (len > PageGetHeapFreeSpace(page))",
+          "gcov_count": 607,
+          "covered": true,
+          "match_type": "exact"
+        }
+      ]
+    },
+    "124": {
+      "subject": "pgsql: Fix thinko in comment.",
+      "total_added": 0,
+      "total_matched": 0,
+      "not_found": 0,
+      "covered": 0,
+      "recall": 0.0,
+      "precision": 0.0,
+      "precision_excl_ctrl": 0.0,
+      "precision_excl_not_found": 0.0,
+      "line_details": []
+    },
+    "125": {
+      "subject": "pgsql: Fix race condition where heap_delete() fails to pin VM page.",
+      "total_added": 11,
+      "total_matched": 9,
+      "not_found": 0,
+      "covered": 5,
+      "recall": 0.8182,
+      "precision": 0.5556,
+      "precision_excl_ctrl": 0.5556,
+      "precision_excl_not_found": 0.5556,
+      "line_details": [
+        {
+          "file": "src/backend/access/heap/heapam.c",
+          "line_no": 2514,
+          "gcov_line_no": 2514,
+          "code": "lp = PageGetItemId(page, ItemPointerGetOffsetNumber(tid));",
+          "gcov_code": "        lp = PageGetItemId(page, ItemPointerGetOffsetNumber(tid));",
+          "gcov_count": 5190,
+          "covered": true,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/access/heap/heapam.c",
+          "line_no": 2515,
+          "gcov_line_no": 2515,
+          "code": "Assert(ItemIdIsNormal(lp));",
+          "gcov_code": "        Assert(ItemIdIsNormal(lp));",
+          "gcov_count": 0,
+          "covered": false,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/access/heap/heapam.c",
+          "line_no": 2517,
+          "gcov_line_no": 2517,
+          "code": "tp.t_tableOid = RelationGetRelid(relation);",
+          "gcov_code": "        tp.t_tableOid = RelationGetRelid(relation);",
+          "gcov_count": 5190,
+          "covered": true,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/access/heap/heapam.c",
+          "line_no": 2518,
+          "gcov_line_no": 2518,
+          "code": "tp.t_data = (HeapTupleHeader) PageGetItem(page, lp);",
+          "gcov_code": "        tp.t_data = (HeapTupleHeader) PageGetItem(page, lp);",
+          "gcov_count": 5190,
+          "covered": true,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/access/heap/heapam.c",
+          "line_no": 2519,
+          "gcov_line_no": 2519,
+          "code": "tp.t_len = ItemIdGetLength(lp);",
+          "gcov_code": "        tp.t_len = ItemIdGetLength(lp);",
+          "gcov_count": 5190,
+          "covered": true,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/access/heap/heapam.c",
+          "line_no": 2520,
+          "gcov_line_no": 2520,
+          "code": "tp.t_self = *tid;",
+          "gcov_code": "        tp.t_self = *tid;",
+          "gcov_count": 5190,
+          "covered": true,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/access/heap/heapam.c",
+          "line_no": 2522,
+          "gcov_line_no": 2522,
+          "code": "l1:",
+          "gcov_code": "l1:",
+          "gcov_count": 0,
+          "covered": false,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/access/heap/heapam.c",
+          "line_no": 2598,
+          "gcov_line_no": 2598,
+          "code": "if ((vmbuffer == InvalidBuffer && PageIsAllVisible(page)) ||",
+          "gcov_code": "                                if ((vmbuffer == InvalidBuffer && PageIsAllVisible(page)) ||",
+          "gcov_count": 0,
+          "covered": false,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/access/heap/heapam.c",
+          "line_no": 2599,
+          "gcov_line_no": 2599,
+          "code": "xmax_infomask_changed(tp.t_data->t_infomask, infomask) ||",
+          "gcov_code": "                                        xmax_infomask_changed(tp.t_data->t_infomask, infomask) ||",
+          "gcov_count": 0,
+          "covered": false,
+          "match_type": "exact"
+        }
+      ]
+    },
+    "126": {
+      "subject": "pgsql: Future-proof the recursion inside ExecShutdownNode().",
+      "total_added": 3,
+      "total_matched": 1,
+      "not_found": 0,
+      "covered": 0,
+      "recall": 0.3333,
+      "precision": 0.0,
+      "precision_excl_ctrl": 0.0,
+      "precision_excl_not_found": 0.0,
+      "line_details": [
+        {
+          "file": "src/backend/executor/execProcnode.c",
+          "line_no": 757,
+          "gcov_line_no": 757,
+          "code": "static bool",
+          "gcov_code": "static bool",
+          "gcov_count": 0,
+          "covered": false,
+          "match_type": "exact"
+        }
+      ]
+    },
+    "127": {
+      "subject": "pgsql: Choose FK name correctly during partition attachment",
+      "total_added": 9,
+      "total_matched": 9,
+      "not_found": 0,
+      "covered": 6,
+      "recall": 1.0,
+      "precision": 0.6667,
+      "precision_excl_ctrl": 0.75,
+      "precision_excl_not_found": 0.6667,
+      "line_details": [
+        {
+          "file": "src/backend/commands/tablecmds.c",
+          "line_no": 9921,
+          "gcov_line_no": 9921,
+          "code": "if (ConstraintNameIsUsed(CONSTRAINT_RELATION,",
+          "gcov_code": "                if (ConstraintNameIsUsed(CONSTRAINT_RELATION,",
+          "gcov_count": 16,
+          "covered": true,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/commands/tablecmds.c",
+          "line_no": 9922,
+          "gcov_line_no": 9922,
+          "code": "RelationGetRelid(partRel),",
+          "gcov_code": "                                                                 RelationGetRelid(partRel),",
+          "gcov_count": 0,
+          "covered": false,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/commands/tablecmds.c",
+          "line_no": 9923,
+          "gcov_line_no": 9923,
+          "code": "NameStr(constrForm->conname)))",
+          "gcov_code": "                                                                 NameStr(constrForm->conname)))",
+          "gcov_count": 16,
+          "covered": true,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/commands/tablecmds.c",
+          "line_no": 9924,
+          "gcov_line_no": 9924,
+          "code": "fkconstraint->conname =",
+          "gcov_code": "                        fkconstraint->conname =",
+          "gcov_count": 1,
+          "covered": true,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/commands/tablecmds.c",
+          "line_no": 9925,
+          "gcov_line_no": 9925,
+          "code": "ChooseConstraintName(RelationGetRelationName(partRel),",
+          "gcov_code": "                                ChooseConstraintName(RelationGetRelationName(partRel),",
+          "gcov_count": 1,
+          "covered": true,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/commands/tablecmds.c",
+          "line_no": 9926,
+          "gcov_line_no": 9926,
+          "code": "ChooseForeignKeyConstraintNameAddition(fkconstraint->fk_attrs),",
+          "gcov_code": "                                                                         ChooseForeignKeyConstraintNameAddition(fkconstraint->fk_attrs),",
+          "gcov_count": 1,
+          "covered": true,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/commands/tablecmds.c",
+          "line_no": 9927,
+          "gcov_line_no": 9927,
+          "code": "\"fkey\",",
+          "gcov_code": "                                                                         \"fkey\",",
+          "gcov_count": 0,
+          "covered": false,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/commands/tablecmds.c",
+          "line_no": 9929,
+          "gcov_line_no": 9929,
+          "code": "else",
+          "gcov_code": "                else",
+          "gcov_count": 0,
+          "covered": false,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/commands/tablecmds.c",
+          "line_no": 9930,
+          "gcov_line_no": 9930,
+          "code": "fkconstraint->conname = pstrdup(NameStr(constrForm->conname));",
+          "gcov_code": "                        fkconstraint->conname = pstrdup(NameStr(constrForm->conname));",
+          "gcov_count": 15,
+          "covered": true,
+          "match_type": "exact"
+        }
+      ]
+    },
+    "128": {
+      "subject": "pgsql: Fix subtly-incorrect matching of parent and child partitioned in",
+      "total_added": 5,
+      "total_matched": 2,
+      "not_found": 0,
+      "covered": 2,
+      "recall": 0.4,
+      "precision": 1.0,
+      "precision_excl_ctrl": 1.0,
+      "precision_excl_not_found": 1.0,
+      "line_details": [
+        {
+          "file": "src/backend/commands/indexcmds.c",
+          "line_no": 1220,
+          "gcov_line_no": 1220,
+          "code": "parentIndex = index_open(indexRelationId, lockmode);",
+          "gcov_code": "                        parentIndex = index_open(indexRelationId, lockmode);",
+          "gcov_count": 6,
+          "covered": true,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/commands/indexcmds.c",
+          "line_no": 1221,
+          "gcov_line_no": 1221,
+          "code": "indexInfo = BuildIndexInfo(parentIndex);",
+          "gcov_code": "                        indexInfo = BuildIndexInfo(parentIndex);",
+          "gcov_count": 6,
+          "covered": true,
+          "match_type": "exact"
+        }
+      ]
+    },
+    "129": {
+      "subject": "pgsql: Avoid misbehavior when hash_table_bytes < bucket_size.",
+      "total_added": 4,
+      "total_matched": 4,
+      "not_found": 0,
+      "covered": 2,
+      "recall": 1.0,
+      "precision": 0.5,
+      "precision_excl_ctrl": 0.6667,
+      "precision_excl_not_found": 0.5,
+      "line_details": [
+        {
+          "file": "src/backend/executor/nodeHash.c",
+          "line_no": 842,
+          "gcov_line_no": 842,
+          "code": "if (hash_table_bytes <= bucket_size)",
+          "gcov_code": "                if (hash_table_bytes <= bucket_size)",
+          "gcov_count": 6,
+          "covered": true,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/executor/nodeHash.c",
+          "line_no": 843,
+          "gcov_line_no": 843,
+          "code": "sbuckets = 1;",
+          "gcov_code": "                        sbuckets = 1;           /* avoid pg_nextpower2_size_t(0) */",
+          "gcov_count": 0,
+          "covered": false,
+          "match_type": "fuzzy"
+        },
+        {
+          "file": "src/backend/executor/nodeHash.c",
+          "line_no": 844,
+          "gcov_line_no": 844,
+          "code": "else",
+          "gcov_code": "                else",
+          "gcov_count": 0,
+          "covered": false,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/executor/nodeHash.c",
+          "line_no": 845,
+          "gcov_line_no": 845,
+          "code": "sbuckets = pg_nextpower2_size_t(hash_table_bytes / bucket_size);",
+          "gcov_code": "                        sbuckets = pg_nextpower2_size_t(hash_table_bytes / bucket_size);",
+          "gcov_count": 6,
+          "covered": true,
+          "match_type": "exact"
+        }
+      ]
+    },
+    "130": {
+      "subject": "pgsql: Add missing fields to _outConstraint()",
+      "total_added": 2,
+      "total_matched": 2,
+      "not_found": 0,
+      "covered": 2,
+      "recall": 1.0,
+      "precision": 1.0,
+      "precision_excl_ctrl": 1.0,
+      "precision_excl_not_found": 1.0,
+      "line_details": [
+        {
+          "file": "src/backend/nodes/outfuncs.c",
+          "line_no": 3558,
+          "gcov_line_no": 3558,
+          "code": "WRITE_BOOL_FIELD(skip_validation);",
+          "gcov_code": "                        WRITE_BOOL_FIELD(skip_validation);",
+          "gcov_count": 1,
+          "covered": true,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/nodes/outfuncs.c",
+          "line_no": 3559,
+          "gcov_line_no": 3559,
+          "code": "WRITE_BOOL_FIELD(initially_valid);",
+          "gcov_code": "                        WRITE_BOOL_FIELD(initially_valid);",
+          "gcov_count": 1,
+          "covered": true,
+          "match_type": "exact"
+        }
+      ]
+    },
+    "131": {
+      "subject": "pgsql: Add CHECK_FOR_INTERRUPTS in ExecInsert's speculative insertion l",
+      "total_added": 1,
+      "total_matched": 0,
+      "not_found": 0,
+      "covered": 0,
+      "recall": 0.0,
+      "precision": 0.0,
+      "precision_excl_ctrl": 0.0,
+      "precision_excl_not_found": 0.0,
+      "line_details": []
+    },
+    "132": {
+      "subject": "pgsql: Fix alias matching in transformLockingClause().",
+      "total_added": 2,
+      "total_matched": 2,
+      "not_found": 0,
+      "covered": 2,
+      "recall": 1.0,
+      "precision": 1.0,
+      "precision_excl_ctrl": 1.0,
+      "precision_excl_not_found": 1.0,
+      "line_details": [
+        {
+          "file": "src/backend/parser/analyze.c",
+          "line_no": 2875,
+          "gcov_line_no": 2875,
+          "code": "if (rte->rtekind == RTE_JOIN && rte->alias == NULL)",
+          "gcov_code": "                                if (rte->rtekind == RTE_JOIN && rte->alias == NULL)",
+          "gcov_count": 14,
+          "covered": true,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/parser/analyze.c",
+          "line_no": 2876,
+          "gcov_line_no": 2876,
+          "code": "continue;",
+          "gcov_code": "                                        continue;",
+          "gcov_count": 2,
+          "covered": true,
+          "match_type": "exact"
+        }
+      ]
+    },
+    "133": {
+      "subject": "pgsql: Implement List support for TransactionId",
+      "total_added": 21,
+      "total_matched": 4,
+      "not_found": 0,
+      "covered": 2,
+      "recall": 0.1905,
+      "precision": 0.5,
+      "precision_excl_ctrl": 0.5,
+      "precision_excl_not_found": 0.5,
+      "line_details": [
+        {
+          "file": "src/backend/nodes/list.c",
+          "line_no": 673,
+          "gcov_line_no": 673,
+          "code": "bool",
+          "gcov_code": "bool",
+          "gcov_count": 0,
+          "covered": false,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/nodes/list.c",
+          "line_no": 679,
+          "gcov_line_no": 679,
+          "code": "check_list_invariants(list);",
+          "gcov_code": "        check_list_invariants(list);",
+          "gcov_count": 0,
+          "covered": false,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/nodes/list.c",
+          "line_no": 681,
+          "gcov_line_no": 681,
+          "code": "foreach(cell, list)",
+          "gcov_code": "        foreach(cell, list)",
+          "gcov_count": 122808,
+          "covered": true,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/nodes/list.c",
+          "line_no": 683,
+          "gcov_line_no": 683,
+          "code": "if (lfirst_oid(cell) == datum)",
+          "gcov_code": "                if (lfirst_oid(cell) == datum)",
+          "gcov_count": 3540,
+          "covered": true,
+          "match_type": "exact"
+        }
+      ]
+    },
+    "134": {
+      "subject": "pgsql: Fix visibility check when XID is committed in CLOG but not in pr",
+      "total_added": 0,
+      "total_matched": 0,
+      "not_found": 0,
+      "covered": 0,
+      "recall": 0.0,
+      "precision": 0.0,
+      "precision_excl_ctrl": 0.0,
+      "precision_excl_not_found": 0.0,
+      "line_details": []
+    },
+    "135": {
+      "subject": "pgsql: Show 'AS \"?column?\"' explicitly when it's important.",
+      "total_added": 27,
+      "total_matched": 5,
+      "not_found": 0,
+      "covered": 4,
+      "recall": 0.1852,
+      "precision": 0.8,
+      "precision_excl_ctrl": 0.8,
+      "precision_excl_not_found": 0.8,
+      "line_details": [
+        {
+          "file": "src/backend/utils/adt/ruleutils.c",
+          "line_no": 5269,
+          "gcov_line_no": 5269,
+          "code": "get_setop_query(query->setOperations, query, context, resultDesc,",
+          "gcov_code": "                get_setop_query(query->setOperations, query, context, resultDesc,",
+          "gcov_count": 1,
+          "covered": true,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/utils/adt/ruleutils.c",
+          "line_no": 5270,
+          "gcov_line_no": 5270,
+          "code": "colNamesVisible);",
+          "gcov_code": "                                                colNamesVisible);",
+          "gcov_count": 0,
+          "covered": false,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/utils/adt/ruleutils.c",
+          "line_no": 6175,
+          "gcov_line_no": 6175,
+          "code": "get_insert_query_def(Query *query, deparse_context *context,",
+          "gcov_code": "get_insert_query_def(Query *query, deparse_context *context,",
+          "gcov_count": 2,
+          "covered": true,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/utils/adt/ruleutils.c",
+          "line_no": 6392,
+          "gcov_line_no": 6392,
+          "code": "get_update_query_def(Query *query, deparse_context *context,",
+          "gcov_code": "get_update_query_def(Query *query, deparse_context *context,",
+          "gcov_count": 1,
+          "covered": true,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/utils/adt/ruleutils.c",
+          "line_no": 6601,
+          "gcov_line_no": 6601,
+          "code": "get_delete_query_def(Query *query, deparse_context *context,",
+          "gcov_code": "get_delete_query_def(Query *query, deparse_context *context,",
+          "gcov_count": 2,
+          "covered": true,
+          "match_type": "exact"
+        }
+      ]
+    },
+    "136": {
+      "subject": "pgsql: Fix DDL deparse of CREATE OPERATOR CLASS",
+      "total_added": 6,
+      "total_matched": 5,
+      "not_found": 0,
+      "covered": 4,
+      "recall": 0.8333,
+      "precision": 0.8,
+      "precision_excl_ctrl": 0.8,
+      "precision_excl_not_found": 0.8,
+      "line_details": [
+        {
+          "file": "src/backend/commands/opclasscmds.c",
+          "line_no": 322,
+          "gcov_line_no": 322,
+          "code": "(Node *) stmt);",
+          "gcov_code": "                                                                         (Node *) stmt);",
+          "gcov_count": 0,
+          "covered": false,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/commands/opclasscmds.c",
+          "line_no": 462,
+          "gcov_line_no": 462,
+          "code": "opfstmt = makeNode(CreateOpFamilyStmt);",
+          "gcov_code": "                        opfstmt = makeNode(CreateOpFamilyStmt);",
+          "gcov_count": 1,
+          "covered": true,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/commands/opclasscmds.c",
+          "line_no": 463,
+          "gcov_line_no": 463,
+          "code": "opfstmt->opfamilyname = stmt->opclassname;",
+          "gcov_code": "                        opfstmt->opfamilyname = stmt->opclassname;",
+          "gcov_count": 1,
+          "covered": true,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/commands/opclasscmds.c",
+          "line_no": 464,
+          "gcov_line_no": 464,
+          "code": "opfstmt->amname = stmt->amname;",
+          "gcov_code": "                        opfstmt->amname = stmt->amname;",
+          "gcov_count": 1,
+          "covered": true,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/commands/opclasscmds.c",
+          "line_no": 469,
+          "gcov_line_no": 469,
+          "code": "tmpAddr = CreateOpFamily(opfstmt, opcname, namespaceoid, amoid);",
+          "gcov_code": "                        tmpAddr = CreateOpFamily(opfstmt, opcname, namespaceoid, amoid);",
+          "gcov_count": 1,
+          "covered": true,
+          "match_type": "exact"
+        }
+      ]
+    },
+    "137": {
+      "subject": "pgsql: Fix core dump in transformValuesClause when there are no columns",
+      "total_added": 4,
+      "total_matched": 2,
+      "not_found": 0,
+      "covered": 2,
+      "recall": 0.5,
+      "precision": 1.0,
+      "precision_excl_ctrl": 1.0,
+      "precision_excl_not_found": 1.0,
+      "line_details": [
+        {
+          "file": "src/backend/parser/analyze.c",
+          "line_no": 1530,
+          "gcov_line_no": 1530,
+          "code": "sublist = lappend(sublist, col);",
+          "gcov_code": "                        sublist = lappend(sublist, col);",
+          "gcov_count": 19,
+          "covered": true,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/parser/analyze.c",
+          "line_no": 1531,
+          "gcov_line_no": 1531,
+          "code": "lfirst(lc2) = sublist;",
+          "gcov_code": "                        lfirst(lc2) = sublist;",
+          "gcov_count": 19,
+          "covered": true,
+          "match_type": "exact"
+        }
+      ]
+    },
+    "138": {
+      "subject": "pgsql: In REFRESH MATERIALIZED VIEW, set user ID before running user co",
+      "total_added": 4,
+      "total_matched": 4,
+      "not_found": 0,
+      "covered": 3,
+      "recall": 1.0,
+      "precision": 0.75,
+      "precision_excl_ctrl": 0.75,
+      "precision_excl_not_found": 0.75,
+      "line_details": [
+        {
+          "file": "src/backend/commands/matview.c",
+          "line_no": 170,
+          "gcov_line_no": 170,
+          "code": "relowner = matviewRel->rd_rel->relowner;",
+          "gcov_code": "        relowner = matviewRel->rd_rel->relowner;",
+          "gcov_count": 3,
+          "covered": true,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/commands/matview.c",
+          "line_no": 178,
+          "gcov_line_no": 178,
+          "code": "SetUserIdAndSecContext(relowner,",
+          "gcov_code": "        SetUserIdAndSecContext(relowner,",
+          "gcov_count": 3,
+          "covered": true,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/commands/matview.c",
+          "line_no": 179,
+          "gcov_line_no": 179,
+          "code": "save_sec_context | SECURITY_RESTRICTED_OPERATION);",
+          "gcov_code": "                                                   save_sec_context | SECURITY_RESTRICTED_OPERATION);",
+          "gcov_count": 0,
+          "covered": false,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/commands/matview.c",
+          "line_no": 180,
+          "gcov_line_no": 180,
+          "code": "save_nestlevel = NewGUCNestLevel();",
+          "gcov_code": "        save_nestlevel = NewGUCNestLevel();",
+          "gcov_count": 3,
+          "covered": true,
+          "match_type": "exact"
+        }
+      ]
+    },
+    "139": {
+      "subject": "pgsql: Avoid invalid array reference in transformAlterTableStmt().",
+      "total_added": 1,
+      "total_matched": 1,
+      "not_found": 0,
+      "covered": 1,
+      "recall": 1.0,
+      "precision": 1.0,
+      "precision_excl_ctrl": 1.0,
+      "precision_excl_not_found": 1.0,
+      "line_details": [
+        {
+          "file": "src/backend/parser/parse_utilcmd.c",
+          "line_no": 3338,
+          "gcov_line_no": 3338,
+          "code": "if (attnum > 0 &&",
+          "gcov_code": "                                        if (attnum > 0 &&",
+          "gcov_count": 1,
+          "covered": true,
+          "match_type": "exact"
+        }
+      ]
+    },
+    "140": {
+      "subject": "pgsql: Prevent access to no-longer-pinned buffer in heapam_tuple_lock()",
+      "total_added": 7,
+      "total_matched": 5,
+      "not_found": 0,
+      "covered": 1,
+      "recall": 0.7143,
+      "precision": 0.2,
+      "precision_excl_ctrl": 0.25,
+      "precision_excl_not_found": 0.2,
+      "line_details": [
+        {
+          "file": "src/backend/access/heap/heapam.c",
+          "line_no": 1418,
+          "gcov_line_no": 1418,
+          "code": "bool",
+          "gcov_code": "bool",
+          "gcov_count": 0,
+          "covered": false,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/access/heap/heapam.c",
+          "line_no": 1419,
+          "gcov_line_no": 1419,
+          "code": "heap_fetch_extended(Relation relation,",
+          "gcov_code": "heap_fetch_extended(Relation relation,",
+          "gcov_count": 22,
+          "covered": true,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/access/heap/heapam.c",
+          "line_no": 1507,
+          "gcov_line_no": 1507,
+          "code": "if (keep_buf)",
+          "gcov_code": "        if (keep_buf)",
+          "gcov_count": 0,
+          "covered": false,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/access/heap/heapam.c",
+          "line_no": 1509,
+          "gcov_line_no": 1509,
+          "code": "else",
+          "gcov_code": "        else",
+          "gcov_count": 0,
+          "covered": false,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/access/heap/heapam.c",
+          "line_no": 1511,
+          "gcov_line_no": 1511,
+          "code": "ReleaseBuffer(buffer);",
+          "gcov_code": "                ReleaseBuffer(buffer);",
+          "gcov_count": 0,
+          "covered": false,
+          "match_type": "exact"
+        }
+      ]
+    },
+    "141": {
+      "subject": "pgsql: Revert \"Rewrite some RI code to avoid using SPI\"",
+      "total_added": 2,
+      "total_matched": 0,
+      "not_found": 0,
+      "covered": 0,
+      "recall": 0.0,
+      "precision": 0.0,
+      "precision_excl_ctrl": 0.0,
+      "precision_excl_not_found": 0.0,
+      "line_details": []
+    },
+    "142": {
+      "subject": "pgsql: Add public ruleutils.c entry point to deparse a Query.",
+      "total_added": 21,
+      "total_matched": 2,
+      "not_found": 0,
+      "covered": 2,
+      "recall": 0.0952,
+      "precision": 1.0,
+      "precision_excl_ctrl": 1.0,
+      "precision_excl_not_found": 1.0,
+      "line_details": [
+        {
+          "file": "src/backend/utils/adt/ruleutils.c",
+          "line_no": 10549,
+          "gcov_line_no": 10549,
+          "code": "else if (rte->rtekind == RTE_SUBQUERY ||",
+          "gcov_code": "        else if (rte->rtekind == RTE_SUBQUERY ||",
+          "gcov_count": 4,
+          "covered": true,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/utils/adt/ruleutils.c",
+          "line_no": 10550,
+          "gcov_line_no": 10550,
+          "code": "rte->rtekind == RTE_VALUES)",
+          "gcov_code": "                         rte->rtekind == RTE_VALUES)",
+          "gcov_count": 4,
+          "covered": true,
+          "match_type": "exact"
+        }
+      ]
+    },
+    "143": {
+      "subject": "pgsql: Fix risk of deadlock failure while dropping a partitioned index.",
+      "total_added": 16,
+      "total_matched": 10,
+      "not_found": 0,
+      "covered": 7,
+      "recall": 0.625,
+      "precision": 0.7,
+      "precision_excl_ctrl": 0.7,
+      "precision_excl_not_found": 0.7,
+      "line_details": [
+        {
+          "file": "src/backend/commands/tablecmds.c",
+          "line_no": 1356,
+          "gcov_line_no": 1356,
+          "code": "state.expected_relkind = relkind;",
+          "gcov_code": "                state.expected_relkind = relkind;",
+          "gcov_count": 369,
+          "covered": true,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/commands/tablecmds.c",
+          "line_no": 1357,
+          "gcov_line_no": 1357,
+          "code": "state.heap_lockmode = drop->concurrent ?",
+          "gcov_code": "                state.heap_lockmode = drop->concurrent ?",
+          "gcov_count": 738,
+          "covered": true,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/commands/tablecmds.c",
+          "line_no": 1404,
+          "gcov_line_no": 1404,
+          "code": "if (state.actual_relkind == RELKIND_PARTITIONED_INDEX)",
+          "gcov_code": "                if (state.actual_relkind == RELKIND_PARTITIONED_INDEX)",
+          "gcov_count": 183,
+          "covered": true,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/commands/tablecmds.c",
+          "line_no": 1405,
+          "gcov_line_no": 1405,
+          "code": "(void) find_all_inheritors(state.heapOid,",
+          "gcov_code": "                        (void) find_all_inheritors(state.heapOid,",
+          "gcov_count": 1,
+          "covered": true,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/commands/tablecmds.c",
+          "line_no": 1406,
+          "gcov_line_no": 1406,
+          "code": "state.heap_lockmode,",
+          "gcov_code": "                                                                           state.heap_lockmode,",
+          "gcov_count": 0,
+          "covered": false,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/commands/tablecmds.c",
+          "line_no": 1407,
+          "gcov_line_no": 1407,
+          "code": "NULL);",
+          "gcov_code": "                                                                           NULL);",
+          "gcov_count": 0,
+          "covered": false,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/commands/tablecmds.c",
+          "line_no": 1476,
+          "gcov_line_no": 1476,
+          "code": "state->actual_relkind = classform->relkind;",
+          "gcov_code": "        state->actual_relkind = classform->relkind;",
+          "gcov_count": 184,
+          "covered": true,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/commands/tablecmds.c",
+          "line_no": 1477,
+          "gcov_line_no": 1477,
+          "code": "state->actual_relpersistence = classform->relpersistence;",
+          "gcov_code": "        state->actual_relpersistence = classform->relpersistence;",
+          "gcov_count": 184,
+          "covered": true,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/commands/tablecmds.c",
+          "line_no": 1494,
+          "gcov_line_no": 1494,
+          "code": "if (state->expected_relkind != expected_relkind)",
+          "gcov_code": "        if (state->expected_relkind != expected_relkind)",
+          "gcov_count": 184,
+          "covered": true,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/commands/tablecmds.c",
+          "line_no": 1496,
+          "gcov_line_no": 1496,
+          "code": "state->expected_relkind);",
+          "gcov_code": "                                                          state->expected_relkind);",
+          "gcov_count": 0,
+          "covered": false,
+          "match_type": "exact"
+        }
+      ]
+    },
+    "144": {
+      "subject": "pgsql: Move code around in StartupXLOG().",
+      "total_added": 101,
+      "total_matched": 11,
+      "not_found": 0,
+      "covered": 1,
+      "recall": 0.1089,
+      "precision": 0.0909,
+      "precision_excl_ctrl": 0.0909,
+      "precision_excl_not_found": 0.0909,
+      "line_details": [
+        {
+          "file": "src/backend/access/transam/xlog.c",
+          "line_no": 7189,
+          "gcov_line_no": 7189,
+          "code": "for (rmid = 0; rmid <= RM_MAX_ID; rmid++)",
+          "gcov_code": "                for (rmid = 0; rmid <= RM_MAX_ID; rmid++)",
+          "gcov_count": 0,
+          "covered": false,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/access/transam/xlog.c",
+          "line_no": 7191,
+          "gcov_line_no": 7191,
+          "code": "if (RmgrTable[rmid].rm_startup != NULL)",
+          "gcov_code": "                        if (RmgrTable[rmid].rm_startup != NULL)",
+          "gcov_count": 0,
+          "covered": false,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/access/transam/xlog.c",
+          "line_no": 7192,
+          "gcov_line_no": 7192,
+          "code": "RmgrTable[rmid].rm_startup();",
+          "gcov_code": "                                RmgrTable[rmid].rm_startup();",
+          "gcov_count": 0,
+          "covered": false,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/access/transam/xlog.c",
+          "line_no": 7572,
+          "gcov_line_no": 7572,
+          "code": "if (InRecovery)",
+          "gcov_code": "        if (InRecovery)",
+          "gcov_count": 3,
+          "covered": true,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/access/transam/xlog.c",
+          "line_no": 7573,
+          "gcov_line_no": 7573,
+          "code": "ResetUnloggedRelations(UNLOGGED_RELATION_INIT);",
+          "gcov_code": "                ResetUnloggedRelations(UNLOGGED_RELATION_INIT);",
+          "gcov_count": 0,
+          "covered": false,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/access/transam/xlog.c",
+          "line_no": 5710,
+          "gcov_line_no": 5710,
+          "code": "if (standby_signal_file_found)",
+          "gcov_code": "        if (standby_signal_file_found)",
+          "gcov_count": 0,
+          "covered": false,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/access/transam/xlog.c",
+          "line_no": 5711,
+          "gcov_line_no": 5711,
+          "code": "durable_unlink(STANDBY_SIGNAL_FILE, FATAL);",
+          "gcov_code": "                durable_unlink(STANDBY_SIGNAL_FILE, FATAL);",
+          "gcov_count": 0,
+          "covered": false,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/access/transam/xlog.c",
+          "line_no": 5713,
+          "gcov_line_no": 5713,
+          "code": "if (recovery_signal_file_found)",
+          "gcov_code": "        if (recovery_signal_file_found)",
+          "gcov_count": 0,
+          "covered": false,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/access/transam/xlog.c",
+          "line_no": 5714,
+          "gcov_line_no": 5714,
+          "code": "durable_unlink(RECOVERY_SIGNAL_FILE, FATAL);",
+          "gcov_code": "                durable_unlink(RECOVERY_SIGNAL_FILE, FATAL);",
+          "gcov_count": 0,
+          "covered": false,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/access/transam/xlog.c",
+          "line_no": 5716,
+          "gcov_line_no": 5716,
+          "code": "ereport(LOG,",
+          "gcov_code": "        ereport(LOG,",
+          "gcov_count": 0,
+          "covered": false,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/access/transam/xlog.c",
+          "line_no": 5717,
+          "gcov_line_no": 5717,
+          "code": "(errmsg(\"archive recovery complete\")));",
+          "gcov_code": "                        (errmsg(\"archive recovery complete\")));",
+          "gcov_count": 0,
+          "covered": false,
+          "match_type": "exact"
+        }
+      ]
+    },
+    "145": {
+      "subject": "pgsql: Fix memory leak in IndexScan node with reordering",
+      "total_added": 3,
+      "total_matched": 2,
+      "not_found": 0,
+      "covered": 0,
+      "recall": 0.6667,
+      "precision": 0.0,
+      "precision_excl_ctrl": 0.0,
+      "precision_excl_not_found": 0.0,
+      "line_details": [
+        {
+          "file": "src/backend/executor/nodeIndexscan.c",
+          "line_no": 580,
+          "gcov_line_no": 580,
+          "code": "tuple = reorderqueue_pop(node);",
+          "gcov_code": "                        tuple = reorderqueue_pop(node);",
+          "gcov_count": 0,
+          "covered": false,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/executor/nodeIndexscan.c",
+          "line_no": 581,
+          "gcov_line_no": 581,
+          "code": "heap_freetuple(tuple);",
+          "gcov_code": "                        heap_freetuple(tuple);",
+          "gcov_count": 0,
+          "covered": false,
+          "match_type": "exact"
+        }
+      ]
+    },
+    "146": {
+      "subject": "pgsql: Test, don't just Assert, that mergejoin's inputs are in order.",
+      "total_added": 6,
+      "total_matched": 2,
+      "not_found": 0,
+      "covered": 0,
+      "recall": 0.3333,
+      "precision": 0.0,
+      "precision_excl_ctrl": 0.0,
+      "precision_excl_not_found": 0.0,
+      "line_details": [
+        {
+          "file": "src/backend/executor/nodeMergejoin.c",
+          "line_no": 898,
+          "gcov_line_no": 898,
+          "code": "else",
+          "gcov_code": "                                                else    /* compareResult > 0 should not happen */",
+          "gcov_count": 0,
+          "covered": false,
+          "match_type": "fuzzy"
+        },
+        {
+          "file": "src/backend/executor/nodeMergejoin.c",
+          "line_no": 899,
+          "gcov_line_no": 899,
+          "code": "elog(ERROR, \"mergejoin input data is out of order\");",
+          "gcov_code": "                                                        elog(ERROR, \"mergejoin input data is out of order\");",
+          "gcov_count": 0,
+          "covered": false,
+          "match_type": "exact"
+        }
+      ]
+    },
+    "147": {
+      "subject": "pgsql: Flush table's relcache during ALTER TABLE ADD PRIMARY KEY USING",
+      "total_added": 3,
+      "total_matched": 2,
+      "not_found": 0,
+      "covered": 2,
+      "recall": 0.6667,
+      "precision": 1.0,
+      "precision_excl_ctrl": 1.0,
+      "precision_excl_not_found": 1.0,
+      "line_details": [
+        {
+          "file": "src/backend/catalog/index.c",
+          "line_no": 2102,
+          "gcov_line_no": 2102,
+          "code": "if (marked_as_primary)",
+          "gcov_code": "                        if (marked_as_primary)",
+          "gcov_count": 2,
+          "covered": true,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/catalog/index.c",
+          "line_no": 2103,
+          "gcov_line_no": 2103,
+          "code": "CacheInvalidateRelcache(heapRelation);",
+          "gcov_code": "                                CacheInvalidateRelcache(heapRelation);",
+          "gcov_count": 2,
+          "covered": true,
+          "match_type": "exact"
+        }
+      ]
+    },
+    "148": {
+      "subject": "pgsql: Fix one-off bug causing missing commit timestamps for subtransac",
+      "total_added": 5,
+      "total_matched": 3,
+      "not_found": 0,
+      "covered": 2,
+      "recall": 0.6,
+      "precision": 0.6667,
+      "precision_excl_ctrl": 0.6667,
+      "precision_excl_not_found": 0.6667,
+      "line_details": [
+        {
+          "file": "src/backend/access/transam/commit_ts.c",
+          "line_no": 187,
+          "gcov_line_no": 187,
+          "code": "headxid = xid;",
+          "gcov_code": "        headxid = xid;",
+          "gcov_count": 650,
+          "covered": true,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/access/transam/commit_ts.c",
+          "line_no": 188,
+          "gcov_line_no": 188,
+          "code": "i = 0;",
+          "gcov_code": "        i = 0;",
+          "gcov_count": 650,
+          "covered": true,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/access/transam/commit_ts.c",
+          "line_no": 189,
+          "gcov_line_no": 189,
+          "code": "for (;;)",
+          "gcov_code": "        for (;;)",
+          "gcov_count": 0,
+          "covered": false,
+          "match_type": "exact"
+        }
+      ]
+    },
+    "149": {
+      "subject": "pgsql: Fix ruleutils.c's dumping of whole-row Vars in more contexts.",
+      "total_added": 12,
+      "total_matched": 7,
+      "not_found": 0,
+      "covered": 6,
+      "recall": 0.5833,
+      "precision": 0.8571,
+      "precision_excl_ctrl": 0.8571,
+      "precision_excl_not_found": 0.8571,
+      "line_details": [
+        {
+          "file": "src/backend/utils/adt/ruleutils.c",
+          "line_no": 9231,
+          "gcov_line_no": 9231,
+          "code": "static void",
+          "gcov_code": "static void",
+          "gcov_count": 0,
+          "covered": false,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/utils/adt/ruleutils.c",
+          "line_no": 9232,
+          "gcov_line_no": 9232,
+          "code": "get_rule_list_toplevel(List *lst, deparse_context *context,",
+          "gcov_code": "get_rule_list_toplevel(List *lst, deparse_context *context,",
+          "gcov_count": 1,
+          "covered": true,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/utils/adt/ruleutils.c",
+          "line_no": 9238,
+          "gcov_line_no": 9238,
+          "code": "sep = \"\";",
+          "gcov_code": "        sep = \"\";",
+          "gcov_count": 1,
+          "covered": true,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/utils/adt/ruleutils.c",
+          "line_no": 9239,
+          "gcov_line_no": 9239,
+          "code": "foreach(lc, lst)",
+          "gcov_code": "        foreach(lc, lst)",
+          "gcov_count": 3,
+          "covered": true,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/utils/adt/ruleutils.c",
+          "line_no": 9243,
+          "gcov_line_no": 9243,
+          "code": "appendStringInfoString(context->buf, sep);",
+          "gcov_code": "                appendStringInfoString(context->buf, sep);",
+          "gcov_count": 2,
+          "covered": true,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/utils/adt/ruleutils.c",
+          "line_no": 9244,
+          "gcov_line_no": 9244,
+          "code": "get_rule_expr_toplevel(e, context, showimplicit);",
+          "gcov_code": "                get_rule_expr_toplevel(e, context, showimplicit);",
+          "gcov_count": 2,
+          "covered": true,
+          "match_type": "exact"
+        },
+        {
+          "file": "src/backend/utils/adt/ruleutils.c",
+          "line_no": 9245,
+          "gcov_line_no": 9245,
+          "code": "sep = \", \";",
+          "gcov_code": "                sep = \", \";",
+          "gcov_count": 2,
+          "covered": true,
+          "match_type": "exact"
+        }
+      ]
+    },
+    "150": {
+      "subject": "pgsql: Prevent altering partitioned table's rowtype, if it's used elsew",
+      "total_added": 1,
+      "total_matched": 0,
+      "not_found": 0,
+      "covered": 0,
+      "recall": 0.0,
+      "precision": 0.0,
+      "precision_excl_ctrl": 0.0,
+      "precision_excl_not_found": 0.0,
+      "line_details": []
+    }
+  },
+  "summary": {
+    "n_items": 50,
+    "total_meaningful_added": 460,
+    "total_matched": 200,
+    "total_not_found": 2,
+    "total_covered": 124,
+    "global_recall": 0.4348,
+    "global_precision": 0.62,
+    "global_precision_excl_ctrl": 0.6402,
+    "global_precision_excl_not_found": 0.6263
+  }
+}

@@ -1,0 +1,77 @@
+2026-06-05 02:24:13.014 UTC [13117] LOG:  starting PostgreSQL 13.23 on x86_64-pc-linux-gnu, compiled by gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0, 64-bit
+2026-06-05 02:24:13.015 UTC [13117] LOG:  listening on Unix socket "/tmp/pgcov-55432/.s.PGSQL.55432"
+2026-06-05 02:24:13.023 UTC [13118] LOG:  database system was shut down at 2026-06-05 02:24:10 UTC
+2026-06-05 02:24:13.348 UTC [13117] LOG:  database system is ready to accept connections
+2026-06-05 02:24:17.035 UTC [13214] ERROR:  cannot refer to NEW within WITH query
+2026-06-05 02:24:17.035 UTC [13214] STATEMENT:  CREATE RULE ruleutils_upd_r AS ON UPDATE TO ruleutils_upd_v DO INSTEAD
+	  WITH ruleutils_upd_t AS (SELECT NEW.id AS id)
+	  UPDATE ruleutils_upd_t AS target_alias SET val = 'updated' WHERE target_alias.id IN (SELECT id FROM ruleutils_upd_t);
+2026-06-05 02:24:17.996 UTC [13214] WARNING:  there is already a transaction in progress
+2026-06-05 02:24:18.007 UTC [13214] WARNING:  there is already a transaction in progress
+2026-06-05 02:24:18.007 UTC [13214] WARNING:  there is already a transaction in progress
+2026-06-05 02:24:18.026 UTC [13214] WARNING:  there is already a transaction in progress
+2026-06-05 02:24:18.045 UTC [13214] WARNING:  skipping "test_vacuum_perm" --- only table or database owner can vacuum it
+2026-06-05 02:24:18.057 UTC [13214] WARNING:  skipping "test_analyze_perm" --- only table or database owner can analyze it
+2026-06-05 02:24:18.063 UTC [13214] WARNING:  skipping "test_vacuum_analyze_perm" --- only table or database owner can vacuum it
+2026-06-05 02:24:18.069 UTC [13214] WARNING:  skipping "vacowned" --- only table or database owner can vacuum it
+2026-06-05 02:24:18.070 UTC [13214] WARNING:  skipping "vacowned" --- only table or database owner can analyze it
+2026-06-05 02:24:18.070 UTC [13214] WARNING:  skipping "vacowned" --- only table or database owner can vacuum it
+2026-06-05 02:24:18.071 UTC [13214] WARNING:  skipping "pg_class" --- only superuser or database owner can vacuum it
+2026-06-05 02:24:18.071 UTC [13214] WARNING:  skipping "pg_class" --- only superuser or database owner can analyze it
+2026-06-05 02:24:18.071 UTC [13214] WARNING:  skipping "pg_class" --- only superuser or database owner can vacuum it
+2026-06-05 02:24:18.072 UTC [13214] WARNING:  skipping "pg_authid" --- only superuser can vacuum it
+2026-06-05 02:24:18.073 UTC [13214] WARNING:  skipping "pg_authid" --- only superuser can analyze it
+2026-06-05 02:24:18.073 UTC [13214] WARNING:  skipping "pg_authid" --- only superuser can vacuum it
+2026-06-05 02:24:18.437 UTC [13214] ERROR:  syntax error at end of input at character 77
+2026-06-05 02:24:18.437 UTC [13214] STATEMENT:  CREATE FUNCTION test_bad_sql_func() RETURNS int LANGUAGE sql AS $$ SELECT + $$;
+2026-06-05 02:24:18.438 UTC [13214] ERROR:  missing expression at or near ";" at character 89
+2026-06-05 02:24:18.438 UTC [13214] STATEMENT:  CREATE FUNCTION test_bad_plpgsql_func() RETURNS int LANGUAGE plpgsql AS $$ BEGIN RETURN ; END $$;
+2026-06-05 02:24:18.438 UTC [13214] ERROR:  missing expression at or near "THEN" at character 16
+2026-06-05 02:24:18.438 UTC [13214] STATEMENT:  DO $$ BEGIN IF THEN RAISE NOTICE 'bad'; END IF; END $$;
+2026-06-05 02:24:18.451 UTC [13214] ERROR:  "fk_part_child" is already a partition
+2026-06-05 02:24:18.451 UTC [13214] STATEMENT:  ALTER TABLE fk_part_parent ATTACH PARTITION fk_part_child FOR VALUES FROM (1) TO (10);
+2026-06-05 02:24:18.495 UTC [13214] ERROR:  non-view rule for "test_t1" must not be named "_RETURN"
+2026-06-05 02:24:18.495 UTC [13214] STATEMENT:  CREATE OR REPLACE RULE "_RETURN" AS ON INSERT TO test_t1 DO INSTEAD NOTHING;
+2026-06-05 02:24:18.501 UTC [13214] ERROR:  non-view rule for "test_v2" must not be named "_RETURN"
+2026-06-05 02:24:18.501 UTC [13214] STATEMENT:  CREATE OR REPLACE RULE "_RETURN" AS ON INSERT TO test_v2 DO INSTEAD NOTHING;
+2026-06-05 02:24:18.514 UTC [13214] ERROR:  non-view rule for "r118_compact" must not be named "_RETURN"
+2026-06-05 02:24:18.514 UTC [13214] STATEMENT:  CREATE RULE "_RETURN" AS ON INSERT TO r118_compact DO ALSO SELECT 1;
+2026-06-05 02:24:18.521 UTC [13214] ERROR:  non-view rule for "r118_replace" must not be named "_RETURN"
+2026-06-05 02:24:18.521 UTC [13214] STATEMENT:  CREATE OR REPLACE RULE "_RETURN" AS ON INSERT TO r118_replace DO ALSO SELECT 2;
+2026-06-05 02:24:18.683 UTC [13214] ERROR:  no partition of relation "test_part_multi" found for row
+2026-06-05 02:24:18.683 UTC [13214] DETAIL:  Partition key of the failing row contains (id) = (100).
+2026-06-05 02:24:18.683 UTC [13214] STATEMENT:  INSERT INTO test_part_multi (id, ref_id) VALUES (100, NULL);
+2026-06-05 02:24:18.683 UTC [13214] ERROR:  no partition of relation "test_part_multi" found for row
+2026-06-05 02:24:18.683 UTC [13214] DETAIL:  Partition key of the failing row contains (id) = (200).
+2026-06-05 02:24:18.683 UTC [13214] STATEMENT:  INSERT INTO test_part_multi (id, ref_id) VALUES (200, 100);
+2026-06-05 02:24:19.185 UTC [13214] ERROR:  check constraint "ck_invalid" of relation "test_check_invalid" is violated by some row
+2026-06-05 02:24:19.185 UTC [13214] STATEMENT:  ALTER TABLE test_check_invalid VALIDATE CONSTRAINT ck_invalid;
+2026-06-05 02:24:19.193 UTC [13214] ERROR:  relation "unnamed_join" in FOR UPDATE clause not found in FROM clause at character 56
+2026-06-05 02:24:19.193 UTC [13214] STATEMENT:  SELECT * FROM lock_a JOIN lock_b ON true FOR UPDATE OF unnamed_join;
+2026-06-05 02:24:19.213 UTC [13214] ERROR:  logical decoding requires wal_level >= logical
+2026-06-05 02:24:19.213 UTC [13214] STATEMENT:  SELECT pg_create_logical_replication_slot('test_slot', 'pgoutput');
+2026-06-05 02:24:19.214 UTC [13214] ERROR:  replication slot "test_slot" does not exist
+2026-06-05 02:24:19.214 UTC [13214] STATEMENT:  SELECT pg_drop_replication_slot('test_slot');
+2026-06-05 02:24:19.218 UTC [13214] ERROR:  logical decoding requires wal_level >= logical
+2026-06-05 02:24:19.218 UTC [13214] STATEMENT:  SELECT pg_create_logical_replication_slot('test_slot2', 'pgoutput');
+2026-06-05 02:24:19.218 UTC [13214] ERROR:  replication slot "test_slot2" does not exist
+2026-06-05 02:24:19.218 UTC [13214] STATEMENT:  SELECT pg_drop_replication_slot('test_slot2');
+2026-06-05 02:24:19.222 UTC [13214] ERROR:  logical decoding requires wal_level >= logical
+2026-06-05 02:24:19.222 UTC [13214] STATEMENT:  SELECT pg_create_logical_replication_slot('test_slot3', 'pgoutput');
+2026-06-05 02:24:19.222 UTC [13214] ERROR:  replication slot "test_slot3" does not exist
+2026-06-05 02:24:19.222 UTC [13214] STATEMENT:  SELECT pg_drop_replication_slot('test_slot3');
+2026-06-05 02:24:19.281 UTC [13214] ERROR:  subquery must return only one column at character 24
+2026-06-05 02:24:19.281 UTC [13214] STATEMENT:  SELECT * FROM (VALUES ((SELECT * FROM zero_col_tab))) AS v;
+2026-06-05 02:24:19.400 UTC [13214] ERROR:  column "oid" of relation "test_alter_sys_attr" does not exist
+2026-06-05 02:24:19.400 UTC [13214] STATEMENT:  ALTER TABLE test_alter_sys_attr ALTER COLUMN oid TYPE bigint;
+2026-06-05 02:24:19.412 UTC [13214] ERROR:  column "nonexistent" of relation "test_alter_nonexist" does not exist
+2026-06-05 02:24:19.412 UTC [13214] STATEMENT:  ALTER TABLE test_alter_nonexist ALTER COLUMN nonexistent TYPE text;
+2026-06-05 02:24:19.520 UTC [13214] ERROR:  cannot drop partitioned index "idx_parent2" concurrently
+2026-06-05 02:24:19.520 UTC [13214] STATEMENT:  DROP INDEX CONCURRENTLY idx_parent2;
+2026-06-05 02:24:19.779 UTC [13214] ERROR:  multiple primary keys for table "test_t3" are not allowed
+2026-06-05 02:24:19.779 UTC [13214] STATEMENT:  ALTER TABLE test_t3 ADD PRIMARY KEY USING INDEX idx_t3;
+2026-06-05 02:24:20.003 UTC [13117] LOG:  received fast shutdown request
+2026-06-05 02:24:20.030 UTC [13117] LOG:  aborting any active transactions
+2026-06-05 02:24:20.277 UTC [13117] LOG:  background worker "logical replication launcher" (PID 13140) exited with exit code 1
+2026-06-05 02:24:20.278 UTC [13135] LOG:  shutting down
+2026-06-05 02:24:20.446 UTC [13117] LOG:  database system is shut down
