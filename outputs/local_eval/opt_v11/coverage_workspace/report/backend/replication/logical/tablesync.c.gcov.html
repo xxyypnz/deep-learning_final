@@ -1,0 +1,1079 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - coverage_filtered.info - backend/replication/logical/tablesync.c</title>
+  <link rel="stylesheet" type="text/css" href="../../../gcov.css">
+</head>
+
+<body>
+
+          <table width="100%" border=0 cellspacing=0 cellpadding=0>
+            <tr><td class="title">LCOV - code coverage report</td></tr>
+            <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+
+            <tr>
+              <td width="100%">
+                <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="10%" class="headerValue"><a href="../../../index.html">top level</a> - <a href="index.html">backend/replication/logical</a> - tablesync.c<span style="font-size: 80%;"> (source / <a href="tablesync.c.func-c.html">functions</a>)</span></td>
+            <td width="5%"></td>
+            <td width="5%"></td>
+            <td width="5%" class="headerCovTableHead">Coverage</td>
+            <td width="5%" class="headerCovTableHead" title="Covered + Uncovered code">Total</td>
+            <td width="5%" class="headerCovTableHead" title="Exercised code only">Hit</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">coverage_filtered.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntryLo">0.0&nbsp;%</td>
+            <td class="headerCovTableEntry">313</td>
+            <td class="headerCovTableEntry">0</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test Date:</td>
+            <td class="headerValue">2026-06-06 02:50:27</td>
+            <td></td>
+            <td class="headerItem">Functions:</td>
+            <td class="headerCovTableEntryLo">0.0&nbsp;%</td>
+            <td class="headerCovTableEntry">12</td>
+            <td class="headerCovTableEntry">0</td>
+          </tr>
+                  <tr><td><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+                </table>
+              </td>
+            </tr>
+
+            <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+          </table>
+
+          <table cellpadding=0 cellspacing=0 border=0>
+            <tr>
+              <td><br></td>
+            </tr>
+            <tr>
+              <td>
+<pre class="sourceHeading">            Line data    Source code</pre>
+<pre class="source">
+<span id="L1"><span class="lineNum">       1</span>              : /*-------------------------------------------------------------------------</span>
+<span id="L2"><span class="lineNum">       2</span>              :  * tablesync.c</span>
+<span id="L3"><span class="lineNum">       3</span>              :  *        PostgreSQL logical replication</span>
+<span id="L4"><span class="lineNum">       4</span>              :  *</span>
+<span id="L5"><span class="lineNum">       5</span>              :  * Copyright (c) 2012-2020, PostgreSQL Global Development Group</span>
+<span id="L6"><span class="lineNum">       6</span>              :  *</span>
+<span id="L7"><span class="lineNum">       7</span>              :  * IDENTIFICATION</span>
+<span id="L8"><span class="lineNum">       8</span>              :  *        src/backend/replication/logical/tablesync.c</span>
+<span id="L9"><span class="lineNum">       9</span>              :  *</span>
+<span id="L10"><span class="lineNum">      10</span>              :  * NOTES</span>
+<span id="L11"><span class="lineNum">      11</span>              :  *        This file contains code for initial table data synchronization for</span>
+<span id="L12"><span class="lineNum">      12</span>              :  *        logical replication.</span>
+<span id="L13"><span class="lineNum">      13</span>              :  *</span>
+<span id="L14"><span class="lineNum">      14</span>              :  *        The initial data synchronization is done separately for each table,</span>
+<span id="L15"><span class="lineNum">      15</span>              :  *        in a separate apply worker that only fetches the initial snapshot data</span>
+<span id="L16"><span class="lineNum">      16</span>              :  *        from the publisher and then synchronizes the position in the stream with</span>
+<span id="L17"><span class="lineNum">      17</span>              :  *        the main apply worker.</span>
+<span id="L18"><span class="lineNum">      18</span>              :  *</span>
+<span id="L19"><span class="lineNum">      19</span>              :  *        There are several reasons for doing the synchronization this way:</span>
+<span id="L20"><span class="lineNum">      20</span>              :  *         - It allows us to parallelize the initial data synchronization</span>
+<span id="L21"><span class="lineNum">      21</span>              :  *               which lowers the time needed for it to happen.</span>
+<span id="L22"><span class="lineNum">      22</span>              :  *         - The initial synchronization does not have to hold the xid and LSN</span>
+<span id="L23"><span class="lineNum">      23</span>              :  *               for the time it takes to copy data of all tables, causing less</span>
+<span id="L24"><span class="lineNum">      24</span>              :  *               bloat and lower disk consumption compared to doing the</span>
+<span id="L25"><span class="lineNum">      25</span>              :  *               synchronization in a single process for the whole database.</span>
+<span id="L26"><span class="lineNum">      26</span>              :  *         - It allows us to synchronize any tables added after the initial</span>
+<span id="L27"><span class="lineNum">      27</span>              :  *               synchronization has finished.</span>
+<span id="L28"><span class="lineNum">      28</span>              :  *</span>
+<span id="L29"><span class="lineNum">      29</span>              :  *        The stream position synchronization works in multiple steps.</span>
+<span id="L30"><span class="lineNum">      30</span>              :  *         - Sync finishes copy and sets worker state as SYNCWAIT and waits for</span>
+<span id="L31"><span class="lineNum">      31</span>              :  *               state to change in a loop.</span>
+<span id="L32"><span class="lineNum">      32</span>              :  *         - Apply periodically checks tables that are synchronizing for SYNCWAIT.</span>
+<span id="L33"><span class="lineNum">      33</span>              :  *               When the desired state appears, it will set the worker state to</span>
+<span id="L34"><span class="lineNum">      34</span>              :  *               CATCHUP and starts loop-waiting until either the table state is set</span>
+<span id="L35"><span class="lineNum">      35</span>              :  *               to SYNCDONE or the sync worker exits.</span>
+<span id="L36"><span class="lineNum">      36</span>              :  *         - After the sync worker has seen the state change to CATCHUP, it will</span>
+<span id="L37"><span class="lineNum">      37</span>              :  *               read the stream and apply changes (acting like an apply worker) until</span>
+<span id="L38"><span class="lineNum">      38</span>              :  *               it catches up to the specified stream position.  Then it sets the</span>
+<span id="L39"><span class="lineNum">      39</span>              :  *               state to SYNCDONE.  There might be zero changes applied between</span>
+<span id="L40"><span class="lineNum">      40</span>              :  *               CATCHUP and SYNCDONE, because the sync worker might be ahead of the</span>
+<span id="L41"><span class="lineNum">      41</span>              :  *               apply worker.</span>
+<span id="L42"><span class="lineNum">      42</span>              :  *         - Once the state was set to SYNCDONE, the apply will continue tracking</span>
+<span id="L43"><span class="lineNum">      43</span>              :  *               the table until it reaches the SYNCDONE stream position, at which</span>
+<span id="L44"><span class="lineNum">      44</span>              :  *               point it sets state to READY and stops tracking.  Again, there might</span>
+<span id="L45"><span class="lineNum">      45</span>              :  *               be zero changes in between.</span>
+<span id="L46"><span class="lineNum">      46</span>              :  *</span>
+<span id="L47"><span class="lineNum">      47</span>              :  *        So the state progression is always: INIT -&gt; DATASYNC -&gt; SYNCWAIT -&gt; CATCHUP -&gt;</span>
+<span id="L48"><span class="lineNum">      48</span>              :  *        SYNCDONE -&gt; READY.</span>
+<span id="L49"><span class="lineNum">      49</span>              :  *</span>
+<span id="L50"><span class="lineNum">      50</span>              :  *        The catalog pg_subscription_rel is used to keep information about</span>
+<span id="L51"><span class="lineNum">      51</span>              :  *        subscribed tables and their state.  Some transient state during data</span>
+<span id="L52"><span class="lineNum">      52</span>              :  *        synchronization is kept in shared memory.  The states SYNCWAIT and</span>
+<span id="L53"><span class="lineNum">      53</span>              :  *        CATCHUP only appear in memory.</span>
+<span id="L54"><span class="lineNum">      54</span>              :  *</span>
+<span id="L55"><span class="lineNum">      55</span>              :  *        Example flows look like this:</span>
+<span id="L56"><span class="lineNum">      56</span>              :  *         - Apply is in front:</span>
+<span id="L57"><span class="lineNum">      57</span>              :  *                sync:8</span>
+<span id="L58"><span class="lineNum">      58</span>              :  *                      -&gt; set in memory SYNCWAIT</span>
+<span id="L59"><span class="lineNum">      59</span>              :  *                apply:10</span>
+<span id="L60"><span class="lineNum">      60</span>              :  *                      -&gt; set in memory CATCHUP</span>
+<span id="L61"><span class="lineNum">      61</span>              :  *                      -&gt; enter wait-loop</span>
+<span id="L62"><span class="lineNum">      62</span>              :  *                sync:10</span>
+<span id="L63"><span class="lineNum">      63</span>              :  *                      -&gt; set in catalog SYNCDONE</span>
+<span id="L64"><span class="lineNum">      64</span>              :  *                      -&gt; exit</span>
+<span id="L65"><span class="lineNum">      65</span>              :  *                apply:10</span>
+<span id="L66"><span class="lineNum">      66</span>              :  *                      -&gt; exit wait-loop</span>
+<span id="L67"><span class="lineNum">      67</span>              :  *                      -&gt; continue rep</span>
+<span id="L68"><span class="lineNum">      68</span>              :  *                apply:11</span>
+<span id="L69"><span class="lineNum">      69</span>              :  *                      -&gt; set in catalog READY</span>
+<span id="L70"><span class="lineNum">      70</span>              :  *         - Sync in front:</span>
+<span id="L71"><span class="lineNum">      71</span>              :  *                sync:10</span>
+<span id="L72"><span class="lineNum">      72</span>              :  *                      -&gt; set in memory SYNCWAIT</span>
+<span id="L73"><span class="lineNum">      73</span>              :  *                apply:8</span>
+<span id="L74"><span class="lineNum">      74</span>              :  *                      -&gt; set in memory CATCHUP</span>
+<span id="L75"><span class="lineNum">      75</span>              :  *                      -&gt; continue per-table filtering</span>
+<span id="L76"><span class="lineNum">      76</span>              :  *                sync:10</span>
+<span id="L77"><span class="lineNum">      77</span>              :  *                      -&gt; set in catalog SYNCDONE</span>
+<span id="L78"><span class="lineNum">      78</span>              :  *                      -&gt; exit</span>
+<span id="L79"><span class="lineNum">      79</span>              :  *                apply:10</span>
+<span id="L80"><span class="lineNum">      80</span>              :  *                      -&gt; set in catalog READY</span>
+<span id="L81"><span class="lineNum">      81</span>              :  *                      -&gt; stop per-table filtering</span>
+<span id="L82"><span class="lineNum">      82</span>              :  *                      -&gt; continue rep</span>
+<span id="L83"><span class="lineNum">      83</span>              :  *-------------------------------------------------------------------------</span>
+<span id="L84"><span class="lineNum">      84</span>              :  */</span>
+<span id="L85"><span class="lineNum">      85</span>              : </span>
+<span id="L86"><span class="lineNum">      86</span>              : #include &quot;postgres.h&quot;</span>
+<span id="L87"><span class="lineNum">      87</span>              : </span>
+<span id="L88"><span class="lineNum">      88</span>              : #include &quot;access/table.h&quot;</span>
+<span id="L89"><span class="lineNum">      89</span>              : #include &quot;access/xact.h&quot;</span>
+<span id="L90"><span class="lineNum">      90</span>              : #include &quot;catalog/pg_subscription_rel.h&quot;</span>
+<span id="L91"><span class="lineNum">      91</span>              : #include &quot;catalog/pg_type.h&quot;</span>
+<span id="L92"><span class="lineNum">      92</span>              : #include &quot;commands/copy.h&quot;</span>
+<span id="L93"><span class="lineNum">      93</span>              : #include &quot;miscadmin.h&quot;</span>
+<span id="L94"><span class="lineNum">      94</span>              : #include &quot;parser/parse_relation.h&quot;</span>
+<span id="L95"><span class="lineNum">      95</span>              : #include &quot;pgstat.h&quot;</span>
+<span id="L96"><span class="lineNum">      96</span>              : #include &quot;replication/logicallauncher.h&quot;</span>
+<span id="L97"><span class="lineNum">      97</span>              : #include &quot;replication/logicalrelation.h&quot;</span>
+<span id="L98"><span class="lineNum">      98</span>              : #include &quot;replication/walreceiver.h&quot;</span>
+<span id="L99"><span class="lineNum">      99</span>              : #include &quot;replication/worker_internal.h&quot;</span>
+<span id="L100"><span class="lineNum">     100</span>              : #include &quot;storage/ipc.h&quot;</span>
+<span id="L101"><span class="lineNum">     101</span>              : #include &quot;utils/builtins.h&quot;</span>
+<span id="L102"><span class="lineNum">     102</span>              : #include &quot;utils/lsyscache.h&quot;</span>
+<span id="L103"><span class="lineNum">     103</span>              : #include &quot;utils/memutils.h&quot;</span>
+<span id="L104"><span class="lineNum">     104</span>              : #include &quot;utils/snapmgr.h&quot;</span>
+<span id="L105"><span class="lineNum">     105</span>              : </span>
+<span id="L106"><span class="lineNum">     106</span>              : static bool table_states_valid = false;</span>
+<span id="L107"><span class="lineNum">     107</span>              : </span>
+<span id="L108"><span class="lineNum">     108</span>              : StringInfo      copybuf = NULL;</span>
+<span id="L109"><span class="lineNum">     109</span>              : </span>
+<span id="L110"><span class="lineNum">     110</span>              : /*</span>
+<span id="L111"><span class="lineNum">     111</span>              :  * Exit routine for synchronization worker.</span>
+<span id="L112"><span class="lineNum">     112</span>              :  */</span>
+<span id="L113"><span class="lineNum">     113</span>              : static void</span>
+<span id="L114"><span class="lineNum">     114</span>              : pg_attribute_noreturn()</span>
+<span id="L115"><span class="lineNum">     115</span> <span class="tlaUNC tlaBgUNC">           0 : finish_sync_worker(void)</span></span>
+<span id="L116"><span class="lineNum">     116</span>              : {</span>
+<span id="L117"><span class="lineNum">     117</span>              :         /*</span>
+<span id="L118"><span class="lineNum">     118</span>              :          * Commit any outstanding transaction. This is the usual case, unless</span>
+<span id="L119"><span class="lineNum">     119</span>              :          * there was nothing to do for the table.</span>
+<span id="L120"><span class="lineNum">     120</span>              :          */</span>
+<span id="L121"><span class="lineNum">     121</span> <span class="tlaUNC">           0 :         if (IsTransactionState())</span></span>
+<span id="L122"><span class="lineNum">     122</span>              :         {</span>
+<span id="L123"><span class="lineNum">     123</span> <span class="tlaUNC">           0 :                 CommitTransactionCommand();</span></span>
+<span id="L124"><span class="lineNum">     124</span> <span class="tlaUNC">           0 :                 pgstat_report_stat(false);</span></span>
+<span id="L125"><span class="lineNum">     125</span>              :         }</span>
+<span id="L126"><span class="lineNum">     126</span>              : </span>
+<span id="L127"><span class="lineNum">     127</span>              :         /* And flush all writes. */</span>
+<span id="L128"><span class="lineNum">     128</span> <span class="tlaUNC">           0 :         XLogFlush(GetXLogWriteRecPtr());</span></span>
+<span id="L129"><span class="lineNum">     129</span>              : </span>
+<span id="L130"><span class="lineNum">     130</span> <span class="tlaUNC">           0 :         StartTransactionCommand();</span></span>
+<span id="L131"><span class="lineNum">     131</span> <span class="tlaUNC">           0 :         ereport(LOG,</span></span>
+<span id="L132"><span class="lineNum">     132</span>              :                         (errmsg(&quot;logical replication table synchronization worker for subscription \&quot;%s\&quot;, table \&quot;%s\&quot; has finished&quot;,</span>
+<span id="L133"><span class="lineNum">     133</span>              :                                         MySubscription-&gt;name,</span>
+<span id="L134"><span class="lineNum">     134</span>              :                                         get_rel_name(MyLogicalRepWorker-&gt;relid))));</span>
+<span id="L135"><span class="lineNum">     135</span> <span class="tlaUNC">           0 :         CommitTransactionCommand();</span></span>
+<span id="L136"><span class="lineNum">     136</span>              : </span>
+<span id="L137"><span class="lineNum">     137</span>              :         /* Find the main apply worker and signal it. */</span>
+<span id="L138"><span class="lineNum">     138</span> <span class="tlaUNC">           0 :         logicalrep_worker_wakeup(MyLogicalRepWorker-&gt;subid, InvalidOid);</span></span>
+<span id="L139"><span class="lineNum">     139</span>              : </span>
+<span id="L140"><span class="lineNum">     140</span>              :         /* Stop gracefully */</span>
+<span id="L141"><span class="lineNum">     141</span> <span class="tlaUNC">           0 :         proc_exit(0);</span></span>
+<span id="L142"><span class="lineNum">     142</span>              : }</span>
+<span id="L143"><span class="lineNum">     143</span>              : </span>
+<span id="L144"><span class="lineNum">     144</span>              : /*</span>
+<span id="L145"><span class="lineNum">     145</span>              :  * Wait until the relation synchronization state is set in the catalog to the</span>
+<span id="L146"><span class="lineNum">     146</span>              :  * expected one.</span>
+<span id="L147"><span class="lineNum">     147</span>              :  *</span>
+<span id="L148"><span class="lineNum">     148</span>              :  * Used when transitioning from CATCHUP state to SYNCDONE.</span>
+<span id="L149"><span class="lineNum">     149</span>              :  *</span>
+<span id="L150"><span class="lineNum">     150</span>              :  * Returns false if the synchronization worker has disappeared or the table state</span>
+<span id="L151"><span class="lineNum">     151</span>              :  * has been reset.</span>
+<span id="L152"><span class="lineNum">     152</span>              :  */</span>
+<span id="L153"><span class="lineNum">     153</span>              : static bool</span>
+<span id="L154"><span class="lineNum">     154</span> <span class="tlaUNC">           0 : wait_for_relation_state_change(Oid relid, char expected_state)</span></span>
+<span id="L155"><span class="lineNum">     155</span>              : {</span>
+<span id="L156"><span class="lineNum">     156</span>              :         char            state;</span>
+<span id="L157"><span class="lineNum">     157</span>              : </span>
+<span id="L158"><span class="lineNum">     158</span>              :         for (;;)</span>
+<span id="L159"><span class="lineNum">     159</span> <span class="tlaUNC">           0 :         {</span></span>
+<span id="L160"><span class="lineNum">     160</span>              :                 LogicalRepWorker *worker;</span>
+<span id="L161"><span class="lineNum">     161</span>              :                 XLogRecPtr      statelsn;</span>
+<span id="L162"><span class="lineNum">     162</span>              : </span>
+<span id="L163"><span class="lineNum">     163</span> <span class="tlaUNC">           0 :                 CHECK_FOR_INTERRUPTS();</span></span>
+<span id="L164"><span class="lineNum">     164</span>              : </span>
+<span id="L165"><span class="lineNum">     165</span>              :                 /* XXX use cache invalidation here to improve performance? */</span>
+<span id="L166"><span class="lineNum">     166</span> <span class="tlaUNC">           0 :                 PushActiveSnapshot(GetLatestSnapshot());</span></span>
+<span id="L167"><span class="lineNum">     167</span> <span class="tlaUNC">           0 :                 state = GetSubscriptionRelState(MyLogicalRepWorker-&gt;subid,</span></span>
+<span id="L168"><span class="lineNum">     168</span>              :                                                                                 relid, &amp;statelsn, true);</span>
+<span id="L169"><span class="lineNum">     169</span> <span class="tlaUNC">           0 :                 PopActiveSnapshot();</span></span>
+<span id="L170"><span class="lineNum">     170</span>              : </span>
+<span id="L171"><span class="lineNum">     171</span> <span class="tlaUNC">           0 :                 if (state == SUBREL_STATE_UNKNOWN)</span></span>
+<span id="L172"><span class="lineNum">     172</span> <span class="tlaUNC">           0 :                         return false;</span></span>
+<span id="L173"><span class="lineNum">     173</span>              : </span>
+<span id="L174"><span class="lineNum">     174</span> <span class="tlaUNC">           0 :                 if (state == expected_state)</span></span>
+<span id="L175"><span class="lineNum">     175</span> <span class="tlaUNC">           0 :                         return true;</span></span>
+<span id="L176"><span class="lineNum">     176</span>              : </span>
+<span id="L177"><span class="lineNum">     177</span>              :                 /* Check if the sync worker is still running and bail if not. */</span>
+<span id="L178"><span class="lineNum">     178</span> <span class="tlaUNC">           0 :                 LWLockAcquire(LogicalRepWorkerLock, LW_SHARED);</span></span>
+<span id="L179"><span class="lineNum">     179</span>              : </span>
+<span id="L180"><span class="lineNum">     180</span>              :                 /* Check if the opposite worker is still running and bail if not. */</span>
+<span id="L181"><span class="lineNum">     181</span> <span class="tlaUNC">           0 :                 worker = logicalrep_worker_find(MyLogicalRepWorker-&gt;subid,</span></span>
+<span id="L182"><span class="lineNum">     182</span> <span class="tlaUNC">           0 :                                                                                 am_tablesync_worker() ? InvalidOid : relid,</span></span>
+<span id="L183"><span class="lineNum">     183</span>              :                                                                                 false);</span>
+<span id="L184"><span class="lineNum">     184</span> <span class="tlaUNC">           0 :                 LWLockRelease(LogicalRepWorkerLock);</span></span>
+<span id="L185"><span class="lineNum">     185</span> <span class="tlaUNC">           0 :                 if (!worker)</span></span>
+<span id="L186"><span class="lineNum">     186</span> <span class="tlaUNC">           0 :                         return false;</span></span>
+<span id="L187"><span class="lineNum">     187</span>              : </span>
+<span id="L188"><span class="lineNum">     188</span> <span class="tlaUNC">           0 :                 (void) WaitLatch(MyLatch,</span></span>
+<span id="L189"><span class="lineNum">     189</span>              :                                                  WL_LATCH_SET | WL_TIMEOUT | WL_EXIT_ON_PM_DEATH,</span>
+<span id="L190"><span class="lineNum">     190</span>              :                                                  1000L, WAIT_EVENT_LOGICAL_SYNC_STATE_CHANGE);</span>
+<span id="L191"><span class="lineNum">     191</span>              : </span>
+<span id="L192"><span class="lineNum">     192</span> <span class="tlaUNC">           0 :                 ResetLatch(MyLatch);</span></span>
+<span id="L193"><span class="lineNum">     193</span>              :         }</span>
+<span id="L194"><span class="lineNum">     194</span>              : </span>
+<span id="L195"><span class="lineNum">     195</span>              :         return false;</span>
+<span id="L196"><span class="lineNum">     196</span>              : }</span>
+<span id="L197"><span class="lineNum">     197</span>              : </span>
+<span id="L198"><span class="lineNum">     198</span>              : /*</span>
+<span id="L199"><span class="lineNum">     199</span>              :  * Wait until the apply worker changes the state of our synchronization</span>
+<span id="L200"><span class="lineNum">     200</span>              :  * worker to the expected one.</span>
+<span id="L201"><span class="lineNum">     201</span>              :  *</span>
+<span id="L202"><span class="lineNum">     202</span>              :  * Used when transitioning from SYNCWAIT state to CATCHUP.</span>
+<span id="L203"><span class="lineNum">     203</span>              :  *</span>
+<span id="L204"><span class="lineNum">     204</span>              :  * Returns false if the apply worker has disappeared.</span>
+<span id="L205"><span class="lineNum">     205</span>              :  */</span>
+<span id="L206"><span class="lineNum">     206</span>              : static bool</span>
+<span id="L207"><span class="lineNum">     207</span> <span class="tlaUNC">           0 : wait_for_worker_state_change(char expected_state)</span></span>
+<span id="L208"><span class="lineNum">     208</span>              : {</span>
+<span id="L209"><span class="lineNum">     209</span>              :         int                     rc;</span>
+<span id="L210"><span class="lineNum">     210</span>              : </span>
+<span id="L211"><span class="lineNum">     211</span>              :         for (;;)</span>
+<span id="L212"><span class="lineNum">     212</span> <span class="tlaUNC">           0 :         {</span></span>
+<span id="L213"><span class="lineNum">     213</span>              :                 LogicalRepWorker *worker;</span>
+<span id="L214"><span class="lineNum">     214</span>              : </span>
+<span id="L215"><span class="lineNum">     215</span> <span class="tlaUNC">           0 :                 CHECK_FOR_INTERRUPTS();</span></span>
+<span id="L216"><span class="lineNum">     216</span>              : </span>
+<span id="L217"><span class="lineNum">     217</span>              :                 /*</span>
+<span id="L218"><span class="lineNum">     218</span>              :                  * Done if already in correct state.  (We assume this fetch is atomic</span>
+<span id="L219"><span class="lineNum">     219</span>              :                  * enough to not give a misleading answer if we do it with no lock.)</span>
+<span id="L220"><span class="lineNum">     220</span>              :                  */</span>
+<span id="L221"><span class="lineNum">     221</span> <span class="tlaUNC">           0 :                 if (MyLogicalRepWorker-&gt;relstate == expected_state)</span></span>
+<span id="L222"><span class="lineNum">     222</span> <span class="tlaUNC">           0 :                         return true;</span></span>
+<span id="L223"><span class="lineNum">     223</span>              : </span>
+<span id="L224"><span class="lineNum">     224</span>              :                 /*</span>
+<span id="L225"><span class="lineNum">     225</span>              :                  * Bail out if the apply worker has died, else signal it we're</span>
+<span id="L226"><span class="lineNum">     226</span>              :                  * waiting.</span>
+<span id="L227"><span class="lineNum">     227</span>              :                  */</span>
+<span id="L228"><span class="lineNum">     228</span> <span class="tlaUNC">           0 :                 LWLockAcquire(LogicalRepWorkerLock, LW_SHARED);</span></span>
+<span id="L229"><span class="lineNum">     229</span> <span class="tlaUNC">           0 :                 worker = logicalrep_worker_find(MyLogicalRepWorker-&gt;subid,</span></span>
+<span id="L230"><span class="lineNum">     230</span>              :                                                                                 InvalidOid, false);</span>
+<span id="L231"><span class="lineNum">     231</span> <span class="tlaUNC">           0 :                 if (worker &amp;&amp; worker-&gt;proc)</span></span>
+<span id="L232"><span class="lineNum">     232</span> <span class="tlaUNC">           0 :                         logicalrep_worker_wakeup_ptr(worker);</span></span>
+<span id="L233"><span class="lineNum">     233</span> <span class="tlaUNC">           0 :                 LWLockRelease(LogicalRepWorkerLock);</span></span>
+<span id="L234"><span class="lineNum">     234</span> <span class="tlaUNC">           0 :                 if (!worker)</span></span>
+<span id="L235"><span class="lineNum">     235</span> <span class="tlaUNC">           0 :                         break;</span></span>
+<span id="L236"><span class="lineNum">     236</span>              : </span>
+<span id="L237"><span class="lineNum">     237</span>              :                 /*</span>
+<span id="L238"><span class="lineNum">     238</span>              :                  * Wait.  We expect to get a latch signal back from the apply worker,</span>
+<span id="L239"><span class="lineNum">     239</span>              :                  * but use a timeout in case it dies without sending one.</span>
+<span id="L240"><span class="lineNum">     240</span>              :                  */</span>
+<span id="L241"><span class="lineNum">     241</span> <span class="tlaUNC">           0 :                 rc = WaitLatch(MyLatch,</span></span>
+<span id="L242"><span class="lineNum">     242</span>              :                                            WL_LATCH_SET | WL_TIMEOUT | WL_EXIT_ON_PM_DEATH,</span>
+<span id="L243"><span class="lineNum">     243</span>              :                                            1000L, WAIT_EVENT_LOGICAL_SYNC_STATE_CHANGE);</span>
+<span id="L244"><span class="lineNum">     244</span>              : </span>
+<span id="L245"><span class="lineNum">     245</span> <span class="tlaUNC">           0 :                 if (rc &amp; WL_LATCH_SET)</span></span>
+<span id="L246"><span class="lineNum">     246</span> <span class="tlaUNC">           0 :                         ResetLatch(MyLatch);</span></span>
+<span id="L247"><span class="lineNum">     247</span>              :         }</span>
+<span id="L248"><span class="lineNum">     248</span>              : </span>
+<span id="L249"><span class="lineNum">     249</span> <span class="tlaUNC">           0 :         return false;</span></span>
+<span id="L250"><span class="lineNum">     250</span>              : }</span>
+<span id="L251"><span class="lineNum">     251</span>              : </span>
+<span id="L252"><span class="lineNum">     252</span>              : /*</span>
+<span id="L253"><span class="lineNum">     253</span>              :  * Callback from syscache invalidation.</span>
+<span id="L254"><span class="lineNum">     254</span>              :  */</span>
+<span id="L255"><span class="lineNum">     255</span>              : void</span>
+<span id="L256"><span class="lineNum">     256</span> <span class="tlaUNC">           0 : invalidate_syncing_table_states(Datum arg, int cacheid, uint32 hashvalue)</span></span>
+<span id="L257"><span class="lineNum">     257</span>              : {</span>
+<span id="L258"><span class="lineNum">     258</span> <span class="tlaUNC">           0 :         table_states_valid = false;</span></span>
+<span id="L259"><span class="lineNum">     259</span> <span class="tlaUNC">           0 : }</span></span>
+<span id="L260"><span class="lineNum">     260</span>              : </span>
+<span id="L261"><span class="lineNum">     261</span>              : /*</span>
+<span id="L262"><span class="lineNum">     262</span>              :  * Handle table synchronization cooperation from the synchronization</span>
+<span id="L263"><span class="lineNum">     263</span>              :  * worker.</span>
+<span id="L264"><span class="lineNum">     264</span>              :  *</span>
+<span id="L265"><span class="lineNum">     265</span>              :  * If the sync worker is in CATCHUP state and reached (or passed) the</span>
+<span id="L266"><span class="lineNum">     266</span>              :  * predetermined synchronization point in the WAL stream, mark the table as</span>
+<span id="L267"><span class="lineNum">     267</span>              :  * SYNCDONE and finish.</span>
+<span id="L268"><span class="lineNum">     268</span>              :  */</span>
+<span id="L269"><span class="lineNum">     269</span>              : static void</span>
+<span id="L270"><span class="lineNum">     270</span> <span class="tlaUNC">           0 : process_syncing_tables_for_sync(XLogRecPtr current_lsn)</span></span>
+<span id="L271"><span class="lineNum">     271</span>              : {</span>
+<span id="L272"><span class="lineNum">     272</span>              :         Assert(IsTransactionState());</span>
+<span id="L273"><span class="lineNum">     273</span>              : </span>
+<span id="L274"><span class="lineNum">     274</span> <span class="tlaUNC">           0 :         SpinLockAcquire(&amp;MyLogicalRepWorker-&gt;relmutex);</span></span>
+<span id="L275"><span class="lineNum">     275</span>              : </span>
+<span id="L276"><span class="lineNum">     276</span> <span class="tlaUNC">           0 :         if (MyLogicalRepWorker-&gt;relstate == SUBREL_STATE_CATCHUP &amp;&amp;</span></span>
+<span id="L277"><span class="lineNum">     277</span> <span class="tlaUNC">           0 :                 current_lsn &gt;= MyLogicalRepWorker-&gt;relstate_lsn)</span></span>
+<span id="L278"><span class="lineNum">     278</span>              :         {</span>
+<span id="L279"><span class="lineNum">     279</span>              :                 TimeLineID      tli;</span>
+<span id="L280"><span class="lineNum">     280</span>              : </span>
+<span id="L281"><span class="lineNum">     281</span> <span class="tlaUNC">           0 :                 MyLogicalRepWorker-&gt;relstate = SUBREL_STATE_SYNCDONE;</span></span>
+<span id="L282"><span class="lineNum">     282</span> <span class="tlaUNC">           0 :                 MyLogicalRepWorker-&gt;relstate_lsn = current_lsn;</span></span>
+<span id="L283"><span class="lineNum">     283</span>              : </span>
+<span id="L284"><span class="lineNum">     284</span> <span class="tlaUNC">           0 :                 SpinLockRelease(&amp;MyLogicalRepWorker-&gt;relmutex);</span></span>
+<span id="L285"><span class="lineNum">     285</span>              : </span>
+<span id="L286"><span class="lineNum">     286</span> <span class="tlaUNC">           0 :                 UpdateSubscriptionRelState(MyLogicalRepWorker-&gt;subid,</span></span>
+<span id="L287"><span class="lineNum">     287</span> <span class="tlaUNC">           0 :                                                                    MyLogicalRepWorker-&gt;relid,</span></span>
+<span id="L288"><span class="lineNum">     288</span> <span class="tlaUNC">           0 :                                                                    MyLogicalRepWorker-&gt;relstate,</span></span>
+<span id="L289"><span class="lineNum">     289</span> <span class="tlaUNC">           0 :                                                                    MyLogicalRepWorker-&gt;relstate_lsn);</span></span>
+<span id="L290"><span class="lineNum">     290</span>              : </span>
+<span id="L291"><span class="lineNum">     291</span> <span class="tlaUNC">           0 :                 walrcv_endstreaming(LogRepWorkerWalRcvConn, &amp;tli);</span></span>
+<span id="L292"><span class="lineNum">     292</span> <span class="tlaUNC">           0 :                 finish_sync_worker();</span></span>
+<span id="L293"><span class="lineNum">     293</span>              :         }</span>
+<span id="L294"><span class="lineNum">     294</span>              :         else</span>
+<span id="L295"><span class="lineNum">     295</span> <span class="tlaUNC">           0 :                 SpinLockRelease(&amp;MyLogicalRepWorker-&gt;relmutex);</span></span>
+<span id="L296"><span class="lineNum">     296</span> <span class="tlaUNC">           0 : }</span></span>
+<span id="L297"><span class="lineNum">     297</span>              : </span>
+<span id="L298"><span class="lineNum">     298</span>              : /*</span>
+<span id="L299"><span class="lineNum">     299</span>              :  * Handle table synchronization cooperation from the apply worker.</span>
+<span id="L300"><span class="lineNum">     300</span>              :  *</span>
+<span id="L301"><span class="lineNum">     301</span>              :  * Walk over all subscription tables that are individually tracked by the</span>
+<span id="L302"><span class="lineNum">     302</span>              :  * apply process (currently, all that have state other than</span>
+<span id="L303"><span class="lineNum">     303</span>              :  * SUBREL_STATE_READY) and manage synchronization for them.</span>
+<span id="L304"><span class="lineNum">     304</span>              :  *</span>
+<span id="L305"><span class="lineNum">     305</span>              :  * If there are tables that need synchronizing and are not being synchronized</span>
+<span id="L306"><span class="lineNum">     306</span>              :  * yet, start sync workers for them (if there are free slots for sync</span>
+<span id="L307"><span class="lineNum">     307</span>              :  * workers).  To prevent starting the sync worker for the same relation at a</span>
+<span id="L308"><span class="lineNum">     308</span>              :  * high frequency after a failure, we store its last start time with each sync</span>
+<span id="L309"><span class="lineNum">     309</span>              :  * state info.  We start the sync worker for the same relation after waiting</span>
+<span id="L310"><span class="lineNum">     310</span>              :  * at least wal_retrieve_retry_interval.</span>
+<span id="L311"><span class="lineNum">     311</span>              :  *</span>
+<span id="L312"><span class="lineNum">     312</span>              :  * For tables that are being synchronized already, check if sync workers</span>
+<span id="L313"><span class="lineNum">     313</span>              :  * either need action from the apply worker or have finished.  This is the</span>
+<span id="L314"><span class="lineNum">     314</span>              :  * SYNCWAIT to CATCHUP transition.</span>
+<span id="L315"><span class="lineNum">     315</span>              :  *</span>
+<span id="L316"><span class="lineNum">     316</span>              :  * If the synchronization position is reached (SYNCDONE), then the table can</span>
+<span id="L317"><span class="lineNum">     317</span>              :  * be marked as READY and is no longer tracked.</span>
+<span id="L318"><span class="lineNum">     318</span>              :  */</span>
+<span id="L319"><span class="lineNum">     319</span>              : static void</span>
+<span id="L320"><span class="lineNum">     320</span> <span class="tlaUNC">           0 : process_syncing_tables_for_apply(XLogRecPtr current_lsn)</span></span>
+<span id="L321"><span class="lineNum">     321</span>              : {</span>
+<span id="L322"><span class="lineNum">     322</span>              :         struct tablesync_start_time_mapping</span>
+<span id="L323"><span class="lineNum">     323</span>              :         {</span>
+<span id="L324"><span class="lineNum">     324</span>              :                 Oid                     relid;</span>
+<span id="L325"><span class="lineNum">     325</span>              :                 TimestampTz last_start_time;</span>
+<span id="L326"><span class="lineNum">     326</span>              :         };</span>
+<span id="L327"><span class="lineNum">     327</span>              :         static List *table_states = NIL;</span>
+<span id="L328"><span class="lineNum">     328</span>              :         static HTAB *last_start_times = NULL;</span>
+<span id="L329"><span class="lineNum">     329</span>              :         ListCell   *lc;</span>
+<span id="L330"><span class="lineNum">     330</span> <span class="tlaUNC">           0 :         bool            started_tx = false;</span></span>
+<span id="L331"><span class="lineNum">     331</span>              : </span>
+<span id="L332"><span class="lineNum">     332</span>              :         Assert(!IsTransactionState());</span>
+<span id="L333"><span class="lineNum">     333</span>              : </span>
+<span id="L334"><span class="lineNum">     334</span>              :         /* We need up-to-date sync state info for subscription tables here. */</span>
+<span id="L335"><span class="lineNum">     335</span> <span class="tlaUNC">           0 :         if (!table_states_valid)</span></span>
+<span id="L336"><span class="lineNum">     336</span>              :         {</span>
+<span id="L337"><span class="lineNum">     337</span>              :                 MemoryContext oldctx;</span>
+<span id="L338"><span class="lineNum">     338</span>              :                 List       *rstates;</span>
+<span id="L339"><span class="lineNum">     339</span>              :                 ListCell   *lc;</span>
+<span id="L340"><span class="lineNum">     340</span>              :                 SubscriptionRelState *rstate;</span>
+<span id="L341"><span class="lineNum">     341</span>              : </span>
+<span id="L342"><span class="lineNum">     342</span>              :                 /* Clean the old list. */</span>
+<span id="L343"><span class="lineNum">     343</span> <span class="tlaUNC">           0 :                 list_free_deep(table_states);</span></span>
+<span id="L344"><span class="lineNum">     344</span> <span class="tlaUNC">           0 :                 table_states = NIL;</span></span>
+<span id="L345"><span class="lineNum">     345</span>              : </span>
+<span id="L346"><span class="lineNum">     346</span> <span class="tlaUNC">           0 :                 StartTransactionCommand();</span></span>
+<span id="L347"><span class="lineNum">     347</span> <span class="tlaUNC">           0 :                 started_tx = true;</span></span>
+<span id="L348"><span class="lineNum">     348</span>              : </span>
+<span id="L349"><span class="lineNum">     349</span>              :                 /* Fetch all non-ready tables. */</span>
+<span id="L350"><span class="lineNum">     350</span> <span class="tlaUNC">           0 :                 rstates = GetSubscriptionNotReadyRelations(MySubscription-&gt;oid);</span></span>
+<span id="L351"><span class="lineNum">     351</span>              : </span>
+<span id="L352"><span class="lineNum">     352</span>              :                 /* Allocate the tracking info in a permanent memory context. */</span>
+<span id="L353"><span class="lineNum">     353</span> <span class="tlaUNC">           0 :                 oldctx = MemoryContextSwitchTo(CacheMemoryContext);</span></span>
+<span id="L354"><span class="lineNum">     354</span> <span class="tlaUNC">           0 :                 foreach(lc, rstates)</span></span>
+<span id="L355"><span class="lineNum">     355</span>              :                 {</span>
+<span id="L356"><span class="lineNum">     356</span> <span class="tlaUNC">           0 :                         rstate = palloc(sizeof(SubscriptionRelState));</span></span>
+<span id="L357"><span class="lineNum">     357</span> <span class="tlaUNC">           0 :                         memcpy(rstate, lfirst(lc), sizeof(SubscriptionRelState));</span></span>
+<span id="L358"><span class="lineNum">     358</span> <span class="tlaUNC">           0 :                         table_states = lappend(table_states, rstate);</span></span>
+<span id="L359"><span class="lineNum">     359</span>              :                 }</span>
+<span id="L360"><span class="lineNum">     360</span> <span class="tlaUNC">           0 :                 MemoryContextSwitchTo(oldctx);</span></span>
+<span id="L361"><span class="lineNum">     361</span>              : </span>
+<span id="L362"><span class="lineNum">     362</span> <span class="tlaUNC">           0 :                 table_states_valid = true;</span></span>
+<span id="L363"><span class="lineNum">     363</span>              :         }</span>
+<span id="L364"><span class="lineNum">     364</span>              : </span>
+<span id="L365"><span class="lineNum">     365</span>              :         /*</span>
+<span id="L366"><span class="lineNum">     366</span>              :          * Prepare a hash table for tracking last start times of workers, to avoid</span>
+<span id="L367"><span class="lineNum">     367</span>              :          * immediate restarts.  We don't need it if there are no tables that need</span>
+<span id="L368"><span class="lineNum">     368</span>              :          * syncing.</span>
+<span id="L369"><span class="lineNum">     369</span>              :          */</span>
+<span id="L370"><span class="lineNum">     370</span> <span class="tlaUNC">           0 :         if (table_states &amp;&amp; !last_start_times)</span></span>
+<span id="L371"><span class="lineNum">     371</span> <span class="tlaUNC">           0 :         {</span></span>
+<span id="L372"><span class="lineNum">     372</span>              :                 HASHCTL         ctl;</span>
+<span id="L373"><span class="lineNum">     373</span>              : </span>
+<span id="L374"><span class="lineNum">     374</span> <span class="tlaUNC">           0 :                 memset(&amp;ctl, 0, sizeof(ctl));</span></span>
+<span id="L375"><span class="lineNum">     375</span> <span class="tlaUNC">           0 :                 ctl.keysize = sizeof(Oid);</span></span>
+<span id="L376"><span class="lineNum">     376</span> <span class="tlaUNC">           0 :                 ctl.entrysize = sizeof(struct tablesync_start_time_mapping);</span></span>
+<span id="L377"><span class="lineNum">     377</span> <span class="tlaUNC">           0 :                 last_start_times = hash_create(&quot;Logical replication table sync worker start times&quot;,</span></span>
+<span id="L378"><span class="lineNum">     378</span>              :                                                                            256, &amp;ctl, HASH_ELEM | HASH_BLOBS);</span>
+<span id="L379"><span class="lineNum">     379</span>              :         }</span>
+<span id="L380"><span class="lineNum">     380</span>              : </span>
+<span id="L381"><span class="lineNum">     381</span>              :         /*</span>
+<span id="L382"><span class="lineNum">     382</span>              :          * Clean up the hash table when we're done with all tables (just to</span>
+<span id="L383"><span class="lineNum">     383</span>              :          * release the bit of memory).</span>
+<span id="L384"><span class="lineNum">     384</span>              :          */</span>
+<span id="L385"><span class="lineNum">     385</span> <span class="tlaUNC">           0 :         else if (!table_states &amp;&amp; last_start_times)</span></span>
+<span id="L386"><span class="lineNum">     386</span>              :         {</span>
+<span id="L387"><span class="lineNum">     387</span> <span class="tlaUNC">           0 :                 hash_destroy(last_start_times);</span></span>
+<span id="L388"><span class="lineNum">     388</span> <span class="tlaUNC">           0 :                 last_start_times = NULL;</span></span>
+<span id="L389"><span class="lineNum">     389</span>              :         }</span>
+<span id="L390"><span class="lineNum">     390</span>              : </span>
+<span id="L391"><span class="lineNum">     391</span>              :         /*</span>
+<span id="L392"><span class="lineNum">     392</span>              :          * Process all tables that are being synchronized.</span>
+<span id="L393"><span class="lineNum">     393</span>              :          */</span>
+<span id="L394"><span class="lineNum">     394</span> <span class="tlaUNC">           0 :         foreach(lc, table_states)</span></span>
+<span id="L395"><span class="lineNum">     395</span>              :         {</span>
+<span id="L396"><span class="lineNum">     396</span> <span class="tlaUNC">           0 :                 SubscriptionRelState *rstate = (SubscriptionRelState *) lfirst(lc);</span></span>
+<span id="L397"><span class="lineNum">     397</span>              : </span>
+<span id="L398"><span class="lineNum">     398</span> <span class="tlaUNC">           0 :                 if (rstate-&gt;state == SUBREL_STATE_SYNCDONE)</span></span>
+<span id="L399"><span class="lineNum">     399</span>              :                 {</span>
+<span id="L400"><span class="lineNum">     400</span>              :                         /*</span>
+<span id="L401"><span class="lineNum">     401</span>              :                          * Apply has caught up to the position where the table sync has</span>
+<span id="L402"><span class="lineNum">     402</span>              :                          * finished.  Mark the table as ready so that the apply will just</span>
+<span id="L403"><span class="lineNum">     403</span>              :                          * continue to replicate it normally.</span>
+<span id="L404"><span class="lineNum">     404</span>              :                          */</span>
+<span id="L405"><span class="lineNum">     405</span> <span class="tlaUNC">           0 :                         if (current_lsn &gt;= rstate-&gt;lsn)</span></span>
+<span id="L406"><span class="lineNum">     406</span>              :                         {</span>
+<span id="L407"><span class="lineNum">     407</span> <span class="tlaUNC">           0 :                                 rstate-&gt;state = SUBREL_STATE_READY;</span></span>
+<span id="L408"><span class="lineNum">     408</span> <span class="tlaUNC">           0 :                                 rstate-&gt;lsn = current_lsn;</span></span>
+<span id="L409"><span class="lineNum">     409</span> <span class="tlaUNC">           0 :                                 if (!started_tx)</span></span>
+<span id="L410"><span class="lineNum">     410</span>              :                                 {</span>
+<span id="L411"><span class="lineNum">     411</span> <span class="tlaUNC">           0 :                                         StartTransactionCommand();</span></span>
+<span id="L412"><span class="lineNum">     412</span> <span class="tlaUNC">           0 :                                         started_tx = true;</span></span>
+<span id="L413"><span class="lineNum">     413</span>              :                                 }</span>
+<span id="L414"><span class="lineNum">     414</span>              : </span>
+<span id="L415"><span class="lineNum">     415</span> <span class="tlaUNC">           0 :                                 UpdateSubscriptionRelState(MyLogicalRepWorker-&gt;subid,</span></span>
+<span id="L416"><span class="lineNum">     416</span> <span class="tlaUNC">           0 :                                                                                    rstate-&gt;relid, rstate-&gt;state,</span></span>
+<span id="L417"><span class="lineNum">     417</span>              :                                                                                    rstate-&gt;lsn);</span>
+<span id="L418"><span class="lineNum">     418</span>              :                         }</span>
+<span id="L419"><span class="lineNum">     419</span>              :                 }</span>
+<span id="L420"><span class="lineNum">     420</span>              :                 else</span>
+<span id="L421"><span class="lineNum">     421</span>              :                 {</span>
+<span id="L422"><span class="lineNum">     422</span>              :                         LogicalRepWorker *syncworker;</span>
+<span id="L423"><span class="lineNum">     423</span>              : </span>
+<span id="L424"><span class="lineNum">     424</span>              :                         /*</span>
+<span id="L425"><span class="lineNum">     425</span>              :                          * Look for a sync worker for this relation.</span>
+<span id="L426"><span class="lineNum">     426</span>              :                          */</span>
+<span id="L427"><span class="lineNum">     427</span> <span class="tlaUNC">           0 :                         LWLockAcquire(LogicalRepWorkerLock, LW_SHARED);</span></span>
+<span id="L428"><span class="lineNum">     428</span>              : </span>
+<span id="L429"><span class="lineNum">     429</span> <span class="tlaUNC">           0 :                         syncworker = logicalrep_worker_find(MyLogicalRepWorker-&gt;subid,</span></span>
+<span id="L430"><span class="lineNum">     430</span>              :                                                                                                 rstate-&gt;relid, false);</span>
+<span id="L431"><span class="lineNum">     431</span>              : </span>
+<span id="L432"><span class="lineNum">     432</span> <span class="tlaUNC">           0 :                         if (syncworker)</span></span>
+<span id="L433"><span class="lineNum">     433</span>              :                         {</span>
+<span id="L434"><span class="lineNum">     434</span>              :                                 /* Found one, update our copy of its state */</span>
+<span id="L435"><span class="lineNum">     435</span> <span class="tlaUNC">           0 :                                 SpinLockAcquire(&amp;syncworker-&gt;relmutex);</span></span>
+<span id="L436"><span class="lineNum">     436</span> <span class="tlaUNC">           0 :                                 rstate-&gt;state = syncworker-&gt;relstate;</span></span>
+<span id="L437"><span class="lineNum">     437</span> <span class="tlaUNC">           0 :                                 rstate-&gt;lsn = syncworker-&gt;relstate_lsn;</span></span>
+<span id="L438"><span class="lineNum">     438</span> <span class="tlaUNC">           0 :                                 if (rstate-&gt;state == SUBREL_STATE_SYNCWAIT)</span></span>
+<span id="L439"><span class="lineNum">     439</span>              :                                 {</span>
+<span id="L440"><span class="lineNum">     440</span>              :                                         /*</span>
+<span id="L441"><span class="lineNum">     441</span>              :                                          * Sync worker is waiting for apply.  Tell sync worker it</span>
+<span id="L442"><span class="lineNum">     442</span>              :                                          * can catchup now.</span>
+<span id="L443"><span class="lineNum">     443</span>              :                                          */</span>
+<span id="L444"><span class="lineNum">     444</span> <span class="tlaUNC">           0 :                                         syncworker-&gt;relstate = SUBREL_STATE_CATCHUP;</span></span>
+<span id="L445"><span class="lineNum">     445</span> <span class="tlaUNC">           0 :                                         syncworker-&gt;relstate_lsn =</span></span>
+<span id="L446"><span class="lineNum">     446</span> <span class="tlaUNC">           0 :                                                 Max(syncworker-&gt;relstate_lsn, current_lsn);</span></span>
+<span id="L447"><span class="lineNum">     447</span>              :                                 }</span>
+<span id="L448"><span class="lineNum">     448</span> <span class="tlaUNC">           0 :                                 SpinLockRelease(&amp;syncworker-&gt;relmutex);</span></span>
+<span id="L449"><span class="lineNum">     449</span>              : </span>
+<span id="L450"><span class="lineNum">     450</span>              :                                 /* If we told worker to catch up, wait for it. */</span>
+<span id="L451"><span class="lineNum">     451</span> <span class="tlaUNC">           0 :                                 if (rstate-&gt;state == SUBREL_STATE_SYNCWAIT)</span></span>
+<span id="L452"><span class="lineNum">     452</span>              :                                 {</span>
+<span id="L453"><span class="lineNum">     453</span>              :                                         /* Signal the sync worker, as it may be waiting for us. */</span>
+<span id="L454"><span class="lineNum">     454</span> <span class="tlaUNC">           0 :                                         if (syncworker-&gt;proc)</span></span>
+<span id="L455"><span class="lineNum">     455</span> <span class="tlaUNC">           0 :                                                 logicalrep_worker_wakeup_ptr(syncworker);</span></span>
+<span id="L456"><span class="lineNum">     456</span>              : </span>
+<span id="L457"><span class="lineNum">     457</span>              :                                         /* Now safe to release the LWLock */</span>
+<span id="L458"><span class="lineNum">     458</span> <span class="tlaUNC">           0 :                                         LWLockRelease(LogicalRepWorkerLock);</span></span>
+<span id="L459"><span class="lineNum">     459</span>              : </span>
+<span id="L460"><span class="lineNum">     460</span> <span class="tlaUNC">           0 :                                         if (started_tx)</span></span>
+<span id="L461"><span class="lineNum">     461</span>              :                                         {</span>
+<span id="L462"><span class="lineNum">     462</span>              :                                                 /*</span>
+<span id="L463"><span class="lineNum">     463</span>              :                                                  * We must commit the existing transaction to release</span>
+<span id="L464"><span class="lineNum">     464</span>              :                                                  * the existing locks before entering a busy loop.</span>
+<span id="L465"><span class="lineNum">     465</span>              :                                                  * This is required to avoid any undetected deadlocks</span>
+<span id="L466"><span class="lineNum">     466</span>              :                                                  * due to any existing lock as deadlock detector won't</span>
+<span id="L467"><span class="lineNum">     467</span>              :                                                  * be able to detect the waits on the latch.</span>
+<span id="L468"><span class="lineNum">     468</span>              :                                                  */</span>
+<span id="L469"><span class="lineNum">     469</span> <span class="tlaUNC">           0 :                                                 CommitTransactionCommand();</span></span>
+<span id="L470"><span class="lineNum">     470</span> <span class="tlaUNC">           0 :                                                 pgstat_report_stat(false);</span></span>
+<span id="L471"><span class="lineNum">     471</span>              :                                         }</span>
+<span id="L472"><span class="lineNum">     472</span>              : </span>
+<span id="L473"><span class="lineNum">     473</span>              :                                         /*</span>
+<span id="L474"><span class="lineNum">     474</span>              :                                          * Enter busy loop and wait for synchronization worker to</span>
+<span id="L475"><span class="lineNum">     475</span>              :                                          * reach expected state (or die trying).</span>
+<span id="L476"><span class="lineNum">     476</span>              :                                          */</span>
+<span id="L477"><span class="lineNum">     477</span> <span class="tlaUNC">           0 :                                         StartTransactionCommand();</span></span>
+<span id="L478"><span class="lineNum">     478</span> <span class="tlaUNC">           0 :                                         started_tx = true;</span></span>
+<span id="L479"><span class="lineNum">     479</span>              : </span>
+<span id="L480"><span class="lineNum">     480</span> <span class="tlaUNC">           0 :                                         wait_for_relation_state_change(rstate-&gt;relid,</span></span>
+<span id="L481"><span class="lineNum">     481</span>              :                                                                                                    SUBREL_STATE_SYNCDONE);</span>
+<span id="L482"><span class="lineNum">     482</span>              :                                 }</span>
+<span id="L483"><span class="lineNum">     483</span>              :                                 else</span>
+<span id="L484"><span class="lineNum">     484</span> <span class="tlaUNC">           0 :                                         LWLockRelease(LogicalRepWorkerLock);</span></span>
+<span id="L485"><span class="lineNum">     485</span>              :                         }</span>
+<span id="L486"><span class="lineNum">     486</span>              :                         else</span>
+<span id="L487"><span class="lineNum">     487</span>              :                         {</span>
+<span id="L488"><span class="lineNum">     488</span>              :                                 /*</span>
+<span id="L489"><span class="lineNum">     489</span>              :                                  * If there is no sync worker for this table yet, count</span>
+<span id="L490"><span class="lineNum">     490</span>              :                                  * running sync workers for this subscription, while we have</span>
+<span id="L491"><span class="lineNum">     491</span>              :                                  * the lock.</span>
+<span id="L492"><span class="lineNum">     492</span>              :                                  */</span>
+<span id="L493"><span class="lineNum">     493</span>              :                                 int                     nsyncworkers =</span>
+<span id="L494"><span class="lineNum">     494</span> <span class="tlaUNC">           0 :                                 logicalrep_sync_worker_count(MyLogicalRepWorker-&gt;subid);</span></span>
+<span id="L495"><span class="lineNum">     495</span>              : </span>
+<span id="L496"><span class="lineNum">     496</span>              :                                 /* Now safe to release the LWLock */</span>
+<span id="L497"><span class="lineNum">     497</span> <span class="tlaUNC">           0 :                                 LWLockRelease(LogicalRepWorkerLock);</span></span>
+<span id="L498"><span class="lineNum">     498</span>              : </span>
+<span id="L499"><span class="lineNum">     499</span>              :                                 /*</span>
+<span id="L500"><span class="lineNum">     500</span>              :                                  * If there are free sync worker slot(s), start a new sync</span>
+<span id="L501"><span class="lineNum">     501</span>              :                                  * worker for the table.</span>
+<span id="L502"><span class="lineNum">     502</span>              :                                  */</span>
+<span id="L503"><span class="lineNum">     503</span> <span class="tlaUNC">           0 :                                 if (nsyncworkers &lt; max_sync_workers_per_subscription)</span></span>
+<span id="L504"><span class="lineNum">     504</span>              :                                 {</span>
+<span id="L505"><span class="lineNum">     505</span> <span class="tlaUNC">           0 :                                         TimestampTz now = GetCurrentTimestamp();</span></span>
+<span id="L506"><span class="lineNum">     506</span>              :                                         struct tablesync_start_time_mapping *hentry;</span>
+<span id="L507"><span class="lineNum">     507</span>              :                                         bool            found;</span>
+<span id="L508"><span class="lineNum">     508</span>              : </span>
+<span id="L509"><span class="lineNum">     509</span> <span class="tlaUNC">           0 :                                         hentry = hash_search(last_start_times, &amp;rstate-&gt;relid,</span></span>
+<span id="L510"><span class="lineNum">     510</span>              :                                                                                  HASH_ENTER, &amp;found);</span>
+<span id="L511"><span class="lineNum">     511</span>              : </span>
+<span id="L512"><span class="lineNum">     512</span> <span class="tlaUNC">           0 :                                         if (!found ||</span></span>
+<span id="L513"><span class="lineNum">     513</span> <span class="tlaUNC">           0 :                                                 TimestampDifferenceExceeds(hentry-&gt;last_start_time, now,</span></span>
+<span id="L514"><span class="lineNum">     514</span>              :                                                                                                    wal_retrieve_retry_interval))</span>
+<span id="L515"><span class="lineNum">     515</span>              :                                         {</span>
+<span id="L516"><span class="lineNum">     516</span> <span class="tlaUNC">           0 :                                                 logicalrep_worker_launch(MyLogicalRepWorker-&gt;dbid,</span></span>
+<span id="L517"><span class="lineNum">     517</span> <span class="tlaUNC">           0 :                                                                                                  MySubscription-&gt;oid,</span></span>
+<span id="L518"><span class="lineNum">     518</span> <span class="tlaUNC">           0 :                                                                                                  MySubscription-&gt;name,</span></span>
+<span id="L519"><span class="lineNum">     519</span> <span class="tlaUNC">           0 :                                                                                                  MyLogicalRepWorker-&gt;userid,</span></span>
+<span id="L520"><span class="lineNum">     520</span>              :                                                                                                  rstate-&gt;relid);</span>
+<span id="L521"><span class="lineNum">     521</span> <span class="tlaUNC">           0 :                                                 hentry-&gt;last_start_time = now;</span></span>
+<span id="L522"><span class="lineNum">     522</span>              :                                         }</span>
+<span id="L523"><span class="lineNum">     523</span>              :                                 }</span>
+<span id="L524"><span class="lineNum">     524</span>              :                         }</span>
+<span id="L525"><span class="lineNum">     525</span>              :                 }</span>
+<span id="L526"><span class="lineNum">     526</span>              :         }</span>
+<span id="L527"><span class="lineNum">     527</span>              : </span>
+<span id="L528"><span class="lineNum">     528</span> <span class="tlaUNC">           0 :         if (started_tx)</span></span>
+<span id="L529"><span class="lineNum">     529</span>              :         {</span>
+<span id="L530"><span class="lineNum">     530</span> <span class="tlaUNC">           0 :                 CommitTransactionCommand();</span></span>
+<span id="L531"><span class="lineNum">     531</span> <span class="tlaUNC">           0 :                 pgstat_report_stat(false);</span></span>
+<span id="L532"><span class="lineNum">     532</span>              :         }</span>
+<span id="L533"><span class="lineNum">     533</span> <span class="tlaUNC">           0 : }</span></span>
+<span id="L534"><span class="lineNum">     534</span>              : </span>
+<span id="L535"><span class="lineNum">     535</span>              : /*</span>
+<span id="L536"><span class="lineNum">     536</span>              :  * Process possible state change(s) of tables that are being synchronized.</span>
+<span id="L537"><span class="lineNum">     537</span>              :  */</span>
+<span id="L538"><span class="lineNum">     538</span>              : void</span>
+<span id="L539"><span class="lineNum">     539</span> <span class="tlaUNC">           0 : process_syncing_tables(XLogRecPtr current_lsn)</span></span>
+<span id="L540"><span class="lineNum">     540</span>              : {</span>
+<span id="L541"><span class="lineNum">     541</span> <span class="tlaUNC">           0 :         if (am_tablesync_worker())</span></span>
+<span id="L542"><span class="lineNum">     542</span> <span class="tlaUNC">           0 :                 process_syncing_tables_for_sync(current_lsn);</span></span>
+<span id="L543"><span class="lineNum">     543</span>              :         else</span>
+<span id="L544"><span class="lineNum">     544</span> <span class="tlaUNC">           0 :                 process_syncing_tables_for_apply(current_lsn);</span></span>
+<span id="L545"><span class="lineNum">     545</span> <span class="tlaUNC">           0 : }</span></span>
+<span id="L546"><span class="lineNum">     546</span>              : </span>
+<span id="L547"><span class="lineNum">     547</span>              : /*</span>
+<span id="L548"><span class="lineNum">     548</span>              :  * Create list of columns for COPY based on logical relation mapping.</span>
+<span id="L549"><span class="lineNum">     549</span>              :  */</span>
+<span id="L550"><span class="lineNum">     550</span>              : static List *</span>
+<span id="L551"><span class="lineNum">     551</span> <span class="tlaUNC">           0 : make_copy_attnamelist(LogicalRepRelMapEntry *rel)</span></span>
+<span id="L552"><span class="lineNum">     552</span>              : {</span>
+<span id="L553"><span class="lineNum">     553</span> <span class="tlaUNC">           0 :         List       *attnamelist = NIL;</span></span>
+<span id="L554"><span class="lineNum">     554</span>              :         int                     i;</span>
+<span id="L555"><span class="lineNum">     555</span>              : </span>
+<span id="L556"><span class="lineNum">     556</span> <span class="tlaUNC">           0 :         for (i = 0; i &lt; rel-&gt;remoterel.natts; i++)</span></span>
+<span id="L557"><span class="lineNum">     557</span>              :         {</span>
+<span id="L558"><span class="lineNum">     558</span> <span class="tlaUNC">           0 :                 attnamelist = lappend(attnamelist,</span></span>
+<span id="L559"><span class="lineNum">     559</span> <span class="tlaUNC">           0 :                                                           makeString(rel-&gt;remoterel.attnames[i]));</span></span>
+<span id="L560"><span class="lineNum">     560</span>              :         }</span>
+<span id="L561"><span class="lineNum">     561</span>              : </span>
+<span id="L562"><span class="lineNum">     562</span>              : </span>
+<span id="L563"><span class="lineNum">     563</span> <span class="tlaUNC">           0 :         return attnamelist;</span></span>
+<span id="L564"><span class="lineNum">     564</span>              : }</span>
+<span id="L565"><span class="lineNum">     565</span>              : </span>
+<span id="L566"><span class="lineNum">     566</span>              : /*</span>
+<span id="L567"><span class="lineNum">     567</span>              :  * Data source callback for the COPY FROM, which reads from the remote</span>
+<span id="L568"><span class="lineNum">     568</span>              :  * connection and passes the data back to our local COPY.</span>
+<span id="L569"><span class="lineNum">     569</span>              :  */</span>
+<span id="L570"><span class="lineNum">     570</span>              : static int</span>
+<span id="L571"><span class="lineNum">     571</span> <span class="tlaUNC">           0 : copy_read_data(void *outbuf, int minread, int maxread)</span></span>
+<span id="L572"><span class="lineNum">     572</span>              : {</span>
+<span id="L573"><span class="lineNum">     573</span> <span class="tlaUNC">           0 :         int                     bytesread = 0;</span></span>
+<span id="L574"><span class="lineNum">     574</span>              :         int                     avail;</span>
+<span id="L575"><span class="lineNum">     575</span>              : </span>
+<span id="L576"><span class="lineNum">     576</span>              :         /* If there are some leftover data from previous read, use it. */</span>
+<span id="L577"><span class="lineNum">     577</span> <span class="tlaUNC">           0 :         avail = copybuf-&gt;len - copybuf-&gt;cursor;</span></span>
+<span id="L578"><span class="lineNum">     578</span> <span class="tlaUNC">           0 :         if (avail)</span></span>
+<span id="L579"><span class="lineNum">     579</span>              :         {</span>
+<span id="L580"><span class="lineNum">     580</span> <span class="tlaUNC">           0 :                 if (avail &gt; maxread)</span></span>
+<span id="L581"><span class="lineNum">     581</span> <span class="tlaUNC">           0 :                         avail = maxread;</span></span>
+<span id="L582"><span class="lineNum">     582</span> <span class="tlaUNC">           0 :                 memcpy(outbuf, &amp;copybuf-&gt;data[copybuf-&gt;cursor], avail);</span></span>
+<span id="L583"><span class="lineNum">     583</span> <span class="tlaUNC">           0 :                 copybuf-&gt;cursor += avail;</span></span>
+<span id="L584"><span class="lineNum">     584</span> <span class="tlaUNC">           0 :                 maxread -= avail;</span></span>
+<span id="L585"><span class="lineNum">     585</span> <span class="tlaUNC">           0 :                 bytesread += avail;</span></span>
+<span id="L586"><span class="lineNum">     586</span>              :         }</span>
+<span id="L587"><span class="lineNum">     587</span>              : </span>
+<span id="L588"><span class="lineNum">     588</span> <span class="tlaUNC">           0 :         while (maxread &gt; 0 &amp;&amp; bytesread &lt; minread)</span></span>
+<span id="L589"><span class="lineNum">     589</span>              :         {</span>
+<span id="L590"><span class="lineNum">     590</span> <span class="tlaUNC">           0 :                 pgsocket        fd = PGINVALID_SOCKET;</span></span>
+<span id="L591"><span class="lineNum">     591</span>              :                 int                     len;</span>
+<span id="L592"><span class="lineNum">     592</span> <span class="tlaUNC">           0 :                 char       *buf = NULL;</span></span>
+<span id="L593"><span class="lineNum">     593</span>              : </span>
+<span id="L594"><span class="lineNum">     594</span>              :                 for (;;)</span>
+<span id="L595"><span class="lineNum">     595</span>              :                 {</span>
+<span id="L596"><span class="lineNum">     596</span>              :                         /* Try read the data. */</span>
+<span id="L597"><span class="lineNum">     597</span> <span class="tlaUNC">           0 :                         len = walrcv_receive(LogRepWorkerWalRcvConn, &amp;buf, &amp;fd);</span></span>
+<span id="L598"><span class="lineNum">     598</span>              : </span>
+<span id="L599"><span class="lineNum">     599</span> <span class="tlaUNC">           0 :                         CHECK_FOR_INTERRUPTS();</span></span>
+<span id="L600"><span class="lineNum">     600</span>              : </span>
+<span id="L601"><span class="lineNum">     601</span> <span class="tlaUNC">           0 :                         if (len == 0)</span></span>
+<span id="L602"><span class="lineNum">     602</span> <span class="tlaUNC">           0 :                                 break;</span></span>
+<span id="L603"><span class="lineNum">     603</span> <span class="tlaUNC">           0 :                         else if (len &lt; 0)</span></span>
+<span id="L604"><span class="lineNum">     604</span> <span class="tlaUNC">           0 :                                 return bytesread;</span></span>
+<span id="L605"><span class="lineNum">     605</span>              :                         else</span>
+<span id="L606"><span class="lineNum">     606</span>              :                         {</span>
+<span id="L607"><span class="lineNum">     607</span>              :                                 /* Process the data */</span>
+<span id="L608"><span class="lineNum">     608</span> <span class="tlaUNC">           0 :                                 copybuf-&gt;data = buf;</span></span>
+<span id="L609"><span class="lineNum">     609</span> <span class="tlaUNC">           0 :                                 copybuf-&gt;len = len;</span></span>
+<span id="L610"><span class="lineNum">     610</span> <span class="tlaUNC">           0 :                                 copybuf-&gt;cursor = 0;</span></span>
+<span id="L611"><span class="lineNum">     611</span>              : </span>
+<span id="L612"><span class="lineNum">     612</span> <span class="tlaUNC">           0 :                                 avail = copybuf-&gt;len - copybuf-&gt;cursor;</span></span>
+<span id="L613"><span class="lineNum">     613</span> <span class="tlaUNC">           0 :                                 if (avail &gt; maxread)</span></span>
+<span id="L614"><span class="lineNum">     614</span> <span class="tlaUNC">           0 :                                         avail = maxread;</span></span>
+<span id="L615"><span class="lineNum">     615</span> <span class="tlaUNC">           0 :                                 memcpy(outbuf, &amp;copybuf-&gt;data[copybuf-&gt;cursor], avail);</span></span>
+<span id="L616"><span class="lineNum">     616</span> <span class="tlaUNC">           0 :                                 outbuf = (void *) ((char *) outbuf + avail);</span></span>
+<span id="L617"><span class="lineNum">     617</span> <span class="tlaUNC">           0 :                                 copybuf-&gt;cursor += avail;</span></span>
+<span id="L618"><span class="lineNum">     618</span> <span class="tlaUNC">           0 :                                 maxread -= avail;</span></span>
+<span id="L619"><span class="lineNum">     619</span> <span class="tlaUNC">           0 :                                 bytesread += avail;</span></span>
+<span id="L620"><span class="lineNum">     620</span>              :                         }</span>
+<span id="L621"><span class="lineNum">     621</span>              : </span>
+<span id="L622"><span class="lineNum">     622</span> <span class="tlaUNC">           0 :                         if (maxread &lt;= 0 || bytesread &gt;= minread)</span></span>
+<span id="L623"><span class="lineNum">     623</span> <span class="tlaUNC">           0 :                                 return bytesread;</span></span>
+<span id="L624"><span class="lineNum">     624</span>              :                 }</span>
+<span id="L625"><span class="lineNum">     625</span>              : </span>
+<span id="L626"><span class="lineNum">     626</span>              :                 /*</span>
+<span id="L627"><span class="lineNum">     627</span>              :                  * Wait for more data or latch.</span>
+<span id="L628"><span class="lineNum">     628</span>              :                  */</span>
+<span id="L629"><span class="lineNum">     629</span> <span class="tlaUNC">           0 :                 (void) WaitLatchOrSocket(MyLatch,</span></span>
+<span id="L630"><span class="lineNum">     630</span>              :                                                                  WL_SOCKET_READABLE | WL_LATCH_SET |</span>
+<span id="L631"><span class="lineNum">     631</span>              :                                                                  WL_TIMEOUT | WL_EXIT_ON_PM_DEATH,</span>
+<span id="L632"><span class="lineNum">     632</span>              :                                                                  fd, 1000L, WAIT_EVENT_LOGICAL_SYNC_DATA);</span>
+<span id="L633"><span class="lineNum">     633</span>              : </span>
+<span id="L634"><span class="lineNum">     634</span> <span class="tlaUNC">           0 :                 ResetLatch(MyLatch);</span></span>
+<span id="L635"><span class="lineNum">     635</span>              :         }</span>
+<span id="L636"><span class="lineNum">     636</span>              : </span>
+<span id="L637"><span class="lineNum">     637</span> <span class="tlaUNC">           0 :         return bytesread;</span></span>
+<span id="L638"><span class="lineNum">     638</span>              : }</span>
+<span id="L639"><span class="lineNum">     639</span>              : </span>
+<span id="L640"><span class="lineNum">     640</span>              : </span>
+<span id="L641"><span class="lineNum">     641</span>              : /*</span>
+<span id="L642"><span class="lineNum">     642</span>              :  * Get information about remote relation in similar fashion the RELATION</span>
+<span id="L643"><span class="lineNum">     643</span>              :  * message provides during replication.</span>
+<span id="L644"><span class="lineNum">     644</span>              :  */</span>
+<span id="L645"><span class="lineNum">     645</span>              : static void</span>
+<span id="L646"><span class="lineNum">     646</span> <span class="tlaUNC">           0 : fetch_remote_table_info(char *nspname, char *relname,</span></span>
+<span id="L647"><span class="lineNum">     647</span>              :                                                 LogicalRepRelation *lrel)</span>
+<span id="L648"><span class="lineNum">     648</span>              : {</span>
+<span id="L649"><span class="lineNum">     649</span>              :         WalRcvExecResult *res;</span>
+<span id="L650"><span class="lineNum">     650</span>              :         StringInfoData cmd;</span>
+<span id="L651"><span class="lineNum">     651</span>              :         TupleTableSlot *slot;</span>
+<span id="L652"><span class="lineNum">     652</span> <span class="tlaUNC">           0 :         Oid                     tableRow[] = {OIDOID, CHAROID, CHAROID};</span></span>
+<span id="L653"><span class="lineNum">     653</span> <span class="tlaUNC">           0 :         Oid                     attrRow[] = {TEXTOID, OIDOID, INT4OID, BOOLOID};</span></span>
+<span id="L654"><span class="lineNum">     654</span>              :         bool            isnull;</span>
+<span id="L655"><span class="lineNum">     655</span>              :         int                     natt;</span>
+<span id="L656"><span class="lineNum">     656</span>              : </span>
+<span id="L657"><span class="lineNum">     657</span> <span class="tlaUNC">           0 :         lrel-&gt;nspname = nspname;</span></span>
+<span id="L658"><span class="lineNum">     658</span> <span class="tlaUNC">           0 :         lrel-&gt;relname = relname;</span></span>
+<span id="L659"><span class="lineNum">     659</span>              : </span>
+<span id="L660"><span class="lineNum">     660</span>              :         /* First fetch Oid and replica identity. */</span>
+<span id="L661"><span class="lineNum">     661</span> <span class="tlaUNC">           0 :         initStringInfo(&amp;cmd);</span></span>
+<span id="L662"><span class="lineNum">     662</span> <span class="tlaUNC">           0 :         appendStringInfo(&amp;cmd, &quot;SELECT c.oid, c.relreplident, c.relkind&quot;</span></span>
+<span id="L663"><span class="lineNum">     663</span>              :                                          &quot;  FROM pg_catalog.pg_class c&quot;</span>
+<span id="L664"><span class="lineNum">     664</span>              :                                          &quot;  INNER JOIN pg_catalog.pg_namespace n&quot;</span>
+<span id="L665"><span class="lineNum">     665</span>              :                                          &quot;        ON (c.relnamespace = n.oid)&quot;</span>
+<span id="L666"><span class="lineNum">     666</span>              :                                          &quot; WHERE n.nspname = %s&quot;</span>
+<span id="L667"><span class="lineNum">     667</span>              :                                          &quot;   AND c.relname = %s&quot;,</span>
+<span id="L668"><span class="lineNum">     668</span>              :                                          quote_literal_cstr(nspname),</span>
+<span id="L669"><span class="lineNum">     669</span>              :                                          quote_literal_cstr(relname));</span>
+<span id="L670"><span class="lineNum">     670</span> <span class="tlaUNC">           0 :         res = walrcv_exec(LogRepWorkerWalRcvConn, cmd.data,</span></span>
+<span id="L671"><span class="lineNum">     671</span>              :                                           lengthof(tableRow), tableRow);</span>
+<span id="L672"><span class="lineNum">     672</span>              : </span>
+<span id="L673"><span class="lineNum">     673</span> <span class="tlaUNC">           0 :         if (res-&gt;status != WALRCV_OK_TUPLES)</span></span>
+<span id="L674"><span class="lineNum">     674</span> <span class="tlaUNC">           0 :                 ereport(ERROR,</span></span>
+<span id="L675"><span class="lineNum">     675</span>              :                                 (errmsg(&quot;could not fetch table info for table \&quot;%s.%s\&quot; from publisher: %s&quot;,</span>
+<span id="L676"><span class="lineNum">     676</span>              :                                                 nspname, relname, res-&gt;err)));</span>
+<span id="L677"><span class="lineNum">     677</span>              : </span>
+<span id="L678"><span class="lineNum">     678</span> <span class="tlaUNC">           0 :         slot = MakeSingleTupleTableSlot(res-&gt;tupledesc, &amp;TTSOpsMinimalTuple);</span></span>
+<span id="L679"><span class="lineNum">     679</span> <span class="tlaUNC">           0 :         if (!tuplestore_gettupleslot(res-&gt;tuplestore, true, false, slot))</span></span>
+<span id="L680"><span class="lineNum">     680</span> <span class="tlaUNC">           0 :                 ereport(ERROR,</span></span>
+<span id="L681"><span class="lineNum">     681</span>              :                                 (errmsg(&quot;table \&quot;%s.%s\&quot; not found on publisher&quot;,</span>
+<span id="L682"><span class="lineNum">     682</span>              :                                                 nspname, relname)));</span>
+<span id="L683"><span class="lineNum">     683</span>              : </span>
+<span id="L684"><span class="lineNum">     684</span> <span class="tlaUNC">           0 :         lrel-&gt;remoteid = DatumGetObjectId(slot_getattr(slot, 1, &amp;isnull));</span></span>
+<span id="L685"><span class="lineNum">     685</span>              :         Assert(!isnull);</span>
+<span id="L686"><span class="lineNum">     686</span> <span class="tlaUNC">           0 :         lrel-&gt;replident = DatumGetChar(slot_getattr(slot, 2, &amp;isnull));</span></span>
+<span id="L687"><span class="lineNum">     687</span>              :         Assert(!isnull);</span>
+<span id="L688"><span class="lineNum">     688</span> <span class="tlaUNC">           0 :         lrel-&gt;relkind = DatumGetChar(slot_getattr(slot, 3, &amp;isnull));</span></span>
+<span id="L689"><span class="lineNum">     689</span>              :         Assert(!isnull);</span>
+<span id="L690"><span class="lineNum">     690</span>              : </span>
+<span id="L691"><span class="lineNum">     691</span> <span class="tlaUNC">           0 :         ExecDropSingleTupleTableSlot(slot);</span></span>
+<span id="L692"><span class="lineNum">     692</span> <span class="tlaUNC">           0 :         walrcv_clear_result(res);</span></span>
+<span id="L693"><span class="lineNum">     693</span>              : </span>
+<span id="L694"><span class="lineNum">     694</span>              :         /* Now fetch columns. */</span>
+<span id="L695"><span class="lineNum">     695</span> <span class="tlaUNC">           0 :         resetStringInfo(&amp;cmd);</span></span>
+<span id="L696"><span class="lineNum">     696</span> <span class="tlaUNC">           0 :         appendStringInfo(&amp;cmd,</span></span>
+<span id="L697"><span class="lineNum">     697</span>              :                                          &quot;SELECT a.attname,&quot;</span>
+<span id="L698"><span class="lineNum">     698</span>              :                                          &quot;       a.atttypid,&quot;</span>
+<span id="L699"><span class="lineNum">     699</span>              :                                          &quot;       a.atttypmod,&quot;</span>
+<span id="L700"><span class="lineNum">     700</span>              :                                          &quot;       a.attnum = ANY(i.indkey)&quot;</span>
+<span id="L701"><span class="lineNum">     701</span>              :                                          &quot;  FROM pg_catalog.pg_attribute a&quot;</span>
+<span id="L702"><span class="lineNum">     702</span>              :                                          &quot;  LEFT JOIN pg_catalog.pg_index i&quot;</span>
+<span id="L703"><span class="lineNum">     703</span>              :                                          &quot;       ON (i.indexrelid = pg_get_replica_identity_index(%u))&quot;</span>
+<span id="L704"><span class="lineNum">     704</span>              :                                          &quot; WHERE a.attnum &gt; 0::pg_catalog.int2&quot;</span>
+<span id="L705"><span class="lineNum">     705</span>              :                                          &quot;   AND NOT a.attisdropped %s&quot;</span>
+<span id="L706"><span class="lineNum">     706</span>              :                                          &quot;   AND a.attrelid = %u&quot;</span>
+<span id="L707"><span class="lineNum">     707</span>              :                                          &quot; ORDER BY a.attnum&quot;,</span>
+<span id="L708"><span class="lineNum">     708</span>              :                                          lrel-&gt;remoteid,</span>
+<span id="L709"><span class="lineNum">     709</span> <span class="tlaUNC">           0 :                                          (walrcv_server_version(LogRepWorkerWalRcvConn) &gt;= 120000 ?</span></span>
+<span id="L710"><span class="lineNum">     710</span>              :                                           &quot;AND a.attgenerated = ''&quot; : &quot;&quot;),</span>
+<span id="L711"><span class="lineNum">     711</span>              :                                          lrel-&gt;remoteid);</span>
+<span id="L712"><span class="lineNum">     712</span> <span class="tlaUNC">           0 :         res = walrcv_exec(LogRepWorkerWalRcvConn, cmd.data,</span></span>
+<span id="L713"><span class="lineNum">     713</span>              :                                           lengthof(attrRow), attrRow);</span>
+<span id="L714"><span class="lineNum">     714</span>              : </span>
+<span id="L715"><span class="lineNum">     715</span> <span class="tlaUNC">           0 :         if (res-&gt;status != WALRCV_OK_TUPLES)</span></span>
+<span id="L716"><span class="lineNum">     716</span> <span class="tlaUNC">           0 :                 ereport(ERROR,</span></span>
+<span id="L717"><span class="lineNum">     717</span>              :                                 (errmsg(&quot;could not fetch table info for table \&quot;%s.%s\&quot;: %s&quot;,</span>
+<span id="L718"><span class="lineNum">     718</span>              :                                                 nspname, relname, res-&gt;err)));</span>
+<span id="L719"><span class="lineNum">     719</span>              : </span>
+<span id="L720"><span class="lineNum">     720</span>              :         /* We don't know the number of rows coming, so allocate enough space. */</span>
+<span id="L721"><span class="lineNum">     721</span> <span class="tlaUNC">           0 :         lrel-&gt;attnames = palloc0(MaxTupleAttributeNumber * sizeof(char *));</span></span>
+<span id="L722"><span class="lineNum">     722</span> <span class="tlaUNC">           0 :         lrel-&gt;atttyps = palloc0(MaxTupleAttributeNumber * sizeof(Oid));</span></span>
+<span id="L723"><span class="lineNum">     723</span> <span class="tlaUNC">           0 :         lrel-&gt;attkeys = NULL;</span></span>
+<span id="L724"><span class="lineNum">     724</span>              : </span>
+<span id="L725"><span class="lineNum">     725</span> <span class="tlaUNC">           0 :         natt = 0;</span></span>
+<span id="L726"><span class="lineNum">     726</span> <span class="tlaUNC">           0 :         slot = MakeSingleTupleTableSlot(res-&gt;tupledesc, &amp;TTSOpsMinimalTuple);</span></span>
+<span id="L727"><span class="lineNum">     727</span> <span class="tlaUNC">           0 :         while (tuplestore_gettupleslot(res-&gt;tuplestore, true, false, slot))</span></span>
+<span id="L728"><span class="lineNum">     728</span>              :         {</span>
+<span id="L729"><span class="lineNum">     729</span> <span class="tlaUNC">           0 :                 lrel-&gt;attnames[natt] =</span></span>
+<span id="L730"><span class="lineNum">     730</span> <span class="tlaUNC">           0 :                         TextDatumGetCString(slot_getattr(slot, 1, &amp;isnull));</span></span>
+<span id="L731"><span class="lineNum">     731</span>              :                 Assert(!isnull);</span>
+<span id="L732"><span class="lineNum">     732</span> <span class="tlaUNC">           0 :                 lrel-&gt;atttyps[natt] = DatumGetObjectId(slot_getattr(slot, 2, &amp;isnull));</span></span>
+<span id="L733"><span class="lineNum">     733</span>              :                 Assert(!isnull);</span>
+<span id="L734"><span class="lineNum">     734</span> <span class="tlaUNC">           0 :                 if (DatumGetBool(slot_getattr(slot, 4, &amp;isnull)))</span></span>
+<span id="L735"><span class="lineNum">     735</span> <span class="tlaUNC">           0 :                         lrel-&gt;attkeys = bms_add_member(lrel-&gt;attkeys, natt);</span></span>
+<span id="L736"><span class="lineNum">     736</span>              : </span>
+<span id="L737"><span class="lineNum">     737</span>              :                 /* Should never happen. */</span>
+<span id="L738"><span class="lineNum">     738</span> <span class="tlaUNC">           0 :                 if (++natt &gt;= MaxTupleAttributeNumber)</span></span>
+<span id="L739"><span class="lineNum">     739</span> <span class="tlaUNC">           0 :                         elog(ERROR, &quot;too many columns in remote table \&quot;%s.%s\&quot;&quot;,</span></span>
+<span id="L740"><span class="lineNum">     740</span>              :                                  nspname, relname);</span>
+<span id="L741"><span class="lineNum">     741</span>              : </span>
+<span id="L742"><span class="lineNum">     742</span> <span class="tlaUNC">           0 :                 ExecClearTuple(slot);</span></span>
+<span id="L743"><span class="lineNum">     743</span>              :         }</span>
+<span id="L744"><span class="lineNum">     744</span> <span class="tlaUNC">           0 :         ExecDropSingleTupleTableSlot(slot);</span></span>
+<span id="L745"><span class="lineNum">     745</span>              : </span>
+<span id="L746"><span class="lineNum">     746</span> <span class="tlaUNC">           0 :         lrel-&gt;natts = natt;</span></span>
+<span id="L747"><span class="lineNum">     747</span>              : </span>
+<span id="L748"><span class="lineNum">     748</span> <span class="tlaUNC">           0 :         walrcv_clear_result(res);</span></span>
+<span id="L749"><span class="lineNum">     749</span> <span class="tlaUNC">           0 :         pfree(cmd.data);</span></span>
+<span id="L750"><span class="lineNum">     750</span> <span class="tlaUNC">           0 : }</span></span>
+<span id="L751"><span class="lineNum">     751</span>              : </span>
+<span id="L752"><span class="lineNum">     752</span>              : /*</span>
+<span id="L753"><span class="lineNum">     753</span>              :  * Copy existing data of a table from publisher.</span>
+<span id="L754"><span class="lineNum">     754</span>              :  *</span>
+<span id="L755"><span class="lineNum">     755</span>              :  * Caller is responsible for locking the local relation.</span>
+<span id="L756"><span class="lineNum">     756</span>              :  */</span>
+<span id="L757"><span class="lineNum">     757</span>              : static void</span>
+<span id="L758"><span class="lineNum">     758</span> <span class="tlaUNC">           0 : copy_table(Relation rel)</span></span>
+<span id="L759"><span class="lineNum">     759</span>              : {</span>
+<span id="L760"><span class="lineNum">     760</span>              :         LogicalRepRelMapEntry *relmapentry;</span>
+<span id="L761"><span class="lineNum">     761</span>              :         LogicalRepRelation lrel;</span>
+<span id="L762"><span class="lineNum">     762</span>              :         WalRcvExecResult *res;</span>
+<span id="L763"><span class="lineNum">     763</span>              :         StringInfoData cmd;</span>
+<span id="L764"><span class="lineNum">     764</span>              :         CopyState       cstate;</span>
+<span id="L765"><span class="lineNum">     765</span>              :         List       *attnamelist;</span>
+<span id="L766"><span class="lineNum">     766</span>              :         ParseState *pstate;</span>
+<span id="L767"><span class="lineNum">     767</span>              : </span>
+<span id="L768"><span class="lineNum">     768</span>              :         /* Get the publisher relation info. */</span>
+<span id="L769"><span class="lineNum">     769</span> <span class="tlaUNC">           0 :         fetch_remote_table_info(get_namespace_name(RelationGetNamespace(rel)),</span></span>
+<span id="L770"><span class="lineNum">     770</span> <span class="tlaUNC">           0 :                                                         RelationGetRelationName(rel), &amp;lrel);</span></span>
+<span id="L771"><span class="lineNum">     771</span>              : </span>
+<span id="L772"><span class="lineNum">     772</span>              :         /* Put the relation into relmap. */</span>
+<span id="L773"><span class="lineNum">     773</span> <span class="tlaUNC">           0 :         logicalrep_relmap_update(&amp;lrel);</span></span>
+<span id="L774"><span class="lineNum">     774</span>              : </span>
+<span id="L775"><span class="lineNum">     775</span>              :         /* Map the publisher relation to local one. */</span>
+<span id="L776"><span class="lineNum">     776</span> <span class="tlaUNC">           0 :         relmapentry = logicalrep_rel_open(lrel.remoteid, NoLock);</span></span>
+<span id="L777"><span class="lineNum">     777</span>              :         Assert(rel == relmapentry-&gt;localrel);</span>
+<span id="L778"><span class="lineNum">     778</span>              : </span>
+<span id="L779"><span class="lineNum">     779</span>              :         /* Start copy on the publisher. */</span>
+<span id="L780"><span class="lineNum">     780</span> <span class="tlaUNC">           0 :         initStringInfo(&amp;cmd);</span></span>
+<span id="L781"><span class="lineNum">     781</span> <span class="tlaUNC">           0 :         if (lrel.relkind == RELKIND_RELATION)</span></span>
+<span id="L782"><span class="lineNum">     782</span> <span class="tlaUNC">           0 :                 appendStringInfo(&amp;cmd, &quot;COPY %s TO STDOUT&quot;,</span></span>
+<span id="L783"><span class="lineNum">     783</span> <span class="tlaUNC">           0 :                                                  quote_qualified_identifier(lrel.nspname, lrel.relname));</span></span>
+<span id="L784"><span class="lineNum">     784</span>              :         else</span>
+<span id="L785"><span class="lineNum">     785</span>              :         {</span>
+<span id="L786"><span class="lineNum">     786</span>              :                 /*</span>
+<span id="L787"><span class="lineNum">     787</span>              :                  * For non-tables, we need to do COPY (SELECT ...), but we can't just</span>
+<span id="L788"><span class="lineNum">     788</span>              :                  * do SELECT * because we need to not copy generated columns.</span>
+<span id="L789"><span class="lineNum">     789</span>              :                  */</span>
+<span id="L790"><span class="lineNum">     790</span> <span class="tlaUNC">           0 :                 appendStringInfo(&amp;cmd, &quot;COPY (SELECT &quot;);</span></span>
+<span id="L791"><span class="lineNum">     791</span> <span class="tlaUNC">           0 :                 for (int i = 0; i &lt; lrel.natts; i++)</span></span>
+<span id="L792"><span class="lineNum">     792</span>              :                 {</span>
+<span id="L793"><span class="lineNum">     793</span> <span class="tlaUNC">           0 :                         appendStringInfoString(&amp;cmd, quote_identifier(lrel.attnames[i]));</span></span>
+<span id="L794"><span class="lineNum">     794</span> <span class="tlaUNC">           0 :                         if (i &lt; lrel.natts - 1)</span></span>
+<span id="L795"><span class="lineNum">     795</span> <span class="tlaUNC">           0 :                                 appendStringInfoString(&amp;cmd, &quot;, &quot;);</span></span>
+<span id="L796"><span class="lineNum">     796</span>              :                 }</span>
+<span id="L797"><span class="lineNum">     797</span> <span class="tlaUNC">           0 :                 appendStringInfo(&amp;cmd, &quot; FROM %s) TO STDOUT&quot;,</span></span>
+<span id="L798"><span class="lineNum">     798</span> <span class="tlaUNC">           0 :                                                  quote_qualified_identifier(lrel.nspname, lrel.relname));</span></span>
+<span id="L799"><span class="lineNum">     799</span>              :         }</span>
+<span id="L800"><span class="lineNum">     800</span> <span class="tlaUNC">           0 :         res = walrcv_exec(LogRepWorkerWalRcvConn, cmd.data, 0, NULL);</span></span>
+<span id="L801"><span class="lineNum">     801</span> <span class="tlaUNC">           0 :         pfree(cmd.data);</span></span>
+<span id="L802"><span class="lineNum">     802</span> <span class="tlaUNC">           0 :         if (res-&gt;status != WALRCV_OK_COPY_OUT)</span></span>
+<span id="L803"><span class="lineNum">     803</span> <span class="tlaUNC">           0 :                 ereport(ERROR,</span></span>
+<span id="L804"><span class="lineNum">     804</span>              :                                 (errmsg(&quot;could not start initial contents copy for table \&quot;%s.%s\&quot;: %s&quot;,</span>
+<span id="L805"><span class="lineNum">     805</span>              :                                                 lrel.nspname, lrel.relname, res-&gt;err)));</span>
+<span id="L806"><span class="lineNum">     806</span> <span class="tlaUNC">           0 :         walrcv_clear_result(res);</span></span>
+<span id="L807"><span class="lineNum">     807</span>              : </span>
+<span id="L808"><span class="lineNum">     808</span> <span class="tlaUNC">           0 :         copybuf = makeStringInfo();</span></span>
+<span id="L809"><span class="lineNum">     809</span>              : </span>
+<span id="L810"><span class="lineNum">     810</span> <span class="tlaUNC">           0 :         pstate = make_parsestate(NULL);</span></span>
+<span id="L811"><span class="lineNum">     811</span> <span class="tlaUNC">           0 :         (void) addRangeTableEntryForRelation(pstate, rel, AccessShareLock,</span></span>
+<span id="L812"><span class="lineNum">     812</span>              :                                                                                  NULL, false, false);</span>
+<span id="L813"><span class="lineNum">     813</span>              : </span>
+<span id="L814"><span class="lineNum">     814</span> <span class="tlaUNC">           0 :         attnamelist = make_copy_attnamelist(relmapentry);</span></span>
+<span id="L815"><span class="lineNum">     815</span> <span class="tlaUNC">           0 :         cstate = BeginCopyFrom(pstate, rel, NULL, false, copy_read_data, attnamelist, NIL);</span></span>
+<span id="L816"><span class="lineNum">     816</span>              : </span>
+<span id="L817"><span class="lineNum">     817</span>              :         /* Do the copy */</span>
+<span id="L818"><span class="lineNum">     818</span> <span class="tlaUNC">           0 :         (void) CopyFrom(cstate);</span></span>
+<span id="L819"><span class="lineNum">     819</span>              : </span>
+<span id="L820"><span class="lineNum">     820</span> <span class="tlaUNC">           0 :         logicalrep_rel_close(relmapentry, NoLock);</span></span>
+<span id="L821"><span class="lineNum">     821</span> <span class="tlaUNC">           0 : }</span></span>
+<span id="L822"><span class="lineNum">     822</span>              : </span>
+<span id="L823"><span class="lineNum">     823</span>              : /*</span>
+<span id="L824"><span class="lineNum">     824</span>              :  * Start syncing the table in the sync worker.</span>
+<span id="L825"><span class="lineNum">     825</span>              :  *</span>
+<span id="L826"><span class="lineNum">     826</span>              :  * The returned slot name is palloc'ed in current memory context.</span>
+<span id="L827"><span class="lineNum">     827</span>              :  */</span>
+<span id="L828"><span class="lineNum">     828</span>              : char *</span>
+<span id="L829"><span class="lineNum">     829</span> <span class="tlaUNC">           0 : LogicalRepSyncTableStart(XLogRecPtr *origin_startpos)</span></span>
+<span id="L830"><span class="lineNum">     830</span>              : {</span>
+<span id="L831"><span class="lineNum">     831</span>              :         char       *slotname;</span>
+<span id="L832"><span class="lineNum">     832</span>              :         char       *err;</span>
+<span id="L833"><span class="lineNum">     833</span>              :         char            relstate;</span>
+<span id="L834"><span class="lineNum">     834</span>              :         XLogRecPtr      relstate_lsn;</span>
+<span id="L835"><span class="lineNum">     835</span>              : </span>
+<span id="L836"><span class="lineNum">     836</span>              :         /* Check the state of the table synchronization. */</span>
+<span id="L837"><span class="lineNum">     837</span> <span class="tlaUNC">           0 :         StartTransactionCommand();</span></span>
+<span id="L838"><span class="lineNum">     838</span> <span class="tlaUNC">           0 :         relstate = GetSubscriptionRelState(MyLogicalRepWorker-&gt;subid,</span></span>
+<span id="L839"><span class="lineNum">     839</span> <span class="tlaUNC">           0 :                                                                            MyLogicalRepWorker-&gt;relid,</span></span>
+<span id="L840"><span class="lineNum">     840</span>              :                                                                            &amp;relstate_lsn, true);</span>
+<span id="L841"><span class="lineNum">     841</span> <span class="tlaUNC">           0 :         CommitTransactionCommand();</span></span>
+<span id="L842"><span class="lineNum">     842</span>              : </span>
+<span id="L843"><span class="lineNum">     843</span> <span class="tlaUNC">           0 :         SpinLockAcquire(&amp;MyLogicalRepWorker-&gt;relmutex);</span></span>
+<span id="L844"><span class="lineNum">     844</span> <span class="tlaUNC">           0 :         MyLogicalRepWorker-&gt;relstate = relstate;</span></span>
+<span id="L845"><span class="lineNum">     845</span> <span class="tlaUNC">           0 :         MyLogicalRepWorker-&gt;relstate_lsn = relstate_lsn;</span></span>
+<span id="L846"><span class="lineNum">     846</span> <span class="tlaUNC">           0 :         SpinLockRelease(&amp;MyLogicalRepWorker-&gt;relmutex);</span></span>
+<span id="L847"><span class="lineNum">     847</span>              : </span>
+<span id="L848"><span class="lineNum">     848</span>              :         /*</span>
+<span id="L849"><span class="lineNum">     849</span>              :          * To build a slot name for the sync work, we are limited to NAMEDATALEN -</span>
+<span id="L850"><span class="lineNum">     850</span>              :          * 1 characters.  We cut the original slot name to NAMEDATALEN - 28 chars</span>
+<span id="L851"><span class="lineNum">     851</span>              :          * and append _%u_sync_%u (1 + 10 + 6 + 10 + '\0').  (It's actually the</span>
+<span id="L852"><span class="lineNum">     852</span>              :          * NAMEDATALEN on the remote that matters, but this scheme will also work</span>
+<span id="L853"><span class="lineNum">     853</span>              :          * reasonably if that is different.)</span>
+<span id="L854"><span class="lineNum">     854</span>              :          */</span>
+<span id="L855"><span class="lineNum">     855</span>              :         StaticAssertStmt(NAMEDATALEN &gt;= 32, &quot;NAMEDATALEN too small&quot;);      /* for sanity */</span>
+<span id="L856"><span class="lineNum">     856</span> <span class="tlaUNC">           0 :         slotname = psprintf(&quot;%.*s_%u_sync_%u&quot;,</span></span>
+<span id="L857"><span class="lineNum">     857</span>              :                                                 NAMEDATALEN - 28,</span>
+<span id="L858"><span class="lineNum">     858</span> <span class="tlaUNC">           0 :                                                 MySubscription-&gt;slotname,</span></span>
+<span id="L859"><span class="lineNum">     859</span> <span class="tlaUNC">           0 :                                                 MySubscription-&gt;oid,</span></span>
+<span id="L860"><span class="lineNum">     860</span> <span class="tlaUNC">           0 :                                                 MyLogicalRepWorker-&gt;relid);</span></span>
+<span id="L861"><span class="lineNum">     861</span>              : </span>
+<span id="L862"><span class="lineNum">     862</span>              :         /*</span>
+<span id="L863"><span class="lineNum">     863</span>              :          * Here we use the slot name instead of the subscription name as the</span>
+<span id="L864"><span class="lineNum">     864</span>              :          * application_name, so that it is different from the main apply worker,</span>
+<span id="L865"><span class="lineNum">     865</span>              :          * so that synchronous replication can distinguish them.</span>
+<span id="L866"><span class="lineNum">     866</span>              :          */</span>
+<span id="L867"><span class="lineNum">     867</span> <span class="tlaUNC">           0 :         LogRepWorkerWalRcvConn = walrcv_connect(MySubscription-&gt;conninfo, true,</span></span>
+<span id="L868"><span class="lineNum">     868</span>              :                                                                                         slotname, &amp;err);</span>
+<span id="L869"><span class="lineNum">     869</span> <span class="tlaUNC">           0 :         if (LogRepWorkerWalRcvConn == NULL)</span></span>
+<span id="L870"><span class="lineNum">     870</span> <span class="tlaUNC">           0 :                 ereport(ERROR,</span></span>
+<span id="L871"><span class="lineNum">     871</span>              :                                 (errmsg(&quot;could not connect to the publisher: %s&quot;, err)));</span>
+<span id="L872"><span class="lineNum">     872</span>              : </span>
+<span id="L873"><span class="lineNum">     873</span> <span class="tlaUNC">           0 :         switch (MyLogicalRepWorker-&gt;relstate)</span></span>
+<span id="L874"><span class="lineNum">     874</span>              :         {</span>
+<span id="L875"><span class="lineNum">     875</span> <span class="tlaUNC">           0 :                 case SUBREL_STATE_INIT:</span></span>
+<span id="L876"><span class="lineNum">     876</span>              :                 case SUBREL_STATE_DATASYNC:</span>
+<span id="L877"><span class="lineNum">     877</span>              :                         {</span>
+<span id="L878"><span class="lineNum">     878</span>              :                                 Relation        rel;</span>
+<span id="L879"><span class="lineNum">     879</span>              :                                 WalRcvExecResult *res;</span>
+<span id="L880"><span class="lineNum">     880</span>              : </span>
+<span id="L881"><span class="lineNum">     881</span> <span class="tlaUNC">           0 :                                 SpinLockAcquire(&amp;MyLogicalRepWorker-&gt;relmutex);</span></span>
+<span id="L882"><span class="lineNum">     882</span> <span class="tlaUNC">           0 :                                 MyLogicalRepWorker-&gt;relstate = SUBREL_STATE_DATASYNC;</span></span>
+<span id="L883"><span class="lineNum">     883</span> <span class="tlaUNC">           0 :                                 MyLogicalRepWorker-&gt;relstate_lsn = InvalidXLogRecPtr;</span></span>
+<span id="L884"><span class="lineNum">     884</span> <span class="tlaUNC">           0 :                                 SpinLockRelease(&amp;MyLogicalRepWorker-&gt;relmutex);</span></span>
+<span id="L885"><span class="lineNum">     885</span>              : </span>
+<span id="L886"><span class="lineNum">     886</span>              :                                 /* Update the state and make it visible to others. */</span>
+<span id="L887"><span class="lineNum">     887</span> <span class="tlaUNC">           0 :                                 StartTransactionCommand();</span></span>
+<span id="L888"><span class="lineNum">     888</span> <span class="tlaUNC">           0 :                                 UpdateSubscriptionRelState(MyLogicalRepWorker-&gt;subid,</span></span>
+<span id="L889"><span class="lineNum">     889</span> <span class="tlaUNC">           0 :                                                                                    MyLogicalRepWorker-&gt;relid,</span></span>
+<span id="L890"><span class="lineNum">     890</span> <span class="tlaUNC">           0 :                                                                                    MyLogicalRepWorker-&gt;relstate,</span></span>
+<span id="L891"><span class="lineNum">     891</span> <span class="tlaUNC">           0 :                                                                                    MyLogicalRepWorker-&gt;relstate_lsn);</span></span>
+<span id="L892"><span class="lineNum">     892</span> <span class="tlaUNC">           0 :                                 CommitTransactionCommand();</span></span>
+<span id="L893"><span class="lineNum">     893</span> <span class="tlaUNC">           0 :                                 pgstat_report_stat(false);</span></span>
+<span id="L894"><span class="lineNum">     894</span>              : </span>
+<span id="L895"><span class="lineNum">     895</span>              :                                 /*</span>
+<span id="L896"><span class="lineNum">     896</span>              :                                  * We want to do the table data sync in a single transaction.</span>
+<span id="L897"><span class="lineNum">     897</span>              :                                  */</span>
+<span id="L898"><span class="lineNum">     898</span> <span class="tlaUNC">           0 :                                 StartTransactionCommand();</span></span>
+<span id="L899"><span class="lineNum">     899</span>              : </span>
+<span id="L900"><span class="lineNum">     900</span>              :                                 /*</span>
+<span id="L901"><span class="lineNum">     901</span>              :                                  * Use a standard write lock here. It might be better to</span>
+<span id="L902"><span class="lineNum">     902</span>              :                                  * disallow access to the table while it's being synchronized.</span>
+<span id="L903"><span class="lineNum">     903</span>              :                                  * But we don't want to block the main apply process from</span>
+<span id="L904"><span class="lineNum">     904</span>              :                                  * working and it has to open the relation in RowExclusiveLock</span>
+<span id="L905"><span class="lineNum">     905</span>              :                                  * when remapping remote relation id to local one.</span>
+<span id="L906"><span class="lineNum">     906</span>              :                                  */</span>
+<span id="L907"><span class="lineNum">     907</span> <span class="tlaUNC">           0 :                                 rel = table_open(MyLogicalRepWorker-&gt;relid, RowExclusiveLock);</span></span>
+<span id="L908"><span class="lineNum">     908</span>              : </span>
+<span id="L909"><span class="lineNum">     909</span>              :                                 /*</span>
+<span id="L910"><span class="lineNum">     910</span>              :                                  * Create a temporary slot for the sync process. We do this</span>
+<span id="L911"><span class="lineNum">     911</span>              :                                  * inside the transaction so that we can use the snapshot made</span>
+<span id="L912"><span class="lineNum">     912</span>              :                                  * by the slot to get existing data.</span>
+<span id="L913"><span class="lineNum">     913</span>              :                                  */</span>
+<span id="L914"><span class="lineNum">     914</span> <span class="tlaUNC">           0 :                                 res = walrcv_exec(LogRepWorkerWalRcvConn,</span></span>
+<span id="L915"><span class="lineNum">     915</span>              :                                                                   &quot;BEGIN READ ONLY ISOLATION LEVEL &quot;</span>
+<span id="L916"><span class="lineNum">     916</span>              :                                                                   &quot;REPEATABLE READ&quot;, 0, NULL);</span>
+<span id="L917"><span class="lineNum">     917</span> <span class="tlaUNC">           0 :                                 if (res-&gt;status != WALRCV_OK_COMMAND)</span></span>
+<span id="L918"><span class="lineNum">     918</span> <span class="tlaUNC">           0 :                                         ereport(ERROR,</span></span>
+<span id="L919"><span class="lineNum">     919</span>              :                                                         (errmsg(&quot;table copy could not start transaction on publisher&quot;),</span>
+<span id="L920"><span class="lineNum">     920</span>              :                                                          errdetail(&quot;The error was: %s&quot;, res-&gt;err)));</span>
+<span id="L921"><span class="lineNum">     921</span> <span class="tlaUNC">           0 :                                 walrcv_clear_result(res);</span></span>
+<span id="L922"><span class="lineNum">     922</span>              : </span>
+<span id="L923"><span class="lineNum">     923</span>              :                                 /*</span>
+<span id="L924"><span class="lineNum">     924</span>              :                                  * Create new temporary logical decoding slot.</span>
+<span id="L925"><span class="lineNum">     925</span>              :                                  *</span>
+<span id="L926"><span class="lineNum">     926</span>              :                                  * We'll use slot for data copy so make sure the snapshot is</span>
+<span id="L927"><span class="lineNum">     927</span>              :                                  * used for the transaction; that way the COPY will get data</span>
+<span id="L928"><span class="lineNum">     928</span>              :                                  * that is consistent with the lsn used by the slot to start</span>
+<span id="L929"><span class="lineNum">     929</span>              :                                  * decoding.</span>
+<span id="L930"><span class="lineNum">     930</span>              :                                  */</span>
+<span id="L931"><span class="lineNum">     931</span> <span class="tlaUNC">           0 :                                 walrcv_create_slot(LogRepWorkerWalRcvConn, slotname, true,</span></span>
+<span id="L932"><span class="lineNum">     932</span>              :                                                                    CRS_USE_SNAPSHOT, origin_startpos);</span>
+<span id="L933"><span class="lineNum">     933</span>              : </span>
+<span id="L934"><span class="lineNum">     934</span> <span class="tlaUNC">           0 :                                 PushActiveSnapshot(GetTransactionSnapshot());</span></span>
+<span id="L935"><span class="lineNum">     935</span> <span class="tlaUNC">           0 :                                 copy_table(rel);</span></span>
+<span id="L936"><span class="lineNum">     936</span> <span class="tlaUNC">           0 :                                 PopActiveSnapshot();</span></span>
+<span id="L937"><span class="lineNum">     937</span>              : </span>
+<span id="L938"><span class="lineNum">     938</span> <span class="tlaUNC">           0 :                                 res = walrcv_exec(LogRepWorkerWalRcvConn, &quot;COMMIT&quot;, 0, NULL);</span></span>
+<span id="L939"><span class="lineNum">     939</span> <span class="tlaUNC">           0 :                                 if (res-&gt;status != WALRCV_OK_COMMAND)</span></span>
+<span id="L940"><span class="lineNum">     940</span> <span class="tlaUNC">           0 :                                         ereport(ERROR,</span></span>
+<span id="L941"><span class="lineNum">     941</span>              :                                                         (errmsg(&quot;table copy could not finish transaction on publisher&quot;),</span>
+<span id="L942"><span class="lineNum">     942</span>              :                                                          errdetail(&quot;The error was: %s&quot;, res-&gt;err)));</span>
+<span id="L943"><span class="lineNum">     943</span> <span class="tlaUNC">           0 :                                 walrcv_clear_result(res);</span></span>
+<span id="L944"><span class="lineNum">     944</span>              : </span>
+<span id="L945"><span class="lineNum">     945</span> <span class="tlaUNC">           0 :                                 table_close(rel, NoLock);</span></span>
+<span id="L946"><span class="lineNum">     946</span>              : </span>
+<span id="L947"><span class="lineNum">     947</span>              :                                 /* Make the copy visible. */</span>
+<span id="L948"><span class="lineNum">     948</span> <span class="tlaUNC">           0 :                                 CommandCounterIncrement();</span></span>
+<span id="L949"><span class="lineNum">     949</span>              : </span>
+<span id="L950"><span class="lineNum">     950</span>              :                                 /*</span>
+<span id="L951"><span class="lineNum">     951</span>              :                                  * We are done with the initial data synchronization, update</span>
+<span id="L952"><span class="lineNum">     952</span>              :                                  * the state.</span>
+<span id="L953"><span class="lineNum">     953</span>              :                                  */</span>
+<span id="L954"><span class="lineNum">     954</span> <span class="tlaUNC">           0 :                                 SpinLockAcquire(&amp;MyLogicalRepWorker-&gt;relmutex);</span></span>
+<span id="L955"><span class="lineNum">     955</span> <span class="tlaUNC">           0 :                                 MyLogicalRepWorker-&gt;relstate = SUBREL_STATE_SYNCWAIT;</span></span>
+<span id="L956"><span class="lineNum">     956</span> <span class="tlaUNC">           0 :                                 MyLogicalRepWorker-&gt;relstate_lsn = *origin_startpos;</span></span>
+<span id="L957"><span class="lineNum">     957</span> <span class="tlaUNC">           0 :                                 SpinLockRelease(&amp;MyLogicalRepWorker-&gt;relmutex);</span></span>
+<span id="L958"><span class="lineNum">     958</span>              : </span>
+<span id="L959"><span class="lineNum">     959</span>              :                                 /* Wait for main apply worker to tell us to catchup. */</span>
+<span id="L960"><span class="lineNum">     960</span> <span class="tlaUNC">           0 :                                 wait_for_worker_state_change(SUBREL_STATE_CATCHUP);</span></span>
+<span id="L961"><span class="lineNum">     961</span>              : </span>
+<span id="L962"><span class="lineNum">     962</span>              :                                 /*----------</span>
+<span id="L963"><span class="lineNum">     963</span>              :                                  * There are now two possible states here:</span>
+<span id="L964"><span class="lineNum">     964</span>              :                                  * a) Sync is behind the apply.  If that's the case we need to</span>
+<span id="L965"><span class="lineNum">     965</span>              :                                  *        catch up with it by consuming the logical replication</span>
+<span id="L966"><span class="lineNum">     966</span>              :                                  *        stream up to the relstate_lsn.  For that, we exit this</span>
+<span id="L967"><span class="lineNum">     967</span>              :                                  *        function and continue in ApplyWorkerMain().</span>
+<span id="L968"><span class="lineNum">     968</span>              :                                  * b) Sync is caught up with the apply.  So it can just set</span>
+<span id="L969"><span class="lineNum">     969</span>              :                                  *        the state to SYNCDONE and finish.</span>
+<span id="L970"><span class="lineNum">     970</span>              :                                  *----------</span>
+<span id="L971"><span class="lineNum">     971</span>              :                                  */</span>
+<span id="L972"><span class="lineNum">     972</span> <span class="tlaUNC">           0 :                                 if (*origin_startpos &gt;= MyLogicalRepWorker-&gt;relstate_lsn)</span></span>
+<span id="L973"><span class="lineNum">     973</span>              :                                 {</span>
+<span id="L974"><span class="lineNum">     974</span>              :                                         /*</span>
+<span id="L975"><span class="lineNum">     975</span>              :                                          * Update the new state in catalog.  No need to bother</span>
+<span id="L976"><span class="lineNum">     976</span>              :                                          * with the shmem state as we are exiting for good.</span>
+<span id="L977"><span class="lineNum">     977</span>              :                                          */</span>
+<span id="L978"><span class="lineNum">     978</span> <span class="tlaUNC">           0 :                                         UpdateSubscriptionRelState(MyLogicalRepWorker-&gt;subid,</span></span>
+<span id="L979"><span class="lineNum">     979</span> <span class="tlaUNC">           0 :                                                                                            MyLogicalRepWorker-&gt;relid,</span></span>
+<span id="L980"><span class="lineNum">     980</span>              :                                                                                            SUBREL_STATE_SYNCDONE,</span>
+<span id="L981"><span class="lineNum">     981</span>              :                                                                                            *origin_startpos);</span>
+<span id="L982"><span class="lineNum">     982</span> <span class="tlaUNC">           0 :                                         finish_sync_worker();</span></span>
+<span id="L983"><span class="lineNum">     983</span>              :                                 }</span>
+<span id="L984"><span class="lineNum">     984</span> <span class="tlaUNC">           0 :                                 break;</span></span>
+<span id="L985"><span class="lineNum">     985</span>              :                         }</span>
+<span id="L986"><span class="lineNum">     986</span> <span class="tlaUNC">           0 :                 case SUBREL_STATE_SYNCDONE:</span></span>
+<span id="L987"><span class="lineNum">     987</span>              :                 case SUBREL_STATE_READY:</span>
+<span id="L988"><span class="lineNum">     988</span>              :                 case SUBREL_STATE_UNKNOWN:</span>
+<span id="L989"><span class="lineNum">     989</span>              : </span>
+<span id="L990"><span class="lineNum">     990</span>              :                         /*</span>
+<span id="L991"><span class="lineNum">     991</span>              :                          * Nothing to do here but finish.  (UNKNOWN means the relation was</span>
+<span id="L992"><span class="lineNum">     992</span>              :                          * removed from pg_subscription_rel before the sync worker could</span>
+<span id="L993"><span class="lineNum">     993</span>              :                          * start.)</span>
+<span id="L994"><span class="lineNum">     994</span>              :                          */</span>
+<span id="L995"><span class="lineNum">     995</span> <span class="tlaUNC">           0 :                         finish_sync_worker();</span></span>
+<span id="L996"><span class="lineNum">     996</span>              :                         break;</span>
+<span id="L997"><span class="lineNum">     997</span> <span class="tlaUNC">           0 :                 default:</span></span>
+<span id="L998"><span class="lineNum">     998</span> <span class="tlaUNC">           0 :                         elog(ERROR, &quot;unknown relation state \&quot;%c\&quot;&quot;,</span></span>
+<span id="L999"><span class="lineNum">     999</span>              :                                  MyLogicalRepWorker-&gt;relstate);</span>
+<span id="L1000"><span class="lineNum">    1000</span>              :         }</span>
+<span id="L1001"><span class="lineNum">    1001</span>              : </span>
+<span id="L1002"><span class="lineNum">    1002</span> <span class="tlaUNC">           0 :         return slotname;</span></span>
+<span id="L1003"><span class="lineNum">    1003</span>              : }</span>
+        </pre>
+              </td>
+            </tr>
+          </table>
+          <br>
+
+          <table width="100%" border=0 cellspacing=0 cellpadding=0>
+            <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+            <tr><td class="versionInfo">Generated by: <a href="https://github.com//linux-test-project/lcov" target="_parent">LCOV version 2.0-1</a></td></tr>
+          </table>
+          <br>
+
+</body>
+</html>

@@ -1,0 +1,333 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - coverage_filtered.info - backend/access/tablesample/system.c</title>
+  <link rel="stylesheet" type="text/css" href="../../../gcov.css">
+</head>
+
+<body>
+
+          <table width="100%" border=0 cellspacing=0 cellpadding=0>
+            <tr><td class="title">LCOV - code coverage report</td></tr>
+            <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+
+            <tr>
+              <td width="100%">
+                <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="10%" class="headerValue"><a href="../../../index.html">top level</a> - <a href="index.html">backend/access/tablesample</a> - system.c<span style="font-size: 80%;"> (source / <a href="system.c.func-c.html">functions</a>)</span></td>
+            <td width="5%"></td>
+            <td width="5%"></td>
+            <td width="5%" class="headerCovTableHead">Coverage</td>
+            <td width="5%" class="headerCovTableHead" title="Covered + Uncovered code">Total</td>
+            <td width="5%" class="headerCovTableHead" title="Exercised code only">Hit</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">coverage_filtered.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntryLo">0.0&nbsp;%</td>
+            <td class="headerCovTableEntry">65</td>
+            <td class="headerCovTableEntry">0</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test Date:</td>
+            <td class="headerValue">2026-06-06 03:42:11</td>
+            <td></td>
+            <td class="headerItem">Functions:</td>
+            <td class="headerCovTableEntryLo">0.0&nbsp;%</td>
+            <td class="headerCovTableEntry">6</td>
+            <td class="headerCovTableEntry">0</td>
+          </tr>
+                  <tr><td><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+                </table>
+              </td>
+            </tr>
+
+            <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+          </table>
+
+          <table cellpadding=0 cellspacing=0 border=0>
+            <tr>
+              <td><br></td>
+            </tr>
+            <tr>
+              <td>
+<pre class="sourceHeading">            Line data    Source code</pre>
+<pre class="source">
+<span id="L1"><span class="lineNum">       1</span>              : /*-------------------------------------------------------------------------</span>
+<span id="L2"><span class="lineNum">       2</span>              :  *</span>
+<span id="L3"><span class="lineNum">       3</span>              :  * system.c</span>
+<span id="L4"><span class="lineNum">       4</span>              :  *        support routines for SYSTEM tablesample method</span>
+<span id="L5"><span class="lineNum">       5</span>              :  *</span>
+<span id="L6"><span class="lineNum">       6</span>              :  * To ensure repeatability of samples, it is necessary that selection of a</span>
+<span id="L7"><span class="lineNum">       7</span>              :  * given tuple be history-independent; otherwise syncscanning would break</span>
+<span id="L8"><span class="lineNum">       8</span>              :  * repeatability, to say nothing of logically-irrelevant maintenance such</span>
+<span id="L9"><span class="lineNum">       9</span>              :  * as physical extension or shortening of the relation.</span>
+<span id="L10"><span class="lineNum">      10</span>              :  *</span>
+<span id="L11"><span class="lineNum">      11</span>              :  * To achieve that, we proceed by hashing each candidate block number together</span>
+<span id="L12"><span class="lineNum">      12</span>              :  * with the active seed, and then selecting it if the hash is less than the</span>
+<span id="L13"><span class="lineNum">      13</span>              :  * cutoff value computed from the selection probability by BeginSampleScan.</span>
+<span id="L14"><span class="lineNum">      14</span>              :  *</span>
+<span id="L15"><span class="lineNum">      15</span>              :  *</span>
+<span id="L16"><span class="lineNum">      16</span>              :  * Portions Copyright (c) 1996-2020, PostgreSQL Global Development Group</span>
+<span id="L17"><span class="lineNum">      17</span>              :  * Portions Copyright (c) 1994, Regents of the University of California</span>
+<span id="L18"><span class="lineNum">      18</span>              :  *</span>
+<span id="L19"><span class="lineNum">      19</span>              :  * IDENTIFICATION</span>
+<span id="L20"><span class="lineNum">      20</span>              :  *        src/backend/access/tablesample/system.c</span>
+<span id="L21"><span class="lineNum">      21</span>              :  *</span>
+<span id="L22"><span class="lineNum">      22</span>              :  *-------------------------------------------------------------------------</span>
+<span id="L23"><span class="lineNum">      23</span>              :  */</span>
+<span id="L24"><span class="lineNum">      24</span>              : </span>
+<span id="L25"><span class="lineNum">      25</span>              : #include &quot;postgres.h&quot;</span>
+<span id="L26"><span class="lineNum">      26</span>              : </span>
+<span id="L27"><span class="lineNum">      27</span>              : #include &lt;math.h&gt;</span>
+<span id="L28"><span class="lineNum">      28</span>              : </span>
+<span id="L29"><span class="lineNum">      29</span>              : #include &quot;access/relscan.h&quot;</span>
+<span id="L30"><span class="lineNum">      30</span>              : #include &quot;access/tsmapi.h&quot;</span>
+<span id="L31"><span class="lineNum">      31</span>              : #include &quot;catalog/pg_type.h&quot;</span>
+<span id="L32"><span class="lineNum">      32</span>              : #include &quot;common/hashfn.h&quot;</span>
+<span id="L33"><span class="lineNum">      33</span>              : #include &quot;optimizer/optimizer.h&quot;</span>
+<span id="L34"><span class="lineNum">      34</span>              : #include &quot;utils/builtins.h&quot;</span>
+<span id="L35"><span class="lineNum">      35</span>              : </span>
+<span id="L36"><span class="lineNum">      36</span>              : </span>
+<span id="L37"><span class="lineNum">      37</span>              : /* Private state */</span>
+<span id="L38"><span class="lineNum">      38</span>              : typedef struct</span>
+<span id="L39"><span class="lineNum">      39</span>              : {</span>
+<span id="L40"><span class="lineNum">      40</span>              :         uint64          cutoff;                 /* select blocks with hash less than this */</span>
+<span id="L41"><span class="lineNum">      41</span>              :         uint32          seed;                   /* random seed */</span>
+<span id="L42"><span class="lineNum">      42</span>              :         BlockNumber nextblock;          /* next block to consider sampling */</span>
+<span id="L43"><span class="lineNum">      43</span>              :         OffsetNumber lt;                        /* last tuple returned from current block */</span>
+<span id="L44"><span class="lineNum">      44</span>              : } SystemSamplerData;</span>
+<span id="L45"><span class="lineNum">      45</span>              : </span>
+<span id="L46"><span class="lineNum">      46</span>              : </span>
+<span id="L47"><span class="lineNum">      47</span>              : static void system_samplescangetsamplesize(PlannerInfo *root,</span>
+<span id="L48"><span class="lineNum">      48</span>              :                                                                                    RelOptInfo *baserel,</span>
+<span id="L49"><span class="lineNum">      49</span>              :                                                                                    List *paramexprs,</span>
+<span id="L50"><span class="lineNum">      50</span>              :                                                                                    BlockNumber *pages,</span>
+<span id="L51"><span class="lineNum">      51</span>              :                                                                                    double *tuples);</span>
+<span id="L52"><span class="lineNum">      52</span>              : static void system_initsamplescan(SampleScanState *node,</span>
+<span id="L53"><span class="lineNum">      53</span>              :                                                                   int eflags);</span>
+<span id="L54"><span class="lineNum">      54</span>              : static void system_beginsamplescan(SampleScanState *node,</span>
+<span id="L55"><span class="lineNum">      55</span>              :                                                                    Datum *params,</span>
+<span id="L56"><span class="lineNum">      56</span>              :                                                                    int nparams,</span>
+<span id="L57"><span class="lineNum">      57</span>              :                                                                    uint32 seed);</span>
+<span id="L58"><span class="lineNum">      58</span>              : static BlockNumber system_nextsampleblock(SampleScanState *node, BlockNumber nblocks);</span>
+<span id="L59"><span class="lineNum">      59</span>              : static OffsetNumber system_nextsampletuple(SampleScanState *node,</span>
+<span id="L60"><span class="lineNum">      60</span>              :                                                                                    BlockNumber blockno,</span>
+<span id="L61"><span class="lineNum">      61</span>              :                                                                                    OffsetNumber maxoffset);</span>
+<span id="L62"><span class="lineNum">      62</span>              : </span>
+<span id="L63"><span class="lineNum">      63</span>              : </span>
+<span id="L64"><span class="lineNum">      64</span>              : /*</span>
+<span id="L65"><span class="lineNum">      65</span>              :  * Create a TsmRoutine descriptor for the SYSTEM method.</span>
+<span id="L66"><span class="lineNum">      66</span>              :  */</span>
+<span id="L67"><span class="lineNum">      67</span>              : Datum</span>
+<span id="L68"><span class="lineNum">      68</span> <span class="tlaUNC tlaBgUNC">           0 : tsm_system_handler(PG_FUNCTION_ARGS)</span></span>
+<span id="L69"><span class="lineNum">      69</span>              : {</span>
+<span id="L70"><span class="lineNum">      70</span> <span class="tlaUNC">           0 :         TsmRoutine *tsm = makeNode(TsmRoutine);</span></span>
+<span id="L71"><span class="lineNum">      71</span>              : </span>
+<span id="L72"><span class="lineNum">      72</span> <span class="tlaUNC">           0 :         tsm-&gt;parameterTypes = list_make1_oid(FLOAT4OID);</span></span>
+<span id="L73"><span class="lineNum">      73</span> <span class="tlaUNC">           0 :         tsm-&gt;repeatable_across_queries = true;</span></span>
+<span id="L74"><span class="lineNum">      74</span> <span class="tlaUNC">           0 :         tsm-&gt;repeatable_across_scans = true;</span></span>
+<span id="L75"><span class="lineNum">      75</span> <span class="tlaUNC">           0 :         tsm-&gt;SampleScanGetSampleSize = system_samplescangetsamplesize;</span></span>
+<span id="L76"><span class="lineNum">      76</span> <span class="tlaUNC">           0 :         tsm-&gt;InitSampleScan = system_initsamplescan;</span></span>
+<span id="L77"><span class="lineNum">      77</span> <span class="tlaUNC">           0 :         tsm-&gt;BeginSampleScan = system_beginsamplescan;</span></span>
+<span id="L78"><span class="lineNum">      78</span> <span class="tlaUNC">           0 :         tsm-&gt;NextSampleBlock = system_nextsampleblock;</span></span>
+<span id="L79"><span class="lineNum">      79</span> <span class="tlaUNC">           0 :         tsm-&gt;NextSampleTuple = system_nextsampletuple;</span></span>
+<span id="L80"><span class="lineNum">      80</span> <span class="tlaUNC">           0 :         tsm-&gt;EndSampleScan = NULL;</span></span>
+<span id="L81"><span class="lineNum">      81</span>              : </span>
+<span id="L82"><span class="lineNum">      82</span> <span class="tlaUNC">           0 :         PG_RETURN_POINTER(tsm);</span></span>
+<span id="L83"><span class="lineNum">      83</span>              : }</span>
+<span id="L84"><span class="lineNum">      84</span>              : </span>
+<span id="L85"><span class="lineNum">      85</span>              : /*</span>
+<span id="L86"><span class="lineNum">      86</span>              :  * Sample size estimation.</span>
+<span id="L87"><span class="lineNum">      87</span>              :  */</span>
+<span id="L88"><span class="lineNum">      88</span>              : static void</span>
+<span id="L89"><span class="lineNum">      89</span> <span class="tlaUNC">           0 : system_samplescangetsamplesize(PlannerInfo *root,</span></span>
+<span id="L90"><span class="lineNum">      90</span>              :                                                            RelOptInfo *baserel,</span>
+<span id="L91"><span class="lineNum">      91</span>              :                                                            List *paramexprs,</span>
+<span id="L92"><span class="lineNum">      92</span>              :                                                            BlockNumber *pages,</span>
+<span id="L93"><span class="lineNum">      93</span>              :                                                            double *tuples)</span>
+<span id="L94"><span class="lineNum">      94</span>              : {</span>
+<span id="L95"><span class="lineNum">      95</span>              :         Node       *pctnode;</span>
+<span id="L96"><span class="lineNum">      96</span>              :         float4          samplefract;</span>
+<span id="L97"><span class="lineNum">      97</span>              : </span>
+<span id="L98"><span class="lineNum">      98</span>              :         /* Try to extract an estimate for the sample percentage */</span>
+<span id="L99"><span class="lineNum">      99</span> <span class="tlaUNC">           0 :         pctnode = (Node *) linitial(paramexprs);</span></span>
+<span id="L100"><span class="lineNum">     100</span> <span class="tlaUNC">           0 :         pctnode = estimate_expression_value(root, pctnode);</span></span>
+<span id="L101"><span class="lineNum">     101</span>              : </span>
+<span id="L102"><span class="lineNum">     102</span> <span class="tlaUNC">           0 :         if (IsA(pctnode, Const) &amp;&amp;</span></span>
+<span id="L103"><span class="lineNum">     103</span> <span class="tlaUNC">           0 :                 !((Const *) pctnode)-&gt;constisnull)</span></span>
+<span id="L104"><span class="lineNum">     104</span>              :         {</span>
+<span id="L105"><span class="lineNum">     105</span> <span class="tlaUNC">           0 :                 samplefract = DatumGetFloat4(((Const *) pctnode)-&gt;constvalue);</span></span>
+<span id="L106"><span class="lineNum">     106</span> <span class="tlaUNC">           0 :                 if (samplefract &gt;= 0 &amp;&amp; samplefract &lt;= 100 &amp;&amp; !isnan(samplefract))</span></span>
+<span id="L107"><span class="lineNum">     107</span> <span class="tlaUNC">           0 :                         samplefract /= 100.0f;</span></span>
+<span id="L108"><span class="lineNum">     108</span>              :                 else</span>
+<span id="L109"><span class="lineNum">     109</span>              :                 {</span>
+<span id="L110"><span class="lineNum">     110</span>              :                         /* Default samplefract if the value is bogus */</span>
+<span id="L111"><span class="lineNum">     111</span> <span class="tlaUNC">           0 :                         samplefract = 0.1f;</span></span>
+<span id="L112"><span class="lineNum">     112</span>              :                 }</span>
+<span id="L113"><span class="lineNum">     113</span>              :         }</span>
+<span id="L114"><span class="lineNum">     114</span>              :         else</span>
+<span id="L115"><span class="lineNum">     115</span>              :         {</span>
+<span id="L116"><span class="lineNum">     116</span>              :                 /* Default samplefract if we didn't obtain a non-null Const */</span>
+<span id="L117"><span class="lineNum">     117</span> <span class="tlaUNC">           0 :                 samplefract = 0.1f;</span></span>
+<span id="L118"><span class="lineNum">     118</span>              :         }</span>
+<span id="L119"><span class="lineNum">     119</span>              : </span>
+<span id="L120"><span class="lineNum">     120</span>              :         /* We'll visit a sample of the pages ... */</span>
+<span id="L121"><span class="lineNum">     121</span> <span class="tlaUNC">           0 :         *pages = clamp_row_est(baserel-&gt;pages * samplefract);</span></span>
+<span id="L122"><span class="lineNum">     122</span>              : </span>
+<span id="L123"><span class="lineNum">     123</span>              :         /* ... and hopefully get a representative number of tuples from them */</span>
+<span id="L124"><span class="lineNum">     124</span> <span class="tlaUNC">           0 :         *tuples = clamp_row_est(baserel-&gt;tuples * samplefract);</span></span>
+<span id="L125"><span class="lineNum">     125</span> <span class="tlaUNC">           0 : }</span></span>
+<span id="L126"><span class="lineNum">     126</span>              : </span>
+<span id="L127"><span class="lineNum">     127</span>              : /*</span>
+<span id="L128"><span class="lineNum">     128</span>              :  * Initialize during executor setup.</span>
+<span id="L129"><span class="lineNum">     129</span>              :  */</span>
+<span id="L130"><span class="lineNum">     130</span>              : static void</span>
+<span id="L131"><span class="lineNum">     131</span> <span class="tlaUNC">           0 : system_initsamplescan(SampleScanState *node, int eflags)</span></span>
+<span id="L132"><span class="lineNum">     132</span>              : {</span>
+<span id="L133"><span class="lineNum">     133</span> <span class="tlaUNC">           0 :         node-&gt;tsm_state = palloc0(sizeof(SystemSamplerData));</span></span>
+<span id="L134"><span class="lineNum">     134</span> <span class="tlaUNC">           0 : }</span></span>
+<span id="L135"><span class="lineNum">     135</span>              : </span>
+<span id="L136"><span class="lineNum">     136</span>              : /*</span>
+<span id="L137"><span class="lineNum">     137</span>              :  * Examine parameters and prepare for a sample scan.</span>
+<span id="L138"><span class="lineNum">     138</span>              :  */</span>
+<span id="L139"><span class="lineNum">     139</span>              : static void</span>
+<span id="L140"><span class="lineNum">     140</span> <span class="tlaUNC">           0 : system_beginsamplescan(SampleScanState *node,</span></span>
+<span id="L141"><span class="lineNum">     141</span>              :                                            Datum *params,</span>
+<span id="L142"><span class="lineNum">     142</span>              :                                            int nparams,</span>
+<span id="L143"><span class="lineNum">     143</span>              :                                            uint32 seed)</span>
+<span id="L144"><span class="lineNum">     144</span>              : {</span>
+<span id="L145"><span class="lineNum">     145</span> <span class="tlaUNC">           0 :         SystemSamplerData *sampler = (SystemSamplerData *) node-&gt;tsm_state;</span></span>
+<span id="L146"><span class="lineNum">     146</span> <span class="tlaUNC">           0 :         double          percent = DatumGetFloat4(params[0]);</span></span>
+<span id="L147"><span class="lineNum">     147</span>              :         double          dcutoff;</span>
+<span id="L148"><span class="lineNum">     148</span>              : </span>
+<span id="L149"><span class="lineNum">     149</span> <span class="tlaUNC">           0 :         if (percent &lt; 0 || percent &gt; 100 || isnan(percent))</span></span>
+<span id="L150"><span class="lineNum">     150</span> <span class="tlaUNC">           0 :                 ereport(ERROR,</span></span>
+<span id="L151"><span class="lineNum">     151</span>              :                                 (errcode(ERRCODE_INVALID_TABLESAMPLE_ARGUMENT),</span>
+<span id="L152"><span class="lineNum">     152</span>              :                                  errmsg(&quot;sample percentage must be between 0 and 100&quot;)));</span>
+<span id="L153"><span class="lineNum">     153</span>              : </span>
+<span id="L154"><span class="lineNum">     154</span>              :         /*</span>
+<span id="L155"><span class="lineNum">     155</span>              :          * The cutoff is sample probability times (PG_UINT32_MAX + 1); we have to</span>
+<span id="L156"><span class="lineNum">     156</span>              :          * store that as a uint64, of course.  Note that this gives strictly</span>
+<span id="L157"><span class="lineNum">     157</span>              :          * correct behavior at the limits of zero or one probability.</span>
+<span id="L158"><span class="lineNum">     158</span>              :          */</span>
+<span id="L159"><span class="lineNum">     159</span> <span class="tlaUNC">           0 :         dcutoff = rint(((double) PG_UINT32_MAX + 1) * percent / 100);</span></span>
+<span id="L160"><span class="lineNum">     160</span> <span class="tlaUNC">           0 :         sampler-&gt;cutoff = (uint64) dcutoff;</span></span>
+<span id="L161"><span class="lineNum">     161</span> <span class="tlaUNC">           0 :         sampler-&gt;seed = seed;</span></span>
+<span id="L162"><span class="lineNum">     162</span> <span class="tlaUNC">           0 :         sampler-&gt;nextblock = 0;</span></span>
+<span id="L163"><span class="lineNum">     163</span> <span class="tlaUNC">           0 :         sampler-&gt;lt = InvalidOffsetNumber;</span></span>
+<span id="L164"><span class="lineNum">     164</span>              : </span>
+<span id="L165"><span class="lineNum">     165</span>              :         /*</span>
+<span id="L166"><span class="lineNum">     166</span>              :          * Bulkread buffer access strategy probably makes sense unless we're</span>
+<span id="L167"><span class="lineNum">     167</span>              :          * scanning a very small fraction of the table.  The 1% cutoff here is a</span>
+<span id="L168"><span class="lineNum">     168</span>              :          * guess.  We should use pagemode visibility checking, since we scan all</span>
+<span id="L169"><span class="lineNum">     169</span>              :          * tuples on each selected page.</span>
+<span id="L170"><span class="lineNum">     170</span>              :          */</span>
+<span id="L171"><span class="lineNum">     171</span> <span class="tlaUNC">           0 :         node-&gt;use_bulkread = (percent &gt;= 1);</span></span>
+<span id="L172"><span class="lineNum">     172</span> <span class="tlaUNC">           0 :         node-&gt;use_pagemode = true;</span></span>
+<span id="L173"><span class="lineNum">     173</span> <span class="tlaUNC">           0 : }</span></span>
+<span id="L174"><span class="lineNum">     174</span>              : </span>
+<span id="L175"><span class="lineNum">     175</span>              : /*</span>
+<span id="L176"><span class="lineNum">     176</span>              :  * Select next block to sample.</span>
+<span id="L177"><span class="lineNum">     177</span>              :  */</span>
+<span id="L178"><span class="lineNum">     178</span>              : static BlockNumber</span>
+<span id="L179"><span class="lineNum">     179</span> <span class="tlaUNC">           0 : system_nextsampleblock(SampleScanState *node, BlockNumber nblocks)</span></span>
+<span id="L180"><span class="lineNum">     180</span>              : {</span>
+<span id="L181"><span class="lineNum">     181</span> <span class="tlaUNC">           0 :         SystemSamplerData *sampler = (SystemSamplerData *) node-&gt;tsm_state;</span></span>
+<span id="L182"><span class="lineNum">     182</span> <span class="tlaUNC">           0 :         BlockNumber nextblock = sampler-&gt;nextblock;</span></span>
+<span id="L183"><span class="lineNum">     183</span>              :         uint32          hashinput[2];</span>
+<span id="L184"><span class="lineNum">     184</span>              : </span>
+<span id="L185"><span class="lineNum">     185</span>              :         /*</span>
+<span id="L186"><span class="lineNum">     186</span>              :          * We compute the hash by applying hash_any to an array of 2 uint32's</span>
+<span id="L187"><span class="lineNum">     187</span>              :          * containing the block number and seed.  This is efficient to set up, and</span>
+<span id="L188"><span class="lineNum">     188</span>              :          * with the current implementation of hash_any, it gives</span>
+<span id="L189"><span class="lineNum">     189</span>              :          * machine-independent results, which is a nice property for regression</span>
+<span id="L190"><span class="lineNum">     190</span>              :          * testing.</span>
+<span id="L191"><span class="lineNum">     191</span>              :          *</span>
+<span id="L192"><span class="lineNum">     192</span>              :          * These words in the hash input are the same throughout the block:</span>
+<span id="L193"><span class="lineNum">     193</span>              :          */</span>
+<span id="L194"><span class="lineNum">     194</span> <span class="tlaUNC">           0 :         hashinput[1] = sampler-&gt;seed;</span></span>
+<span id="L195"><span class="lineNum">     195</span>              : </span>
+<span id="L196"><span class="lineNum">     196</span>              :         /*</span>
+<span id="L197"><span class="lineNum">     197</span>              :          * Loop over block numbers until finding suitable block or reaching end of</span>
+<span id="L198"><span class="lineNum">     198</span>              :          * relation.</span>
+<span id="L199"><span class="lineNum">     199</span>              :          */</span>
+<span id="L200"><span class="lineNum">     200</span> <span class="tlaUNC">           0 :         for (; nextblock &lt; nblocks; nextblock++)</span></span>
+<span id="L201"><span class="lineNum">     201</span>              :         {</span>
+<span id="L202"><span class="lineNum">     202</span>              :                 uint32          hash;</span>
+<span id="L203"><span class="lineNum">     203</span>              : </span>
+<span id="L204"><span class="lineNum">     204</span> <span class="tlaUNC">           0 :                 hashinput[0] = nextblock;</span></span>
+<span id="L205"><span class="lineNum">     205</span>              : </span>
+<span id="L206"><span class="lineNum">     206</span> <span class="tlaUNC">           0 :                 hash = DatumGetUInt32(hash_any((const unsigned char *) hashinput,</span></span>
+<span id="L207"><span class="lineNum">     207</span>              :                                                                            (int) sizeof(hashinput)));</span>
+<span id="L208"><span class="lineNum">     208</span> <span class="tlaUNC">           0 :                 if (hash &lt; sampler-&gt;cutoff)</span></span>
+<span id="L209"><span class="lineNum">     209</span> <span class="tlaUNC">           0 :                         break;</span></span>
+<span id="L210"><span class="lineNum">     210</span>              :         }</span>
+<span id="L211"><span class="lineNum">     211</span>              : </span>
+<span id="L212"><span class="lineNum">     212</span> <span class="tlaUNC">           0 :         if (nextblock &lt; nblocks)</span></span>
+<span id="L213"><span class="lineNum">     213</span>              :         {</span>
+<span id="L214"><span class="lineNum">     214</span>              :                 /* Found a suitable block; remember where we should start next time */</span>
+<span id="L215"><span class="lineNum">     215</span> <span class="tlaUNC">           0 :                 sampler-&gt;nextblock = nextblock + 1;</span></span>
+<span id="L216"><span class="lineNum">     216</span> <span class="tlaUNC">           0 :                 return nextblock;</span></span>
+<span id="L217"><span class="lineNum">     217</span>              :         }</span>
+<span id="L218"><span class="lineNum">     218</span>              : </span>
+<span id="L219"><span class="lineNum">     219</span>              :         /* Done, but let's reset nextblock to 0 for safety. */</span>
+<span id="L220"><span class="lineNum">     220</span> <span class="tlaUNC">           0 :         sampler-&gt;nextblock = 0;</span></span>
+<span id="L221"><span class="lineNum">     221</span> <span class="tlaUNC">           0 :         return InvalidBlockNumber;</span></span>
+<span id="L222"><span class="lineNum">     222</span>              : }</span>
+<span id="L223"><span class="lineNum">     223</span>              : </span>
+<span id="L224"><span class="lineNum">     224</span>              : /*</span>
+<span id="L225"><span class="lineNum">     225</span>              :  * Select next sampled tuple in current block.</span>
+<span id="L226"><span class="lineNum">     226</span>              :  *</span>
+<span id="L227"><span class="lineNum">     227</span>              :  * In block sampling, we just want to sample all the tuples in each selected</span>
+<span id="L228"><span class="lineNum">     228</span>              :  * block.</span>
+<span id="L229"><span class="lineNum">     229</span>              :  *</span>
+<span id="L230"><span class="lineNum">     230</span>              :  * It is OK here to return an offset without knowing if the tuple is visible</span>
+<span id="L231"><span class="lineNum">     231</span>              :  * (or even exists); nodeSamplescan.c will deal with that.</span>
+<span id="L232"><span class="lineNum">     232</span>              :  *</span>
+<span id="L233"><span class="lineNum">     233</span>              :  * When we reach end of the block, return InvalidOffsetNumber which tells</span>
+<span id="L234"><span class="lineNum">     234</span>              :  * SampleScan to go to next block.</span>
+<span id="L235"><span class="lineNum">     235</span>              :  */</span>
+<span id="L236"><span class="lineNum">     236</span>              : static OffsetNumber</span>
+<span id="L237"><span class="lineNum">     237</span> <span class="tlaUNC">           0 : system_nextsampletuple(SampleScanState *node,</span></span>
+<span id="L238"><span class="lineNum">     238</span>              :                                            BlockNumber blockno,</span>
+<span id="L239"><span class="lineNum">     239</span>              :                                            OffsetNumber maxoffset)</span>
+<span id="L240"><span class="lineNum">     240</span>              : {</span>
+<span id="L241"><span class="lineNum">     241</span> <span class="tlaUNC">           0 :         SystemSamplerData *sampler = (SystemSamplerData *) node-&gt;tsm_state;</span></span>
+<span id="L242"><span class="lineNum">     242</span> <span class="tlaUNC">           0 :         OffsetNumber tupoffset = sampler-&gt;lt;</span></span>
+<span id="L243"><span class="lineNum">     243</span>              : </span>
+<span id="L244"><span class="lineNum">     244</span>              :         /* Advance to next possible offset on page */</span>
+<span id="L245"><span class="lineNum">     245</span> <span class="tlaUNC">           0 :         if (tupoffset == InvalidOffsetNumber)</span></span>
+<span id="L246"><span class="lineNum">     246</span> <span class="tlaUNC">           0 :                 tupoffset = FirstOffsetNumber;</span></span>
+<span id="L247"><span class="lineNum">     247</span>              :         else</span>
+<span id="L248"><span class="lineNum">     248</span> <span class="tlaUNC">           0 :                 tupoffset++;</span></span>
+<span id="L249"><span class="lineNum">     249</span>              : </span>
+<span id="L250"><span class="lineNum">     250</span>              :         /* Done? */</span>
+<span id="L251"><span class="lineNum">     251</span> <span class="tlaUNC">           0 :         if (tupoffset &gt; maxoffset)</span></span>
+<span id="L252"><span class="lineNum">     252</span> <span class="tlaUNC">           0 :                 tupoffset = InvalidOffsetNumber;</span></span>
+<span id="L253"><span class="lineNum">     253</span>              : </span>
+<span id="L254"><span class="lineNum">     254</span> <span class="tlaUNC">           0 :         sampler-&gt;lt = tupoffset;</span></span>
+<span id="L255"><span class="lineNum">     255</span>              : </span>
+<span id="L256"><span class="lineNum">     256</span> <span class="tlaUNC">           0 :         return tupoffset;</span></span>
+<span id="L257"><span class="lineNum">     257</span>              : }</span>
+        </pre>
+              </td>
+            </tr>
+          </table>
+          <br>
+
+          <table width="100%" border=0 cellspacing=0 cellpadding=0>
+            <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+            <tr><td class="versionInfo">Generated by: <a href="https://github.com//linux-test-project/lcov" target="_parent">LCOV version 2.0-1</a></td></tr>
+          </table>
+          <br>
+
+</body>
+</html>

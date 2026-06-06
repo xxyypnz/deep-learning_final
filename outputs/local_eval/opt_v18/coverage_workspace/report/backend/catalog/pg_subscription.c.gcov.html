@@ -1,0 +1,612 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - coverage_filtered.info - backend/catalog/pg_subscription.c</title>
+  <link rel="stylesheet" type="text/css" href="../../gcov.css">
+</head>
+
+<body>
+
+          <table width="100%" border=0 cellspacing=0 cellpadding=0>
+            <tr><td class="title">LCOV - code coverage report</td></tr>
+            <tr><td class="ruler"><img src="../../glass.png" width=3 height=3 alt=""></td></tr>
+
+            <tr>
+              <td width="100%">
+                <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="10%" class="headerValue"><a href="../../index.html">top level</a> - <a href="index.html">backend/catalog</a> - pg_subscription.c<span style="font-size: 80%;"> (source / <a href="pg_subscription.c.func-c.html">functions</a>)</span></td>
+            <td width="5%"></td>
+            <td width="5%"></td>
+            <td width="5%" class="headerCovTableHead">Coverage</td>
+            <td width="5%" class="headerCovTableHead" title="Covered + Uncovered code">Total</td>
+            <td width="5%" class="headerCovTableHead" title="Exercised code only">Hit</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">coverage_filtered.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntryLo">6.3&nbsp;%</td>
+            <td class="headerCovTableEntry">174</td>
+            <td class="headerCovTableEntry">11</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test Date:</td>
+            <td class="headerValue">2026-06-06 04:03:43</td>
+            <td></td>
+            <td class="headerItem">Functions:</td>
+            <td class="headerCovTableEntryLo">8.3&nbsp;%</td>
+            <td class="headerCovTableEntry">12</td>
+            <td class="headerCovTableEntry">1</td>
+          </tr>
+                  <tr><td><img src="../../glass.png" width=3 height=3 alt=""></td></tr>
+                </table>
+              </td>
+            </tr>
+
+            <tr><td class="ruler"><img src="../../glass.png" width=3 height=3 alt=""></td></tr>
+          </table>
+
+          <table cellpadding=0 cellspacing=0 border=0>
+            <tr>
+              <td><br></td>
+            </tr>
+            <tr>
+              <td>
+<pre class="sourceHeading">            Line data    Source code</pre>
+<pre class="source">
+<span id="L1"><span class="lineNum">       1</span>              : /*-------------------------------------------------------------------------</span>
+<span id="L2"><span class="lineNum">       2</span>              :  *</span>
+<span id="L3"><span class="lineNum">       3</span>              :  * pg_subscription.c</span>
+<span id="L4"><span class="lineNum">       4</span>              :  *              replication subscriptions</span>
+<span id="L5"><span class="lineNum">       5</span>              :  *</span>
+<span id="L6"><span class="lineNum">       6</span>              :  * Portions Copyright (c) 1996-2020, PostgreSQL Global Development Group</span>
+<span id="L7"><span class="lineNum">       7</span>              :  * Portions Copyright (c) 1994, Regents of the University of California</span>
+<span id="L8"><span class="lineNum">       8</span>              :  *</span>
+<span id="L9"><span class="lineNum">       9</span>              :  * IDENTIFICATION</span>
+<span id="L10"><span class="lineNum">      10</span>              :  *              src/backend/catalog/pg_subscription.c</span>
+<span id="L11"><span class="lineNum">      11</span>              :  *</span>
+<span id="L12"><span class="lineNum">      12</span>              :  *-------------------------------------------------------------------------</span>
+<span id="L13"><span class="lineNum">      13</span>              :  */</span>
+<span id="L14"><span class="lineNum">      14</span>              : </span>
+<span id="L15"><span class="lineNum">      15</span>              : #include &quot;postgres.h&quot;</span>
+<span id="L16"><span class="lineNum">      16</span>              : </span>
+<span id="L17"><span class="lineNum">      17</span>              : #include &quot;access/genam.h&quot;</span>
+<span id="L18"><span class="lineNum">      18</span>              : #include &quot;access/heapam.h&quot;</span>
+<span id="L19"><span class="lineNum">      19</span>              : #include &quot;access/htup_details.h&quot;</span>
+<span id="L20"><span class="lineNum">      20</span>              : #include &quot;access/tableam.h&quot;</span>
+<span id="L21"><span class="lineNum">      21</span>              : #include &quot;access/xact.h&quot;</span>
+<span id="L22"><span class="lineNum">      22</span>              : #include &quot;catalog/indexing.h&quot;</span>
+<span id="L23"><span class="lineNum">      23</span>              : #include &quot;catalog/pg_subscription.h&quot;</span>
+<span id="L24"><span class="lineNum">      24</span>              : #include &quot;catalog/pg_subscription_rel.h&quot;</span>
+<span id="L25"><span class="lineNum">      25</span>              : #include &quot;catalog/pg_type.h&quot;</span>
+<span id="L26"><span class="lineNum">      26</span>              : #include &quot;miscadmin.h&quot;</span>
+<span id="L27"><span class="lineNum">      27</span>              : #include &quot;nodes/makefuncs.h&quot;</span>
+<span id="L28"><span class="lineNum">      28</span>              : #include &quot;storage/lmgr.h&quot;</span>
+<span id="L29"><span class="lineNum">      29</span>              : #include &quot;utils/array.h&quot;</span>
+<span id="L30"><span class="lineNum">      30</span>              : #include &quot;utils/builtins.h&quot;</span>
+<span id="L31"><span class="lineNum">      31</span>              : #include &quot;utils/fmgroids.h&quot;</span>
+<span id="L32"><span class="lineNum">      32</span>              : #include &quot;utils/pg_lsn.h&quot;</span>
+<span id="L33"><span class="lineNum">      33</span>              : #include &quot;utils/rel.h&quot;</span>
+<span id="L34"><span class="lineNum">      34</span>              : #include &quot;utils/syscache.h&quot;</span>
+<span id="L35"><span class="lineNum">      35</span>              : </span>
+<span id="L36"><span class="lineNum">      36</span>              : static List *textarray_to_stringlist(ArrayType *textarray);</span>
+<span id="L37"><span class="lineNum">      37</span>              : </span>
+<span id="L38"><span class="lineNum">      38</span>              : /*</span>
+<span id="L39"><span class="lineNum">      39</span>              :  * Fetch the subscription from the syscache.</span>
+<span id="L40"><span class="lineNum">      40</span>              :  */</span>
+<span id="L41"><span class="lineNum">      41</span>              : Subscription *</span>
+<span id="L42"><span class="lineNum">      42</span> <span class="tlaUNC tlaBgUNC">           0 : GetSubscription(Oid subid, bool missing_ok)</span></span>
+<span id="L43"><span class="lineNum">      43</span>              : {</span>
+<span id="L44"><span class="lineNum">      44</span>              :         HeapTuple       tup;</span>
+<span id="L45"><span class="lineNum">      45</span>              :         Subscription *sub;</span>
+<span id="L46"><span class="lineNum">      46</span>              :         Form_pg_subscription subform;</span>
+<span id="L47"><span class="lineNum">      47</span>              :         Datum           datum;</span>
+<span id="L48"><span class="lineNum">      48</span>              :         bool            isnull;</span>
+<span id="L49"><span class="lineNum">      49</span>              : </span>
+<span id="L50"><span class="lineNum">      50</span> <span class="tlaUNC">           0 :         tup = SearchSysCache1(SUBSCRIPTIONOID, ObjectIdGetDatum(subid));</span></span>
+<span id="L51"><span class="lineNum">      51</span>              : </span>
+<span id="L52"><span class="lineNum">      52</span> <span class="tlaUNC">           0 :         if (!HeapTupleIsValid(tup))</span></span>
+<span id="L53"><span class="lineNum">      53</span>              :         {</span>
+<span id="L54"><span class="lineNum">      54</span> <span class="tlaUNC">           0 :                 if (missing_ok)</span></span>
+<span id="L55"><span class="lineNum">      55</span> <span class="tlaUNC">           0 :                         return NULL;</span></span>
+<span id="L56"><span class="lineNum">      56</span>              : </span>
+<span id="L57"><span class="lineNum">      57</span> <span class="tlaUNC">           0 :                 elog(ERROR, &quot;cache lookup failed for subscription %u&quot;, subid);</span></span>
+<span id="L58"><span class="lineNum">      58</span>              :         }</span>
+<span id="L59"><span class="lineNum">      59</span>              : </span>
+<span id="L60"><span class="lineNum">      60</span> <span class="tlaUNC">           0 :         subform = (Form_pg_subscription) GETSTRUCT(tup);</span></span>
+<span id="L61"><span class="lineNum">      61</span>              : </span>
+<span id="L62"><span class="lineNum">      62</span> <span class="tlaUNC">           0 :         sub = (Subscription *) palloc(sizeof(Subscription));</span></span>
+<span id="L63"><span class="lineNum">      63</span> <span class="tlaUNC">           0 :         sub-&gt;oid = subid;</span></span>
+<span id="L64"><span class="lineNum">      64</span> <span class="tlaUNC">           0 :         sub-&gt;dbid = subform-&gt;subdbid;</span></span>
+<span id="L65"><span class="lineNum">      65</span> <span class="tlaUNC">           0 :         sub-&gt;name = pstrdup(NameStr(subform-&gt;subname));</span></span>
+<span id="L66"><span class="lineNum">      66</span> <span class="tlaUNC">           0 :         sub-&gt;owner = subform-&gt;subowner;</span></span>
+<span id="L67"><span class="lineNum">      67</span> <span class="tlaUNC">           0 :         sub-&gt;enabled = subform-&gt;subenabled;</span></span>
+<span id="L68"><span class="lineNum">      68</span>              : </span>
+<span id="L69"><span class="lineNum">      69</span>              :         /* Get conninfo */</span>
+<span id="L70"><span class="lineNum">      70</span> <span class="tlaUNC">           0 :         datum = SysCacheGetAttr(SUBSCRIPTIONOID,</span></span>
+<span id="L71"><span class="lineNum">      71</span>              :                                                         tup,</span>
+<span id="L72"><span class="lineNum">      72</span>              :                                                         Anum_pg_subscription_subconninfo,</span>
+<span id="L73"><span class="lineNum">      73</span>              :                                                         &amp;isnull);</span>
+<span id="L74"><span class="lineNum">      74</span>              :         Assert(!isnull);</span>
+<span id="L75"><span class="lineNum">      75</span> <span class="tlaUNC">           0 :         sub-&gt;conninfo = TextDatumGetCString(datum);</span></span>
+<span id="L76"><span class="lineNum">      76</span>              : </span>
+<span id="L77"><span class="lineNum">      77</span>              :         /* Get slotname */</span>
+<span id="L78"><span class="lineNum">      78</span> <span class="tlaUNC">           0 :         datum = SysCacheGetAttr(SUBSCRIPTIONOID,</span></span>
+<span id="L79"><span class="lineNum">      79</span>              :                                                         tup,</span>
+<span id="L80"><span class="lineNum">      80</span>              :                                                         Anum_pg_subscription_subslotname,</span>
+<span id="L81"><span class="lineNum">      81</span>              :                                                         &amp;isnull);</span>
+<span id="L82"><span class="lineNum">      82</span> <span class="tlaUNC">           0 :         if (!isnull)</span></span>
+<span id="L83"><span class="lineNum">      83</span> <span class="tlaUNC">           0 :                 sub-&gt;slotname = pstrdup(NameStr(*DatumGetName(datum)));</span></span>
+<span id="L84"><span class="lineNum">      84</span>              :         else</span>
+<span id="L85"><span class="lineNum">      85</span> <span class="tlaUNC">           0 :                 sub-&gt;slotname = NULL;</span></span>
+<span id="L86"><span class="lineNum">      86</span>              : </span>
+<span id="L87"><span class="lineNum">      87</span>              :         /* Get synccommit */</span>
+<span id="L88"><span class="lineNum">      88</span> <span class="tlaUNC">           0 :         datum = SysCacheGetAttr(SUBSCRIPTIONOID,</span></span>
+<span id="L89"><span class="lineNum">      89</span>              :                                                         tup,</span>
+<span id="L90"><span class="lineNum">      90</span>              :                                                         Anum_pg_subscription_subsynccommit,</span>
+<span id="L91"><span class="lineNum">      91</span>              :                                                         &amp;isnull);</span>
+<span id="L92"><span class="lineNum">      92</span>              :         Assert(!isnull);</span>
+<span id="L93"><span class="lineNum">      93</span> <span class="tlaUNC">           0 :         sub-&gt;synccommit = TextDatumGetCString(datum);</span></span>
+<span id="L94"><span class="lineNum">      94</span>              : </span>
+<span id="L95"><span class="lineNum">      95</span>              :         /* Get publications */</span>
+<span id="L96"><span class="lineNum">      96</span> <span class="tlaUNC">           0 :         datum = SysCacheGetAttr(SUBSCRIPTIONOID,</span></span>
+<span id="L97"><span class="lineNum">      97</span>              :                                                         tup,</span>
+<span id="L98"><span class="lineNum">      98</span>              :                                                         Anum_pg_subscription_subpublications,</span>
+<span id="L99"><span class="lineNum">      99</span>              :                                                         &amp;isnull);</span>
+<span id="L100"><span class="lineNum">     100</span>              :         Assert(!isnull);</span>
+<span id="L101"><span class="lineNum">     101</span> <span class="tlaUNC">           0 :         sub-&gt;publications = textarray_to_stringlist(DatumGetArrayTypeP(datum));</span></span>
+<span id="L102"><span class="lineNum">     102</span>              : </span>
+<span id="L103"><span class="lineNum">     103</span> <span class="tlaUNC">           0 :         ReleaseSysCache(tup);</span></span>
+<span id="L104"><span class="lineNum">     104</span>              : </span>
+<span id="L105"><span class="lineNum">     105</span> <span class="tlaUNC">           0 :         return sub;</span></span>
+<span id="L106"><span class="lineNum">     106</span>              : }</span>
+<span id="L107"><span class="lineNum">     107</span>              : </span>
+<span id="L108"><span class="lineNum">     108</span>              : /*</span>
+<span id="L109"><span class="lineNum">     109</span>              :  * Return number of subscriptions defined in given database.</span>
+<span id="L110"><span class="lineNum">     110</span>              :  * Used by dropdb() to check if database can indeed be dropped.</span>
+<span id="L111"><span class="lineNum">     111</span>              :  */</span>
+<span id="L112"><span class="lineNum">     112</span>              : int</span>
+<span id="L113"><span class="lineNum">     113</span> <span class="tlaUNC">           0 : CountDBSubscriptions(Oid dbid)</span></span>
+<span id="L114"><span class="lineNum">     114</span>              : {</span>
+<span id="L115"><span class="lineNum">     115</span> <span class="tlaUNC">           0 :         int                     nsubs = 0;</span></span>
+<span id="L116"><span class="lineNum">     116</span>              :         Relation        rel;</span>
+<span id="L117"><span class="lineNum">     117</span>              :         ScanKeyData scankey;</span>
+<span id="L118"><span class="lineNum">     118</span>              :         SysScanDesc scan;</span>
+<span id="L119"><span class="lineNum">     119</span>              :         HeapTuple       tup;</span>
+<span id="L120"><span class="lineNum">     120</span>              : </span>
+<span id="L121"><span class="lineNum">     121</span> <span class="tlaUNC">           0 :         rel = table_open(SubscriptionRelationId, RowExclusiveLock);</span></span>
+<span id="L122"><span class="lineNum">     122</span>              : </span>
+<span id="L123"><span class="lineNum">     123</span> <span class="tlaUNC">           0 :         ScanKeyInit(&amp;scankey,</span></span>
+<span id="L124"><span class="lineNum">     124</span>              :                                 Anum_pg_subscription_subdbid,</span>
+<span id="L125"><span class="lineNum">     125</span>              :                                 BTEqualStrategyNumber, F_OIDEQ,</span>
+<span id="L126"><span class="lineNum">     126</span>              :                                 ObjectIdGetDatum(dbid));</span>
+<span id="L127"><span class="lineNum">     127</span>              : </span>
+<span id="L128"><span class="lineNum">     128</span> <span class="tlaUNC">           0 :         scan = systable_beginscan(rel, InvalidOid, false,</span></span>
+<span id="L129"><span class="lineNum">     129</span>              :                                                           NULL, 1, &amp;scankey);</span>
+<span id="L130"><span class="lineNum">     130</span>              : </span>
+<span id="L131"><span class="lineNum">     131</span> <span class="tlaUNC">           0 :         while (HeapTupleIsValid(tup = systable_getnext(scan)))</span></span>
+<span id="L132"><span class="lineNum">     132</span> <span class="tlaUNC">           0 :                 nsubs++;</span></span>
+<span id="L133"><span class="lineNum">     133</span>              : </span>
+<span id="L134"><span class="lineNum">     134</span> <span class="tlaUNC">           0 :         systable_endscan(scan);</span></span>
+<span id="L135"><span class="lineNum">     135</span>              : </span>
+<span id="L136"><span class="lineNum">     136</span> <span class="tlaUNC">           0 :         table_close(rel, NoLock);</span></span>
+<span id="L137"><span class="lineNum">     137</span>              : </span>
+<span id="L138"><span class="lineNum">     138</span> <span class="tlaUNC">           0 :         return nsubs;</span></span>
+<span id="L139"><span class="lineNum">     139</span>              : }</span>
+<span id="L140"><span class="lineNum">     140</span>              : </span>
+<span id="L141"><span class="lineNum">     141</span>              : /*</span>
+<span id="L142"><span class="lineNum">     142</span>              :  * Free memory allocated by subscription struct.</span>
+<span id="L143"><span class="lineNum">     143</span>              :  */</span>
+<span id="L144"><span class="lineNum">     144</span>              : void</span>
+<span id="L145"><span class="lineNum">     145</span> <span class="tlaUNC">           0 : FreeSubscription(Subscription *sub)</span></span>
+<span id="L146"><span class="lineNum">     146</span>              : {</span>
+<span id="L147"><span class="lineNum">     147</span> <span class="tlaUNC">           0 :         pfree(sub-&gt;name);</span></span>
+<span id="L148"><span class="lineNum">     148</span> <span class="tlaUNC">           0 :         pfree(sub-&gt;conninfo);</span></span>
+<span id="L149"><span class="lineNum">     149</span> <span class="tlaUNC">           0 :         if (sub-&gt;slotname)</span></span>
+<span id="L150"><span class="lineNum">     150</span> <span class="tlaUNC">           0 :                 pfree(sub-&gt;slotname);</span></span>
+<span id="L151"><span class="lineNum">     151</span> <span class="tlaUNC">           0 :         list_free_deep(sub-&gt;publications);</span></span>
+<span id="L152"><span class="lineNum">     152</span> <span class="tlaUNC">           0 :         pfree(sub);</span></span>
+<span id="L153"><span class="lineNum">     153</span> <span class="tlaUNC">           0 : }</span></span>
+<span id="L154"><span class="lineNum">     154</span>              : </span>
+<span id="L155"><span class="lineNum">     155</span>              : /*</span>
+<span id="L156"><span class="lineNum">     156</span>              :  * get_subscription_oid - given a subscription name, look up the OID</span>
+<span id="L157"><span class="lineNum">     157</span>              :  *</span>
+<span id="L158"><span class="lineNum">     158</span>              :  * If missing_ok is false, throw an error if name not found.  If true, just</span>
+<span id="L159"><span class="lineNum">     159</span>              :  * return InvalidOid.</span>
+<span id="L160"><span class="lineNum">     160</span>              :  */</span>
+<span id="L161"><span class="lineNum">     161</span>              : Oid</span>
+<span id="L162"><span class="lineNum">     162</span> <span class="tlaUNC">           0 : get_subscription_oid(const char *subname, bool missing_ok)</span></span>
+<span id="L163"><span class="lineNum">     163</span>              : {</span>
+<span id="L164"><span class="lineNum">     164</span>              :         Oid                     oid;</span>
+<span id="L165"><span class="lineNum">     165</span>              : </span>
+<span id="L166"><span class="lineNum">     166</span> <span class="tlaUNC">           0 :         oid = GetSysCacheOid2(SUBSCRIPTIONNAME, Anum_pg_subscription_oid,</span></span>
+<span id="L167"><span class="lineNum">     167</span>              :                                                   MyDatabaseId, CStringGetDatum(subname));</span>
+<span id="L168"><span class="lineNum">     168</span> <span class="tlaUNC">           0 :         if (!OidIsValid(oid) &amp;&amp; !missing_ok)</span></span>
+<span id="L169"><span class="lineNum">     169</span> <span class="tlaUNC">           0 :                 ereport(ERROR,</span></span>
+<span id="L170"><span class="lineNum">     170</span>              :                                 (errcode(ERRCODE_UNDEFINED_OBJECT),</span>
+<span id="L171"><span class="lineNum">     171</span>              :                                  errmsg(&quot;subscription \&quot;%s\&quot; does not exist&quot;, subname)));</span>
+<span id="L172"><span class="lineNum">     172</span> <span class="tlaUNC">           0 :         return oid;</span></span>
+<span id="L173"><span class="lineNum">     173</span>              : }</span>
+<span id="L174"><span class="lineNum">     174</span>              : </span>
+<span id="L175"><span class="lineNum">     175</span>              : /*</span>
+<span id="L176"><span class="lineNum">     176</span>              :  * get_subscription_name - given a subscription OID, look up the name</span>
+<span id="L177"><span class="lineNum">     177</span>              :  *</span>
+<span id="L178"><span class="lineNum">     178</span>              :  * If missing_ok is false, throw an error if name not found.  If true, just</span>
+<span id="L179"><span class="lineNum">     179</span>              :  * return NULL.</span>
+<span id="L180"><span class="lineNum">     180</span>              :  */</span>
+<span id="L181"><span class="lineNum">     181</span>              : char *</span>
+<span id="L182"><span class="lineNum">     182</span> <span class="tlaUNC">           0 : get_subscription_name(Oid subid, bool missing_ok)</span></span>
+<span id="L183"><span class="lineNum">     183</span>              : {</span>
+<span id="L184"><span class="lineNum">     184</span>              :         HeapTuple       tup;</span>
+<span id="L185"><span class="lineNum">     185</span>              :         char       *subname;</span>
+<span id="L186"><span class="lineNum">     186</span>              :         Form_pg_subscription subform;</span>
+<span id="L187"><span class="lineNum">     187</span>              : </span>
+<span id="L188"><span class="lineNum">     188</span> <span class="tlaUNC">           0 :         tup = SearchSysCache1(SUBSCRIPTIONOID, ObjectIdGetDatum(subid));</span></span>
+<span id="L189"><span class="lineNum">     189</span>              : </span>
+<span id="L190"><span class="lineNum">     190</span> <span class="tlaUNC">           0 :         if (!HeapTupleIsValid(tup))</span></span>
+<span id="L191"><span class="lineNum">     191</span>              :         {</span>
+<span id="L192"><span class="lineNum">     192</span> <span class="tlaUNC">           0 :                 if (!missing_ok)</span></span>
+<span id="L193"><span class="lineNum">     193</span> <span class="tlaUNC">           0 :                         elog(ERROR, &quot;cache lookup failed for subscription %u&quot;, subid);</span></span>
+<span id="L194"><span class="lineNum">     194</span> <span class="tlaUNC">           0 :                 return NULL;</span></span>
+<span id="L195"><span class="lineNum">     195</span>              :         }</span>
+<span id="L196"><span class="lineNum">     196</span>              : </span>
+<span id="L197"><span class="lineNum">     197</span> <span class="tlaUNC">           0 :         subform = (Form_pg_subscription) GETSTRUCT(tup);</span></span>
+<span id="L198"><span class="lineNum">     198</span> <span class="tlaUNC">           0 :         subname = pstrdup(NameStr(subform-&gt;subname));</span></span>
+<span id="L199"><span class="lineNum">     199</span>              : </span>
+<span id="L200"><span class="lineNum">     200</span> <span class="tlaUNC">           0 :         ReleaseSysCache(tup);</span></span>
+<span id="L201"><span class="lineNum">     201</span>              : </span>
+<span id="L202"><span class="lineNum">     202</span> <span class="tlaUNC">           0 :         return subname;</span></span>
+<span id="L203"><span class="lineNum">     203</span>              : }</span>
+<span id="L204"><span class="lineNum">     204</span>              : </span>
+<span id="L205"><span class="lineNum">     205</span>              : /*</span>
+<span id="L206"><span class="lineNum">     206</span>              :  * Convert text array to list of strings.</span>
+<span id="L207"><span class="lineNum">     207</span>              :  *</span>
+<span id="L208"><span class="lineNum">     208</span>              :  * Note: the resulting list of strings is pallocated here.</span>
+<span id="L209"><span class="lineNum">     209</span>              :  */</span>
+<span id="L210"><span class="lineNum">     210</span>              : static List *</span>
+<span id="L211"><span class="lineNum">     211</span> <span class="tlaUNC">           0 : textarray_to_stringlist(ArrayType *textarray)</span></span>
+<span id="L212"><span class="lineNum">     212</span>              : {</span>
+<span id="L213"><span class="lineNum">     213</span>              :         Datum      *elems;</span>
+<span id="L214"><span class="lineNum">     214</span>              :         int                     nelems,</span>
+<span id="L215"><span class="lineNum">     215</span>              :                                 i;</span>
+<span id="L216"><span class="lineNum">     216</span> <span class="tlaUNC">           0 :         List       *res = NIL;</span></span>
+<span id="L217"><span class="lineNum">     217</span>              : </span>
+<span id="L218"><span class="lineNum">     218</span> <span class="tlaUNC">           0 :         deconstruct_array(textarray,</span></span>
+<span id="L219"><span class="lineNum">     219</span>              :                                           TEXTOID, -1, false, TYPALIGN_INT,</span>
+<span id="L220"><span class="lineNum">     220</span>              :                                           &amp;elems, NULL, &amp;nelems);</span>
+<span id="L221"><span class="lineNum">     221</span>              : </span>
+<span id="L222"><span class="lineNum">     222</span> <span class="tlaUNC">           0 :         if (nelems == 0)</span></span>
+<span id="L223"><span class="lineNum">     223</span> <span class="tlaUNC">           0 :                 return NIL;</span></span>
+<span id="L224"><span class="lineNum">     224</span>              : </span>
+<span id="L225"><span class="lineNum">     225</span> <span class="tlaUNC">           0 :         for (i = 0; i &lt; nelems; i++)</span></span>
+<span id="L226"><span class="lineNum">     226</span> <span class="tlaUNC">           0 :                 res = lappend(res, makeString(TextDatumGetCString(elems[i])));</span></span>
+<span id="L227"><span class="lineNum">     227</span>              : </span>
+<span id="L228"><span class="lineNum">     228</span> <span class="tlaUNC">           0 :         return res;</span></span>
+<span id="L229"><span class="lineNum">     229</span>              : }</span>
+<span id="L230"><span class="lineNum">     230</span>              : </span>
+<span id="L231"><span class="lineNum">     231</span>              : /*</span>
+<span id="L232"><span class="lineNum">     232</span>              :  * Add new state record for a subscription table.</span>
+<span id="L233"><span class="lineNum">     233</span>              :  */</span>
+<span id="L234"><span class="lineNum">     234</span>              : void</span>
+<span id="L235"><span class="lineNum">     235</span> <span class="tlaUNC">           0 : AddSubscriptionRelState(Oid subid, Oid relid, char state,</span></span>
+<span id="L236"><span class="lineNum">     236</span>              :                                                 XLogRecPtr sublsn)</span>
+<span id="L237"><span class="lineNum">     237</span>              : {</span>
+<span id="L238"><span class="lineNum">     238</span>              :         Relation        rel;</span>
+<span id="L239"><span class="lineNum">     239</span>              :         HeapTuple       tup;</span>
+<span id="L240"><span class="lineNum">     240</span>              :         bool            nulls[Natts_pg_subscription_rel];</span>
+<span id="L241"><span class="lineNum">     241</span>              :         Datum           values[Natts_pg_subscription_rel];</span>
+<span id="L242"><span class="lineNum">     242</span>              : </span>
+<span id="L243"><span class="lineNum">     243</span> <span class="tlaUNC">           0 :         LockSharedObject(SubscriptionRelationId, subid, 0, AccessShareLock);</span></span>
+<span id="L244"><span class="lineNum">     244</span>              : </span>
+<span id="L245"><span class="lineNum">     245</span> <span class="tlaUNC">           0 :         rel = table_open(SubscriptionRelRelationId, RowExclusiveLock);</span></span>
+<span id="L246"><span class="lineNum">     246</span>              : </span>
+<span id="L247"><span class="lineNum">     247</span>              :         /* Try finding existing mapping. */</span>
+<span id="L248"><span class="lineNum">     248</span> <span class="tlaUNC">           0 :         tup = SearchSysCacheCopy2(SUBSCRIPTIONRELMAP,</span></span>
+<span id="L249"><span class="lineNum">     249</span>              :                                                           ObjectIdGetDatum(relid),</span>
+<span id="L250"><span class="lineNum">     250</span>              :                                                           ObjectIdGetDatum(subid));</span>
+<span id="L251"><span class="lineNum">     251</span> <span class="tlaUNC">           0 :         if (HeapTupleIsValid(tup))</span></span>
+<span id="L252"><span class="lineNum">     252</span> <span class="tlaUNC">           0 :                 elog(ERROR, &quot;subscription table %u in subscription %u already exists&quot;,</span></span>
+<span id="L253"><span class="lineNum">     253</span>              :                          relid, subid);</span>
+<span id="L254"><span class="lineNum">     254</span>              : </span>
+<span id="L255"><span class="lineNum">     255</span>              :         /* Form the tuple. */</span>
+<span id="L256"><span class="lineNum">     256</span> <span class="tlaUNC">           0 :         memset(values, 0, sizeof(values));</span></span>
+<span id="L257"><span class="lineNum">     257</span> <span class="tlaUNC">           0 :         memset(nulls, false, sizeof(nulls));</span></span>
+<span id="L258"><span class="lineNum">     258</span> <span class="tlaUNC">           0 :         values[Anum_pg_subscription_rel_srsubid - 1] = ObjectIdGetDatum(subid);</span></span>
+<span id="L259"><span class="lineNum">     259</span> <span class="tlaUNC">           0 :         values[Anum_pg_subscription_rel_srrelid - 1] = ObjectIdGetDatum(relid);</span></span>
+<span id="L260"><span class="lineNum">     260</span> <span class="tlaUNC">           0 :         values[Anum_pg_subscription_rel_srsubstate - 1] = CharGetDatum(state);</span></span>
+<span id="L261"><span class="lineNum">     261</span> <span class="tlaUNC">           0 :         if (sublsn != InvalidXLogRecPtr)</span></span>
+<span id="L262"><span class="lineNum">     262</span> <span class="tlaUNC">           0 :                 values[Anum_pg_subscription_rel_srsublsn - 1] = LSNGetDatum(sublsn);</span></span>
+<span id="L263"><span class="lineNum">     263</span>              :         else</span>
+<span id="L264"><span class="lineNum">     264</span> <span class="tlaUNC">           0 :                 nulls[Anum_pg_subscription_rel_srsublsn - 1] = true;</span></span>
+<span id="L265"><span class="lineNum">     265</span>              : </span>
+<span id="L266"><span class="lineNum">     266</span> <span class="tlaUNC">           0 :         tup = heap_form_tuple(RelationGetDescr(rel), values, nulls);</span></span>
+<span id="L267"><span class="lineNum">     267</span>              : </span>
+<span id="L268"><span class="lineNum">     268</span>              :         /* Insert tuple into catalog. */</span>
+<span id="L269"><span class="lineNum">     269</span> <span class="tlaUNC">           0 :         CatalogTupleInsert(rel, tup);</span></span>
+<span id="L270"><span class="lineNum">     270</span>              : </span>
+<span id="L271"><span class="lineNum">     271</span> <span class="tlaUNC">           0 :         heap_freetuple(tup);</span></span>
+<span id="L272"><span class="lineNum">     272</span>              : </span>
+<span id="L273"><span class="lineNum">     273</span>              :         /* Cleanup. */</span>
+<span id="L274"><span class="lineNum">     274</span> <span class="tlaUNC">           0 :         table_close(rel, NoLock);</span></span>
+<span id="L275"><span class="lineNum">     275</span> <span class="tlaUNC">           0 : }</span></span>
+<span id="L276"><span class="lineNum">     276</span>              : </span>
+<span id="L277"><span class="lineNum">     277</span>              : /*</span>
+<span id="L278"><span class="lineNum">     278</span>              :  * Update the state of a subscription table.</span>
+<span id="L279"><span class="lineNum">     279</span>              :  */</span>
+<span id="L280"><span class="lineNum">     280</span>              : void</span>
+<span id="L281"><span class="lineNum">     281</span> <span class="tlaUNC">           0 : UpdateSubscriptionRelState(Oid subid, Oid relid, char state,</span></span>
+<span id="L282"><span class="lineNum">     282</span>              :                                                    XLogRecPtr sublsn)</span>
+<span id="L283"><span class="lineNum">     283</span>              : {</span>
+<span id="L284"><span class="lineNum">     284</span>              :         Relation        rel;</span>
+<span id="L285"><span class="lineNum">     285</span>              :         HeapTuple       tup;</span>
+<span id="L286"><span class="lineNum">     286</span>              :         bool            nulls[Natts_pg_subscription_rel];</span>
+<span id="L287"><span class="lineNum">     287</span>              :         Datum           values[Natts_pg_subscription_rel];</span>
+<span id="L288"><span class="lineNum">     288</span>              :         bool            replaces[Natts_pg_subscription_rel];</span>
+<span id="L289"><span class="lineNum">     289</span>              : </span>
+<span id="L290"><span class="lineNum">     290</span> <span class="tlaUNC">           0 :         LockSharedObject(SubscriptionRelationId, subid, 0, AccessShareLock);</span></span>
+<span id="L291"><span class="lineNum">     291</span>              : </span>
+<span id="L292"><span class="lineNum">     292</span> <span class="tlaUNC">           0 :         rel = table_open(SubscriptionRelRelationId, RowExclusiveLock);</span></span>
+<span id="L293"><span class="lineNum">     293</span>              : </span>
+<span id="L294"><span class="lineNum">     294</span>              :         /* Try finding existing mapping. */</span>
+<span id="L295"><span class="lineNum">     295</span> <span class="tlaUNC">           0 :         tup = SearchSysCacheCopy2(SUBSCRIPTIONRELMAP,</span></span>
+<span id="L296"><span class="lineNum">     296</span>              :                                                           ObjectIdGetDatum(relid),</span>
+<span id="L297"><span class="lineNum">     297</span>              :                                                           ObjectIdGetDatum(subid));</span>
+<span id="L298"><span class="lineNum">     298</span> <span class="tlaUNC">           0 :         if (!HeapTupleIsValid(tup))</span></span>
+<span id="L299"><span class="lineNum">     299</span> <span class="tlaUNC">           0 :                 elog(ERROR, &quot;subscription table %u in subscription %u does not exist&quot;,</span></span>
+<span id="L300"><span class="lineNum">     300</span>              :                          relid, subid);</span>
+<span id="L301"><span class="lineNum">     301</span>              : </span>
+<span id="L302"><span class="lineNum">     302</span>              :         /* Update the tuple. */</span>
+<span id="L303"><span class="lineNum">     303</span> <span class="tlaUNC">           0 :         memset(values, 0, sizeof(values));</span></span>
+<span id="L304"><span class="lineNum">     304</span> <span class="tlaUNC">           0 :         memset(nulls, false, sizeof(nulls));</span></span>
+<span id="L305"><span class="lineNum">     305</span> <span class="tlaUNC">           0 :         memset(replaces, false, sizeof(replaces));</span></span>
+<span id="L306"><span class="lineNum">     306</span>              : </span>
+<span id="L307"><span class="lineNum">     307</span> <span class="tlaUNC">           0 :         replaces[Anum_pg_subscription_rel_srsubstate - 1] = true;</span></span>
+<span id="L308"><span class="lineNum">     308</span> <span class="tlaUNC">           0 :         values[Anum_pg_subscription_rel_srsubstate - 1] = CharGetDatum(state);</span></span>
+<span id="L309"><span class="lineNum">     309</span>              : </span>
+<span id="L310"><span class="lineNum">     310</span> <span class="tlaUNC">           0 :         replaces[Anum_pg_subscription_rel_srsublsn - 1] = true;</span></span>
+<span id="L311"><span class="lineNum">     311</span> <span class="tlaUNC">           0 :         if (sublsn != InvalidXLogRecPtr)</span></span>
+<span id="L312"><span class="lineNum">     312</span> <span class="tlaUNC">           0 :                 values[Anum_pg_subscription_rel_srsublsn - 1] = LSNGetDatum(sublsn);</span></span>
+<span id="L313"><span class="lineNum">     313</span>              :         else</span>
+<span id="L314"><span class="lineNum">     314</span> <span class="tlaUNC">           0 :                 nulls[Anum_pg_subscription_rel_srsublsn - 1] = true;</span></span>
+<span id="L315"><span class="lineNum">     315</span>              : </span>
+<span id="L316"><span class="lineNum">     316</span> <span class="tlaUNC">           0 :         tup = heap_modify_tuple(tup, RelationGetDescr(rel), values, nulls,</span></span>
+<span id="L317"><span class="lineNum">     317</span>              :                                                         replaces);</span>
+<span id="L318"><span class="lineNum">     318</span>              : </span>
+<span id="L319"><span class="lineNum">     319</span>              :         /* Update the catalog. */</span>
+<span id="L320"><span class="lineNum">     320</span> <span class="tlaUNC">           0 :         CatalogTupleUpdate(rel, &amp;tup-&gt;t_self, tup);</span></span>
+<span id="L321"><span class="lineNum">     321</span>              : </span>
+<span id="L322"><span class="lineNum">     322</span>              :         /* Cleanup. */</span>
+<span id="L323"><span class="lineNum">     323</span> <span class="tlaUNC">           0 :         table_close(rel, NoLock);</span></span>
+<span id="L324"><span class="lineNum">     324</span> <span class="tlaUNC">           0 : }</span></span>
+<span id="L325"><span class="lineNum">     325</span>              : </span>
+<span id="L326"><span class="lineNum">     326</span>              : /*</span>
+<span id="L327"><span class="lineNum">     327</span>              :  * Get state of subscription table.</span>
+<span id="L328"><span class="lineNum">     328</span>              :  *</span>
+<span id="L329"><span class="lineNum">     329</span>              :  * Returns SUBREL_STATE_UNKNOWN when not found and missing_ok is true.</span>
+<span id="L330"><span class="lineNum">     330</span>              :  */</span>
+<span id="L331"><span class="lineNum">     331</span>              : char</span>
+<span id="L332"><span class="lineNum">     332</span> <span class="tlaUNC">           0 : GetSubscriptionRelState(Oid subid, Oid relid, XLogRecPtr *sublsn,</span></span>
+<span id="L333"><span class="lineNum">     333</span>              :                                                 bool missing_ok)</span>
+<span id="L334"><span class="lineNum">     334</span>              : {</span>
+<span id="L335"><span class="lineNum">     335</span>              :         Relation        rel;</span>
+<span id="L336"><span class="lineNum">     336</span>              :         HeapTuple       tup;</span>
+<span id="L337"><span class="lineNum">     337</span>              :         char            substate;</span>
+<span id="L338"><span class="lineNum">     338</span>              :         bool            isnull;</span>
+<span id="L339"><span class="lineNum">     339</span>              :         Datum           d;</span>
+<span id="L340"><span class="lineNum">     340</span>              : </span>
+<span id="L341"><span class="lineNum">     341</span> <span class="tlaUNC">           0 :         rel = table_open(SubscriptionRelRelationId, AccessShareLock);</span></span>
+<span id="L342"><span class="lineNum">     342</span>              : </span>
+<span id="L343"><span class="lineNum">     343</span>              :         /* Try finding the mapping. */</span>
+<span id="L344"><span class="lineNum">     344</span> <span class="tlaUNC">           0 :         tup = SearchSysCache2(SUBSCRIPTIONRELMAP,</span></span>
+<span id="L345"><span class="lineNum">     345</span>              :                                                   ObjectIdGetDatum(relid),</span>
+<span id="L346"><span class="lineNum">     346</span>              :                                                   ObjectIdGetDatum(subid));</span>
+<span id="L347"><span class="lineNum">     347</span>              : </span>
+<span id="L348"><span class="lineNum">     348</span> <span class="tlaUNC">           0 :         if (!HeapTupleIsValid(tup))</span></span>
+<span id="L349"><span class="lineNum">     349</span>              :         {</span>
+<span id="L350"><span class="lineNum">     350</span> <span class="tlaUNC">           0 :                 if (missing_ok)</span></span>
+<span id="L351"><span class="lineNum">     351</span>              :                 {</span>
+<span id="L352"><span class="lineNum">     352</span> <span class="tlaUNC">           0 :                         table_close(rel, AccessShareLock);</span></span>
+<span id="L353"><span class="lineNum">     353</span> <span class="tlaUNC">           0 :                         *sublsn = InvalidXLogRecPtr;</span></span>
+<span id="L354"><span class="lineNum">     354</span> <span class="tlaUNC">           0 :                         return SUBREL_STATE_UNKNOWN;</span></span>
+<span id="L355"><span class="lineNum">     355</span>              :                 }</span>
+<span id="L356"><span class="lineNum">     356</span>              : </span>
+<span id="L357"><span class="lineNum">     357</span> <span class="tlaUNC">           0 :                 elog(ERROR, &quot;subscription table %u in subscription %u does not exist&quot;,</span></span>
+<span id="L358"><span class="lineNum">     358</span>              :                          relid, subid);</span>
+<span id="L359"><span class="lineNum">     359</span>              :         }</span>
+<span id="L360"><span class="lineNum">     360</span>              : </span>
+<span id="L361"><span class="lineNum">     361</span>              :         /* Get the state. */</span>
+<span id="L362"><span class="lineNum">     362</span> <span class="tlaUNC">           0 :         d = SysCacheGetAttr(SUBSCRIPTIONRELMAP, tup,</span></span>
+<span id="L363"><span class="lineNum">     363</span>              :                                                 Anum_pg_subscription_rel_srsubstate, &amp;isnull);</span>
+<span id="L364"><span class="lineNum">     364</span>              :         Assert(!isnull);</span>
+<span id="L365"><span class="lineNum">     365</span> <span class="tlaUNC">           0 :         substate = DatumGetChar(d);</span></span>
+<span id="L366"><span class="lineNum">     366</span> <span class="tlaUNC">           0 :         d = SysCacheGetAttr(SUBSCRIPTIONRELMAP, tup,</span></span>
+<span id="L367"><span class="lineNum">     367</span>              :                                                 Anum_pg_subscription_rel_srsublsn, &amp;isnull);</span>
+<span id="L368"><span class="lineNum">     368</span> <span class="tlaUNC">           0 :         if (isnull)</span></span>
+<span id="L369"><span class="lineNum">     369</span> <span class="tlaUNC">           0 :                 *sublsn = InvalidXLogRecPtr;</span></span>
+<span id="L370"><span class="lineNum">     370</span>              :         else</span>
+<span id="L371"><span class="lineNum">     371</span> <span class="tlaUNC">           0 :                 *sublsn = DatumGetLSN(d);</span></span>
+<span id="L372"><span class="lineNum">     372</span>              : </span>
+<span id="L373"><span class="lineNum">     373</span>              :         /* Cleanup */</span>
+<span id="L374"><span class="lineNum">     374</span> <span class="tlaUNC">           0 :         ReleaseSysCache(tup);</span></span>
+<span id="L375"><span class="lineNum">     375</span> <span class="tlaUNC">           0 :         table_close(rel, AccessShareLock);</span></span>
+<span id="L376"><span class="lineNum">     376</span>              : </span>
+<span id="L377"><span class="lineNum">     377</span> <span class="tlaUNC">           0 :         return substate;</span></span>
+<span id="L378"><span class="lineNum">     378</span>              : }</span>
+<span id="L379"><span class="lineNum">     379</span>              : </span>
+<span id="L380"><span class="lineNum">     380</span>              : /*</span>
+<span id="L381"><span class="lineNum">     381</span>              :  * Drop subscription relation mapping. These can be for a particular</span>
+<span id="L382"><span class="lineNum">     382</span>              :  * subscription, or for a particular relation, or both.</span>
+<span id="L383"><span class="lineNum">     383</span>              :  */</span>
+<span id="L384"><span class="lineNum">     384</span>              : void</span>
+<span id="L385"><span class="lineNum">     385</span> <span class="tlaGNC tlaBgGNC">         273 : RemoveSubscriptionRel(Oid subid, Oid relid)</span></span>
+<span id="L386"><span class="lineNum">     386</span>              : {</span>
+<span id="L387"><span class="lineNum">     387</span>              :         Relation        rel;</span>
+<span id="L388"><span class="lineNum">     388</span>              :         TableScanDesc scan;</span>
+<span id="L389"><span class="lineNum">     389</span>              :         ScanKeyData skey[2];</span>
+<span id="L390"><span class="lineNum">     390</span>              :         HeapTuple       tup;</span>
+<span id="L391"><span class="lineNum">     391</span> <span class="tlaGNC">         273 :         int                     nkeys = 0;</span></span>
+<span id="L392"><span class="lineNum">     392</span>              : </span>
+<span id="L393"><span class="lineNum">     393</span> <span class="tlaGNC">         273 :         rel = table_open(SubscriptionRelRelationId, RowExclusiveLock);</span></span>
+<span id="L394"><span class="lineNum">     394</span>              : </span>
+<span id="L395"><span class="lineNum">     395</span> <span class="tlaGNC">         273 :         if (OidIsValid(subid))</span></span>
+<span id="L396"><span class="lineNum">     396</span>              :         {</span>
+<span id="L397"><span class="lineNum">     397</span> <span class="tlaUNC tlaBgUNC">           0 :                 ScanKeyInit(&amp;skey[nkeys++],</span></span>
+<span id="L398"><span class="lineNum">     398</span>              :                                         Anum_pg_subscription_rel_srsubid,</span>
+<span id="L399"><span class="lineNum">     399</span>              :                                         BTEqualStrategyNumber,</span>
+<span id="L400"><span class="lineNum">     400</span>              :                                         F_OIDEQ,</span>
+<span id="L401"><span class="lineNum">     401</span>              :                                         ObjectIdGetDatum(subid));</span>
+<span id="L402"><span class="lineNum">     402</span>              :         }</span>
+<span id="L403"><span class="lineNum">     403</span>              : </span>
+<span id="L404"><span class="lineNum">     404</span> <span class="tlaGNC tlaBgGNC">         273 :         if (OidIsValid(relid))</span></span>
+<span id="L405"><span class="lineNum">     405</span>              :         {</span>
+<span id="L406"><span class="lineNum">     406</span> <span class="tlaGNC">         273 :                 ScanKeyInit(&amp;skey[nkeys++],</span></span>
+<span id="L407"><span class="lineNum">     407</span>              :                                         Anum_pg_subscription_rel_srrelid,</span>
+<span id="L408"><span class="lineNum">     408</span>              :                                         BTEqualStrategyNumber,</span>
+<span id="L409"><span class="lineNum">     409</span>              :                                         F_OIDEQ,</span>
+<span id="L410"><span class="lineNum">     410</span>              :                                         ObjectIdGetDatum(relid));</span>
+<span id="L411"><span class="lineNum">     411</span>              :         }</span>
+<span id="L412"><span class="lineNum">     412</span>              : </span>
+<span id="L413"><span class="lineNum">     413</span>              :         /* Do the search and delete what we found. */</span>
+<span id="L414"><span class="lineNum">     414</span> <span class="tlaGNC">         273 :         scan = table_beginscan_catalog(rel, nkeys, skey);</span></span>
+<span id="L415"><span class="lineNum">     415</span> <span class="tlaGNC">         273 :         while (HeapTupleIsValid(tup = heap_getnext(scan, ForwardScanDirection)))</span></span>
+<span id="L416"><span class="lineNum">     416</span>              :         {</span>
+<span id="L417"><span class="lineNum">     417</span> <span class="tlaUNC tlaBgUNC">           0 :                 CatalogTupleDelete(rel, &amp;tup-&gt;t_self);</span></span>
+<span id="L418"><span class="lineNum">     418</span>              :         }</span>
+<span id="L419"><span class="lineNum">     419</span> <span class="tlaGNC tlaBgGNC">         273 :         table_endscan(scan);</span></span>
+<span id="L420"><span class="lineNum">     420</span>              : </span>
+<span id="L421"><span class="lineNum">     421</span> <span class="tlaGNC">         273 :         table_close(rel, RowExclusiveLock);</span></span>
+<span id="L422"><span class="lineNum">     422</span> <span class="tlaGNC">         273 : }</span></span>
+<span id="L423"><span class="lineNum">     423</span>              : </span>
+<span id="L424"><span class="lineNum">     424</span>              : </span>
+<span id="L425"><span class="lineNum">     425</span>              : /*</span>
+<span id="L426"><span class="lineNum">     426</span>              :  * Get all relations for subscription.</span>
+<span id="L427"><span class="lineNum">     427</span>              :  *</span>
+<span id="L428"><span class="lineNum">     428</span>              :  * Returned list is palloc'ed in current memory context.</span>
+<span id="L429"><span class="lineNum">     429</span>              :  */</span>
+<span id="L430"><span class="lineNum">     430</span>              : List *</span>
+<span id="L431"><span class="lineNum">     431</span> <span class="tlaUNC tlaBgUNC">           0 : GetSubscriptionRelations(Oid subid)</span></span>
+<span id="L432"><span class="lineNum">     432</span>              : {</span>
+<span id="L433"><span class="lineNum">     433</span> <span class="tlaUNC">           0 :         List       *res = NIL;</span></span>
+<span id="L434"><span class="lineNum">     434</span>              :         Relation        rel;</span>
+<span id="L435"><span class="lineNum">     435</span>              :         HeapTuple       tup;</span>
+<span id="L436"><span class="lineNum">     436</span> <span class="tlaUNC">           0 :         int                     nkeys = 0;</span></span>
+<span id="L437"><span class="lineNum">     437</span>              :         ScanKeyData skey[2];</span>
+<span id="L438"><span class="lineNum">     438</span>              :         SysScanDesc scan;</span>
+<span id="L439"><span class="lineNum">     439</span>              : </span>
+<span id="L440"><span class="lineNum">     440</span> <span class="tlaUNC">           0 :         rel = table_open(SubscriptionRelRelationId, AccessShareLock);</span></span>
+<span id="L441"><span class="lineNum">     441</span>              : </span>
+<span id="L442"><span class="lineNum">     442</span> <span class="tlaUNC">           0 :         ScanKeyInit(&amp;skey[nkeys++],</span></span>
+<span id="L443"><span class="lineNum">     443</span>              :                                 Anum_pg_subscription_rel_srsubid,</span>
+<span id="L444"><span class="lineNum">     444</span>              :                                 BTEqualStrategyNumber, F_OIDEQ,</span>
+<span id="L445"><span class="lineNum">     445</span>              :                                 ObjectIdGetDatum(subid));</span>
+<span id="L446"><span class="lineNum">     446</span>              : </span>
+<span id="L447"><span class="lineNum">     447</span> <span class="tlaUNC">           0 :         scan = systable_beginscan(rel, InvalidOid, false,</span></span>
+<span id="L448"><span class="lineNum">     448</span>              :                                                           NULL, nkeys, skey);</span>
+<span id="L449"><span class="lineNum">     449</span>              : </span>
+<span id="L450"><span class="lineNum">     450</span> <span class="tlaUNC">           0 :         while (HeapTupleIsValid(tup = systable_getnext(scan)))</span></span>
+<span id="L451"><span class="lineNum">     451</span>              :         {</span>
+<span id="L452"><span class="lineNum">     452</span>              :                 Form_pg_subscription_rel subrel;</span>
+<span id="L453"><span class="lineNum">     453</span>              :                 SubscriptionRelState *relstate;</span>
+<span id="L454"><span class="lineNum">     454</span>              :                 Datum           d;</span>
+<span id="L455"><span class="lineNum">     455</span>              :                 bool            isnull;</span>
+<span id="L456"><span class="lineNum">     456</span>              : </span>
+<span id="L457"><span class="lineNum">     457</span> <span class="tlaUNC">           0 :                 subrel = (Form_pg_subscription_rel) GETSTRUCT(tup);</span></span>
+<span id="L458"><span class="lineNum">     458</span>              : </span>
+<span id="L459"><span class="lineNum">     459</span> <span class="tlaUNC">           0 :                 relstate = (SubscriptionRelState *) palloc(sizeof(SubscriptionRelState));</span></span>
+<span id="L460"><span class="lineNum">     460</span> <span class="tlaUNC">           0 :                 relstate-&gt;relid = subrel-&gt;srrelid;</span></span>
+<span id="L461"><span class="lineNum">     461</span> <span class="tlaUNC">           0 :                 relstate-&gt;state = subrel-&gt;srsubstate;</span></span>
+<span id="L462"><span class="lineNum">     462</span> <span class="tlaUNC">           0 :                 d = SysCacheGetAttr(SUBSCRIPTIONRELMAP, tup,</span></span>
+<span id="L463"><span class="lineNum">     463</span>              :                                                         Anum_pg_subscription_rel_srsublsn, &amp;isnull);</span>
+<span id="L464"><span class="lineNum">     464</span> <span class="tlaUNC">           0 :                 if (isnull)</span></span>
+<span id="L465"><span class="lineNum">     465</span> <span class="tlaUNC">           0 :                         relstate-&gt;lsn = InvalidXLogRecPtr;</span></span>
+<span id="L466"><span class="lineNum">     466</span>              :                 else</span>
+<span id="L467"><span class="lineNum">     467</span> <span class="tlaUNC">           0 :                         relstate-&gt;lsn = DatumGetLSN(d);</span></span>
+<span id="L468"><span class="lineNum">     468</span>              : </span>
+<span id="L469"><span class="lineNum">     469</span> <span class="tlaUNC">           0 :                 res = lappend(res, relstate);</span></span>
+<span id="L470"><span class="lineNum">     470</span>              :         }</span>
+<span id="L471"><span class="lineNum">     471</span>              : </span>
+<span id="L472"><span class="lineNum">     472</span>              :         /* Cleanup */</span>
+<span id="L473"><span class="lineNum">     473</span> <span class="tlaUNC">           0 :         systable_endscan(scan);</span></span>
+<span id="L474"><span class="lineNum">     474</span> <span class="tlaUNC">           0 :         table_close(rel, AccessShareLock);</span></span>
+<span id="L475"><span class="lineNum">     475</span>              : </span>
+<span id="L476"><span class="lineNum">     476</span> <span class="tlaUNC">           0 :         return res;</span></span>
+<span id="L477"><span class="lineNum">     477</span>              : }</span>
+<span id="L478"><span class="lineNum">     478</span>              : </span>
+<span id="L479"><span class="lineNum">     479</span>              : /*</span>
+<span id="L480"><span class="lineNum">     480</span>              :  * Get all relations for subscription that are not in a ready state.</span>
+<span id="L481"><span class="lineNum">     481</span>              :  *</span>
+<span id="L482"><span class="lineNum">     482</span>              :  * Returned list is palloc'ed in current memory context.</span>
+<span id="L483"><span class="lineNum">     483</span>              :  */</span>
+<span id="L484"><span class="lineNum">     484</span>              : List *</span>
+<span id="L485"><span class="lineNum">     485</span> <span class="tlaUNC">           0 : GetSubscriptionNotReadyRelations(Oid subid)</span></span>
+<span id="L486"><span class="lineNum">     486</span>              : {</span>
+<span id="L487"><span class="lineNum">     487</span> <span class="tlaUNC">           0 :         List       *res = NIL;</span></span>
+<span id="L488"><span class="lineNum">     488</span>              :         Relation        rel;</span>
+<span id="L489"><span class="lineNum">     489</span>              :         HeapTuple       tup;</span>
+<span id="L490"><span class="lineNum">     490</span> <span class="tlaUNC">           0 :         int                     nkeys = 0;</span></span>
+<span id="L491"><span class="lineNum">     491</span>              :         ScanKeyData skey[2];</span>
+<span id="L492"><span class="lineNum">     492</span>              :         SysScanDesc scan;</span>
+<span id="L493"><span class="lineNum">     493</span>              : </span>
+<span id="L494"><span class="lineNum">     494</span> <span class="tlaUNC">           0 :         rel = table_open(SubscriptionRelRelationId, AccessShareLock);</span></span>
+<span id="L495"><span class="lineNum">     495</span>              : </span>
+<span id="L496"><span class="lineNum">     496</span> <span class="tlaUNC">           0 :         ScanKeyInit(&amp;skey[nkeys++],</span></span>
+<span id="L497"><span class="lineNum">     497</span>              :                                 Anum_pg_subscription_rel_srsubid,</span>
+<span id="L498"><span class="lineNum">     498</span>              :                                 BTEqualStrategyNumber, F_OIDEQ,</span>
+<span id="L499"><span class="lineNum">     499</span>              :                                 ObjectIdGetDatum(subid));</span>
+<span id="L500"><span class="lineNum">     500</span>              : </span>
+<span id="L501"><span class="lineNum">     501</span> <span class="tlaUNC">           0 :         ScanKeyInit(&amp;skey[nkeys++],</span></span>
+<span id="L502"><span class="lineNum">     502</span>              :                                 Anum_pg_subscription_rel_srsubstate,</span>
+<span id="L503"><span class="lineNum">     503</span>              :                                 BTEqualStrategyNumber, F_CHARNE,</span>
+<span id="L504"><span class="lineNum">     504</span>              :                                 CharGetDatum(SUBREL_STATE_READY));</span>
+<span id="L505"><span class="lineNum">     505</span>              : </span>
+<span id="L506"><span class="lineNum">     506</span> <span class="tlaUNC">           0 :         scan = systable_beginscan(rel, InvalidOid, false,</span></span>
+<span id="L507"><span class="lineNum">     507</span>              :                                                           NULL, nkeys, skey);</span>
+<span id="L508"><span class="lineNum">     508</span>              : </span>
+<span id="L509"><span class="lineNum">     509</span> <span class="tlaUNC">           0 :         while (HeapTupleIsValid(tup = systable_getnext(scan)))</span></span>
+<span id="L510"><span class="lineNum">     510</span>              :         {</span>
+<span id="L511"><span class="lineNum">     511</span>              :                 Form_pg_subscription_rel subrel;</span>
+<span id="L512"><span class="lineNum">     512</span>              :                 SubscriptionRelState *relstate;</span>
+<span id="L513"><span class="lineNum">     513</span>              :                 Datum           d;</span>
+<span id="L514"><span class="lineNum">     514</span>              :                 bool            isnull;</span>
+<span id="L515"><span class="lineNum">     515</span>              : </span>
+<span id="L516"><span class="lineNum">     516</span> <span class="tlaUNC">           0 :                 subrel = (Form_pg_subscription_rel) GETSTRUCT(tup);</span></span>
+<span id="L517"><span class="lineNum">     517</span>              : </span>
+<span id="L518"><span class="lineNum">     518</span> <span class="tlaUNC">           0 :                 relstate = (SubscriptionRelState *) palloc(sizeof(SubscriptionRelState));</span></span>
+<span id="L519"><span class="lineNum">     519</span> <span class="tlaUNC">           0 :                 relstate-&gt;relid = subrel-&gt;srrelid;</span></span>
+<span id="L520"><span class="lineNum">     520</span> <span class="tlaUNC">           0 :                 relstate-&gt;state = subrel-&gt;srsubstate;</span></span>
+<span id="L521"><span class="lineNum">     521</span> <span class="tlaUNC">           0 :                 d = SysCacheGetAttr(SUBSCRIPTIONRELMAP, tup,</span></span>
+<span id="L522"><span class="lineNum">     522</span>              :                                                         Anum_pg_subscription_rel_srsublsn, &amp;isnull);</span>
+<span id="L523"><span class="lineNum">     523</span> <span class="tlaUNC">           0 :                 if (isnull)</span></span>
+<span id="L524"><span class="lineNum">     524</span> <span class="tlaUNC">           0 :                         relstate-&gt;lsn = InvalidXLogRecPtr;</span></span>
+<span id="L525"><span class="lineNum">     525</span>              :                 else</span>
+<span id="L526"><span class="lineNum">     526</span> <span class="tlaUNC">           0 :                         relstate-&gt;lsn = DatumGetLSN(d);</span></span>
+<span id="L527"><span class="lineNum">     527</span>              : </span>
+<span id="L528"><span class="lineNum">     528</span> <span class="tlaUNC">           0 :                 res = lappend(res, relstate);</span></span>
+<span id="L529"><span class="lineNum">     529</span>              :         }</span>
+<span id="L530"><span class="lineNum">     530</span>              : </span>
+<span id="L531"><span class="lineNum">     531</span>              :         /* Cleanup */</span>
+<span id="L532"><span class="lineNum">     532</span> <span class="tlaUNC">           0 :         systable_endscan(scan);</span></span>
+<span id="L533"><span class="lineNum">     533</span> <span class="tlaUNC">           0 :         table_close(rel, AccessShareLock);</span></span>
+<span id="L534"><span class="lineNum">     534</span>              : </span>
+<span id="L535"><span class="lineNum">     535</span> <span class="tlaUNC">           0 :         return res;</span></span>
+<span id="L536"><span class="lineNum">     536</span>              : }</span>
+        </pre>
+              </td>
+            </tr>
+          </table>
+          <br>
+
+          <table width="100%" border=0 cellspacing=0 cellpadding=0>
+            <tr><td class="ruler"><img src="../../glass.png" width=3 height=3 alt=""></td></tr>
+            <tr><td class="versionInfo">Generated by: <a href="https://github.com//linux-test-project/lcov" target="_parent">LCOV version 2.0-1</a></td></tr>
+          </table>
+          <br>
+
+</body>
+</html>

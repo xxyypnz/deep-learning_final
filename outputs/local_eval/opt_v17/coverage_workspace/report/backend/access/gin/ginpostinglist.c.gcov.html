@@ -1,0 +1,510 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - coverage_filtered.info - backend/access/gin/ginpostinglist.c</title>
+  <link rel="stylesheet" type="text/css" href="../../../gcov.css">
+</head>
+
+<body>
+
+          <table width="100%" border=0 cellspacing=0 cellpadding=0>
+            <tr><td class="title">LCOV - code coverage report</td></tr>
+            <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+
+            <tr>
+              <td width="100%">
+                <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="10%" class="headerValue"><a href="../../../index.html">top level</a> - <a href="index.html">backend/access/gin</a> - ginpostinglist.c<span style="font-size: 80%;"> (source / <a href="ginpostinglist.c.func-c.html">functions</a>)</span></td>
+            <td width="5%"></td>
+            <td width="5%"></td>
+            <td width="5%" class="headerCovTableHead">Coverage</td>
+            <td width="5%" class="headerCovTableHead" title="Covered + Uncovered code">Total</td>
+            <td width="5%" class="headerCovTableHead" title="Exercised code only">Hit</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">coverage_filtered.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntryLo">0.0&nbsp;%</td>
+            <td class="headerCovTableEntry">129</td>
+            <td class="headerCovTableEntry">0</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test Date:</td>
+            <td class="headerValue">2026-06-06 03:50:52</td>
+            <td></td>
+            <td class="headerItem">Functions:</td>
+            <td class="headerCovTableEntryLo">0.0&nbsp;%</td>
+            <td class="headerCovTableEntry">9</td>
+            <td class="headerCovTableEntry">0</td>
+          </tr>
+                  <tr><td><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+                </table>
+              </td>
+            </tr>
+
+            <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+          </table>
+
+          <table cellpadding=0 cellspacing=0 border=0>
+            <tr>
+              <td><br></td>
+            </tr>
+            <tr>
+              <td>
+<pre class="sourceHeading">            Line data    Source code</pre>
+<pre class="source">
+<span id="L1"><span class="lineNum">       1</span>              : /*-------------------------------------------------------------------------</span>
+<span id="L2"><span class="lineNum">       2</span>              :  *</span>
+<span id="L3"><span class="lineNum">       3</span>              :  * ginpostinglist.c</span>
+<span id="L4"><span class="lineNum">       4</span>              :  *        routines for dealing with posting lists.</span>
+<span id="L5"><span class="lineNum">       5</span>              :  *</span>
+<span id="L6"><span class="lineNum">       6</span>              :  *</span>
+<span id="L7"><span class="lineNum">       7</span>              :  * Portions Copyright (c) 1996-2020, PostgreSQL Global Development Group</span>
+<span id="L8"><span class="lineNum">       8</span>              :  * Portions Copyright (c) 1994, Regents of the University of California</span>
+<span id="L9"><span class="lineNum">       9</span>              :  *</span>
+<span id="L10"><span class="lineNum">      10</span>              :  * IDENTIFICATION</span>
+<span id="L11"><span class="lineNum">      11</span>              :  *                      src/backend/access/gin/ginpostinglist.c</span>
+<span id="L12"><span class="lineNum">      12</span>              :  *-------------------------------------------------------------------------</span>
+<span id="L13"><span class="lineNum">      13</span>              :  */</span>
+<span id="L14"><span class="lineNum">      14</span>              : </span>
+<span id="L15"><span class="lineNum">      15</span>              : #include &quot;postgres.h&quot;</span>
+<span id="L16"><span class="lineNum">      16</span>              : </span>
+<span id="L17"><span class="lineNum">      17</span>              : #include &quot;access/gin_private.h&quot;</span>
+<span id="L18"><span class="lineNum">      18</span>              : </span>
+<span id="L19"><span class="lineNum">      19</span>              : #ifdef USE_ASSERT_CHECKING</span>
+<span id="L20"><span class="lineNum">      20</span>              : #define CHECK_ENCODING_ROUNDTRIP</span>
+<span id="L21"><span class="lineNum">      21</span>              : #endif</span>
+<span id="L22"><span class="lineNum">      22</span>              : </span>
+<span id="L23"><span class="lineNum">      23</span>              : /*</span>
+<span id="L24"><span class="lineNum">      24</span>              :  * For encoding purposes, item pointers are represented as 64-bit unsigned</span>
+<span id="L25"><span class="lineNum">      25</span>              :  * integers. The lowest 11 bits represent the offset number, and the next</span>
+<span id="L26"><span class="lineNum">      26</span>              :  * lowest 32 bits are the block number. That leaves 21 bits unused, i.e.</span>
+<span id="L27"><span class="lineNum">      27</span>              :  * only 43 low bits are used.</span>
+<span id="L28"><span class="lineNum">      28</span>              :  *</span>
+<span id="L29"><span class="lineNum">      29</span>              :  * 11 bits is enough for the offset number, because MaxHeapTuplesPerPage &lt;</span>
+<span id="L30"><span class="lineNum">      30</span>              :  * 2^11 on all supported block sizes. We are frugal with the bits, because</span>
+<span id="L31"><span class="lineNum">      31</span>              :  * smaller integers use fewer bytes in the varbyte encoding, saving disk</span>
+<span id="L32"><span class="lineNum">      32</span>              :  * space. (If we get a new table AM in the future that wants to use the full</span>
+<span id="L33"><span class="lineNum">      33</span>              :  * range of possible offset numbers, we'll need to change this.)</span>
+<span id="L34"><span class="lineNum">      34</span>              :  *</span>
+<span id="L35"><span class="lineNum">      35</span>              :  * These 43-bit integers are encoded using varbyte encoding. In each byte,</span>
+<span id="L36"><span class="lineNum">      36</span>              :  * the 7 low bits contain data, while the highest bit is a continuation bit.</span>
+<span id="L37"><span class="lineNum">      37</span>              :  * When the continuation bit is set, the next byte is part of the same</span>
+<span id="L38"><span class="lineNum">      38</span>              :  * integer, otherwise this is the last byte of this integer. 43 bits need</span>
+<span id="L39"><span class="lineNum">      39</span>              :  * at most 7 bytes in this encoding:</span>
+<span id="L40"><span class="lineNum">      40</span>              :  *</span>
+<span id="L41"><span class="lineNum">      41</span>              :  * 0XXXXXXX</span>
+<span id="L42"><span class="lineNum">      42</span>              :  * 1XXXXXXX 0XXXXYYY</span>
+<span id="L43"><span class="lineNum">      43</span>              :  * 1XXXXXXX 1XXXXYYY 0YYYYYYY</span>
+<span id="L44"><span class="lineNum">      44</span>              :  * 1XXXXXXX 1XXXXYYY 1YYYYYYY 0YYYYYYY</span>
+<span id="L45"><span class="lineNum">      45</span>              :  * 1XXXXXXX 1XXXXYYY 1YYYYYYY 1YYYYYYY 0YYYYYYY</span>
+<span id="L46"><span class="lineNum">      46</span>              :  * 1XXXXXXX 1XXXXYYY 1YYYYYYY 1YYYYYYY 1YYYYYYY 0YYYYYYY</span>
+<span id="L47"><span class="lineNum">      47</span>              :  * 1XXXXXXX 1XXXXYYY 1YYYYYYY 1YYYYYYY 1YYYYYYY 1YYYYYYY 0uuuuuuY</span>
+<span id="L48"><span class="lineNum">      48</span>              :  *</span>
+<span id="L49"><span class="lineNum">      49</span>              :  * X = bits used for offset number</span>
+<span id="L50"><span class="lineNum">      50</span>              :  * Y = bits used for block number</span>
+<span id="L51"><span class="lineNum">      51</span>              :  * u = unused bit</span>
+<span id="L52"><span class="lineNum">      52</span>              :  *</span>
+<span id="L53"><span class="lineNum">      53</span>              :  * The bytes are in stored in little-endian order.</span>
+<span id="L54"><span class="lineNum">      54</span>              :  *</span>
+<span id="L55"><span class="lineNum">      55</span>              :  * An important property of this encoding is that removing an item from list</span>
+<span id="L56"><span class="lineNum">      56</span>              :  * never increases the size of the resulting compressed posting list. Proof:</span>
+<span id="L57"><span class="lineNum">      57</span>              :  *</span>
+<span id="L58"><span class="lineNum">      58</span>              :  * Removing number is actually replacement of two numbers with their sum. We</span>
+<span id="L59"><span class="lineNum">      59</span>              :  * have to prove that varbyte encoding of a sum can't be longer than varbyte</span>
+<span id="L60"><span class="lineNum">      60</span>              :  * encoding of its summands. Sum of two numbers is at most one bit wider than</span>
+<span id="L61"><span class="lineNum">      61</span>              :  * the larger of the summands. Widening a number by one bit enlarges its length</span>
+<span id="L62"><span class="lineNum">      62</span>              :  * in varbyte encoding by at most one byte. Therefore, varbyte encoding of sum</span>
+<span id="L63"><span class="lineNum">      63</span>              :  * is at most one byte longer than varbyte encoding of larger summand. Lesser</span>
+<span id="L64"><span class="lineNum">      64</span>              :  * summand is at least one byte, so the sum cannot take more space than the</span>
+<span id="L65"><span class="lineNum">      65</span>              :  * summands, Q.E.D.</span>
+<span id="L66"><span class="lineNum">      66</span>              :  *</span>
+<span id="L67"><span class="lineNum">      67</span>              :  * This property greatly simplifies VACUUM, which can assume that posting</span>
+<span id="L68"><span class="lineNum">      68</span>              :  * lists always fit on the same page after vacuuming. Note that even though</span>
+<span id="L69"><span class="lineNum">      69</span>              :  * that holds for removing items from a posting list, you must also be</span>
+<span id="L70"><span class="lineNum">      70</span>              :  * careful to not cause expansion e.g. when merging uncompressed items on the</span>
+<span id="L71"><span class="lineNum">      71</span>              :  * page into the compressed lists, when vacuuming.</span>
+<span id="L72"><span class="lineNum">      72</span>              :  */</span>
+<span id="L73"><span class="lineNum">      73</span>              : </span>
+<span id="L74"><span class="lineNum">      74</span>              : /*</span>
+<span id="L75"><span class="lineNum">      75</span>              :  * How many bits do you need to encode offset number? OffsetNumber is a 16-bit</span>
+<span id="L76"><span class="lineNum">      76</span>              :  * integer, but you can't fit that many items on a page. 11 ought to be more</span>
+<span id="L77"><span class="lineNum">      77</span>              :  * than enough. It's tempting to derive this from MaxHeapTuplesPerPage, and</span>
+<span id="L78"><span class="lineNum">      78</span>              :  * use the minimum number of bits, but that would require changing the on-disk</span>
+<span id="L79"><span class="lineNum">      79</span>              :  * format if MaxHeapTuplesPerPage changes. Better to leave some slack.</span>
+<span id="L80"><span class="lineNum">      80</span>              :  */</span>
+<span id="L81"><span class="lineNum">      81</span>              : #define MaxHeapTuplesPerPageBits                11</span>
+<span id="L82"><span class="lineNum">      82</span>              : </span>
+<span id="L83"><span class="lineNum">      83</span>              : /* Max. number of bytes needed to encode the largest supported integer. */</span>
+<span id="L84"><span class="lineNum">      84</span>              : #define MaxBytesPerInteger                              7</span>
+<span id="L85"><span class="lineNum">      85</span>              : </span>
+<span id="L86"><span class="lineNum">      86</span>              : static inline uint64</span>
+<span id="L87"><span class="lineNum">      87</span> <span class="tlaUNC tlaBgUNC">           0 : itemptr_to_uint64(const ItemPointer iptr)</span></span>
+<span id="L88"><span class="lineNum">      88</span>              : {</span>
+<span id="L89"><span class="lineNum">      89</span>              :         uint64          val;</span>
+<span id="L90"><span class="lineNum">      90</span>              : </span>
+<span id="L91"><span class="lineNum">      91</span>              :         Assert(ItemPointerIsValid(iptr));</span>
+<span id="L92"><span class="lineNum">      92</span>              :         Assert(GinItemPointerGetOffsetNumber(iptr) &lt; (1 &lt;&lt; MaxHeapTuplesPerPageBits));</span>
+<span id="L93"><span class="lineNum">      93</span>              : </span>
+<span id="L94"><span class="lineNum">      94</span> <span class="tlaUNC">           0 :         val = GinItemPointerGetBlockNumber(iptr);</span></span>
+<span id="L95"><span class="lineNum">      95</span> <span class="tlaUNC">           0 :         val &lt;&lt;= MaxHeapTuplesPerPageBits;</span></span>
+<span id="L96"><span class="lineNum">      96</span> <span class="tlaUNC">           0 :         val |= GinItemPointerGetOffsetNumber(iptr);</span></span>
+<span id="L97"><span class="lineNum">      97</span>              : </span>
+<span id="L98"><span class="lineNum">      98</span> <span class="tlaUNC">           0 :         return val;</span></span>
+<span id="L99"><span class="lineNum">      99</span>              : }</span>
+<span id="L100"><span class="lineNum">     100</span>              : </span>
+<span id="L101"><span class="lineNum">     101</span>              : static inline void</span>
+<span id="L102"><span class="lineNum">     102</span> <span class="tlaUNC">           0 : uint64_to_itemptr(uint64 val, ItemPointer iptr)</span></span>
+<span id="L103"><span class="lineNum">     103</span>              : {</span>
+<span id="L104"><span class="lineNum">     104</span> <span class="tlaUNC">           0 :         GinItemPointerSetOffsetNumber(iptr, val &amp; ((1 &lt;&lt; MaxHeapTuplesPerPageBits) - 1));</span></span>
+<span id="L105"><span class="lineNum">     105</span> <span class="tlaUNC">           0 :         val = val &gt;&gt; MaxHeapTuplesPerPageBits;</span></span>
+<span id="L106"><span class="lineNum">     106</span> <span class="tlaUNC">           0 :         GinItemPointerSetBlockNumber(iptr, val);</span></span>
+<span id="L107"><span class="lineNum">     107</span>              : </span>
+<span id="L108"><span class="lineNum">     108</span>              :         Assert(ItemPointerIsValid(iptr));</span>
+<span id="L109"><span class="lineNum">     109</span> <span class="tlaUNC">           0 : }</span></span>
+<span id="L110"><span class="lineNum">     110</span>              : </span>
+<span id="L111"><span class="lineNum">     111</span>              : /*</span>
+<span id="L112"><span class="lineNum">     112</span>              :  * Varbyte-encode 'val' into *ptr. *ptr is incremented to next integer.</span>
+<span id="L113"><span class="lineNum">     113</span>              :  */</span>
+<span id="L114"><span class="lineNum">     114</span>              : static void</span>
+<span id="L115"><span class="lineNum">     115</span> <span class="tlaUNC">           0 : encode_varbyte(uint64 val, unsigned char **ptr)</span></span>
+<span id="L116"><span class="lineNum">     116</span>              : {</span>
+<span id="L117"><span class="lineNum">     117</span> <span class="tlaUNC">           0 :         unsigned char *p = *ptr;</span></span>
+<span id="L118"><span class="lineNum">     118</span>              : </span>
+<span id="L119"><span class="lineNum">     119</span> <span class="tlaUNC">           0 :         while (val &gt; 0x7F)</span></span>
+<span id="L120"><span class="lineNum">     120</span>              :         {</span>
+<span id="L121"><span class="lineNum">     121</span> <span class="tlaUNC">           0 :                 *(p++) = 0x80 | (val &amp; 0x7F);</span></span>
+<span id="L122"><span class="lineNum">     122</span> <span class="tlaUNC">           0 :                 val &gt;&gt;= 7;</span></span>
+<span id="L123"><span class="lineNum">     123</span>              :         }</span>
+<span id="L124"><span class="lineNum">     124</span> <span class="tlaUNC">           0 :         *(p++) = (unsigned char) val;</span></span>
+<span id="L125"><span class="lineNum">     125</span>              : </span>
+<span id="L126"><span class="lineNum">     126</span> <span class="tlaUNC">           0 :         *ptr = p;</span></span>
+<span id="L127"><span class="lineNum">     127</span> <span class="tlaUNC">           0 : }</span></span>
+<span id="L128"><span class="lineNum">     128</span>              : </span>
+<span id="L129"><span class="lineNum">     129</span>              : /*</span>
+<span id="L130"><span class="lineNum">     130</span>              :  * Decode varbyte-encoded integer at *ptr. *ptr is incremented to next integer.</span>
+<span id="L131"><span class="lineNum">     131</span>              :  */</span>
+<span id="L132"><span class="lineNum">     132</span>              : static uint64</span>
+<span id="L133"><span class="lineNum">     133</span> <span class="tlaUNC">           0 : decode_varbyte(unsigned char **ptr)</span></span>
+<span id="L134"><span class="lineNum">     134</span>              : {</span>
+<span id="L135"><span class="lineNum">     135</span>              :         uint64          val;</span>
+<span id="L136"><span class="lineNum">     136</span> <span class="tlaUNC">           0 :         unsigned char *p = *ptr;</span></span>
+<span id="L137"><span class="lineNum">     137</span>              :         uint64          c;</span>
+<span id="L138"><span class="lineNum">     138</span>              : </span>
+<span id="L139"><span class="lineNum">     139</span>              :         /* 1st byte */</span>
+<span id="L140"><span class="lineNum">     140</span> <span class="tlaUNC">           0 :         c = *(p++);</span></span>
+<span id="L141"><span class="lineNum">     141</span> <span class="tlaUNC">           0 :         val = c &amp; 0x7F;</span></span>
+<span id="L142"><span class="lineNum">     142</span> <span class="tlaUNC">           0 :         if (c &amp; 0x80)</span></span>
+<span id="L143"><span class="lineNum">     143</span>              :         {</span>
+<span id="L144"><span class="lineNum">     144</span>              :                 /* 2nd byte */</span>
+<span id="L145"><span class="lineNum">     145</span> <span class="tlaUNC">           0 :                 c = *(p++);</span></span>
+<span id="L146"><span class="lineNum">     146</span> <span class="tlaUNC">           0 :                 val |= (c &amp; 0x7F) &lt;&lt; 7;</span></span>
+<span id="L147"><span class="lineNum">     147</span> <span class="tlaUNC">           0 :                 if (c &amp; 0x80)</span></span>
+<span id="L148"><span class="lineNum">     148</span>              :                 {</span>
+<span id="L149"><span class="lineNum">     149</span>              :                         /* 3rd byte */</span>
+<span id="L150"><span class="lineNum">     150</span> <span class="tlaUNC">           0 :                         c = *(p++);</span></span>
+<span id="L151"><span class="lineNum">     151</span> <span class="tlaUNC">           0 :                         val |= (c &amp; 0x7F) &lt;&lt; 14;</span></span>
+<span id="L152"><span class="lineNum">     152</span> <span class="tlaUNC">           0 :                         if (c &amp; 0x80)</span></span>
+<span id="L153"><span class="lineNum">     153</span>              :                         {</span>
+<span id="L154"><span class="lineNum">     154</span>              :                                 /* 4th byte */</span>
+<span id="L155"><span class="lineNum">     155</span> <span class="tlaUNC">           0 :                                 c = *(p++);</span></span>
+<span id="L156"><span class="lineNum">     156</span> <span class="tlaUNC">           0 :                                 val |= (c &amp; 0x7F) &lt;&lt; 21;</span></span>
+<span id="L157"><span class="lineNum">     157</span> <span class="tlaUNC">           0 :                                 if (c &amp; 0x80)</span></span>
+<span id="L158"><span class="lineNum">     158</span>              :                                 {</span>
+<span id="L159"><span class="lineNum">     159</span>              :                                         /* 5th byte */</span>
+<span id="L160"><span class="lineNum">     160</span> <span class="tlaUNC">           0 :                                         c = *(p++);</span></span>
+<span id="L161"><span class="lineNum">     161</span> <span class="tlaUNC">           0 :                                         val |= (c &amp; 0x7F) &lt;&lt; 28;</span></span>
+<span id="L162"><span class="lineNum">     162</span> <span class="tlaUNC">           0 :                                         if (c &amp; 0x80)</span></span>
+<span id="L163"><span class="lineNum">     163</span>              :                                         {</span>
+<span id="L164"><span class="lineNum">     164</span>              :                                                 /* 6th byte */</span>
+<span id="L165"><span class="lineNum">     165</span> <span class="tlaUNC">           0 :                                                 c = *(p++);</span></span>
+<span id="L166"><span class="lineNum">     166</span> <span class="tlaUNC">           0 :                                                 val |= (c &amp; 0x7F) &lt;&lt; 35;</span></span>
+<span id="L167"><span class="lineNum">     167</span> <span class="tlaUNC">           0 :                                                 if (c &amp; 0x80)</span></span>
+<span id="L168"><span class="lineNum">     168</span>              :                                                 {</span>
+<span id="L169"><span class="lineNum">     169</span>              :                                                         /* 7th byte, should not have continuation bit */</span>
+<span id="L170"><span class="lineNum">     170</span> <span class="tlaUNC">           0 :                                                         c = *(p++);</span></span>
+<span id="L171"><span class="lineNum">     171</span> <span class="tlaUNC">           0 :                                                         val |= c &lt;&lt; 42;</span></span>
+<span id="L172"><span class="lineNum">     172</span>              :                                                         Assert((c &amp; 0x80) == 0);</span>
+<span id="L173"><span class="lineNum">     173</span>              :                                                 }</span>
+<span id="L174"><span class="lineNum">     174</span>              :                                         }</span>
+<span id="L175"><span class="lineNum">     175</span>              :                                 }</span>
+<span id="L176"><span class="lineNum">     176</span>              :                         }</span>
+<span id="L177"><span class="lineNum">     177</span>              :                 }</span>
+<span id="L178"><span class="lineNum">     178</span>              :         }</span>
+<span id="L179"><span class="lineNum">     179</span>              : </span>
+<span id="L180"><span class="lineNum">     180</span> <span class="tlaUNC">           0 :         *ptr = p;</span></span>
+<span id="L181"><span class="lineNum">     181</span>              : </span>
+<span id="L182"><span class="lineNum">     182</span> <span class="tlaUNC">           0 :         return val;</span></span>
+<span id="L183"><span class="lineNum">     183</span>              : }</span>
+<span id="L184"><span class="lineNum">     184</span>              : </span>
+<span id="L185"><span class="lineNum">     185</span>              : /*</span>
+<span id="L186"><span class="lineNum">     186</span>              :  * Encode a posting list.</span>
+<span id="L187"><span class="lineNum">     187</span>              :  *</span>
+<span id="L188"><span class="lineNum">     188</span>              :  * The encoded list is returned in a palloc'd struct, which will be at most</span>
+<span id="L189"><span class="lineNum">     189</span>              :  * 'maxsize' bytes in size.  The number items in the returned segment is</span>
+<span id="L190"><span class="lineNum">     190</span>              :  * returned in *nwritten. If it's not equal to nipd, not all the items fit</span>
+<span id="L191"><span class="lineNum">     191</span>              :  * in 'maxsize', and only the first *nwritten were encoded.</span>
+<span id="L192"><span class="lineNum">     192</span>              :  *</span>
+<span id="L193"><span class="lineNum">     193</span>              :  * The allocated size of the returned struct is short-aligned, and the padding</span>
+<span id="L194"><span class="lineNum">     194</span>              :  * byte at the end, if any, is zero.</span>
+<span id="L195"><span class="lineNum">     195</span>              :  */</span>
+<span id="L196"><span class="lineNum">     196</span>              : GinPostingList *</span>
+<span id="L197"><span class="lineNum">     197</span> <span class="tlaUNC">           0 : ginCompressPostingList(const ItemPointer ipd, int nipd, int maxsize,</span></span>
+<span id="L198"><span class="lineNum">     198</span>              :                                            int *nwritten)</span>
+<span id="L199"><span class="lineNum">     199</span>              : {</span>
+<span id="L200"><span class="lineNum">     200</span>              :         uint64          prev;</span>
+<span id="L201"><span class="lineNum">     201</span> <span class="tlaUNC">           0 :         int                     totalpacked = 0;</span></span>
+<span id="L202"><span class="lineNum">     202</span>              :         int                     maxbytes;</span>
+<span id="L203"><span class="lineNum">     203</span>              :         GinPostingList *result;</span>
+<span id="L204"><span class="lineNum">     204</span>              :         unsigned char *ptr;</span>
+<span id="L205"><span class="lineNum">     205</span>              :         unsigned char *endptr;</span>
+<span id="L206"><span class="lineNum">     206</span>              : </span>
+<span id="L207"><span class="lineNum">     207</span> <span class="tlaUNC">           0 :         maxsize = SHORTALIGN_DOWN(maxsize);</span></span>
+<span id="L208"><span class="lineNum">     208</span>              : </span>
+<span id="L209"><span class="lineNum">     209</span> <span class="tlaUNC">           0 :         result = palloc(maxsize);</span></span>
+<span id="L210"><span class="lineNum">     210</span>              : </span>
+<span id="L211"><span class="lineNum">     211</span> <span class="tlaUNC">           0 :         maxbytes = maxsize - offsetof(GinPostingList, bytes);</span></span>
+<span id="L212"><span class="lineNum">     212</span>              :         Assert(maxbytes &gt; 0);</span>
+<span id="L213"><span class="lineNum">     213</span>              : </span>
+<span id="L214"><span class="lineNum">     214</span>              :         /* Store the first special item */</span>
+<span id="L215"><span class="lineNum">     215</span> <span class="tlaUNC">           0 :         result-&gt;first = ipd[0];</span></span>
+<span id="L216"><span class="lineNum">     216</span>              : </span>
+<span id="L217"><span class="lineNum">     217</span> <span class="tlaUNC">           0 :         prev = itemptr_to_uint64(&amp;result-&gt;first);</span></span>
+<span id="L218"><span class="lineNum">     218</span>              : </span>
+<span id="L219"><span class="lineNum">     219</span> <span class="tlaUNC">           0 :         ptr = result-&gt;bytes;</span></span>
+<span id="L220"><span class="lineNum">     220</span> <span class="tlaUNC">           0 :         endptr = result-&gt;bytes + maxbytes;</span></span>
+<span id="L221"><span class="lineNum">     221</span> <span class="tlaUNC">           0 :         for (totalpacked = 1; totalpacked &lt; nipd; totalpacked++)</span></span>
+<span id="L222"><span class="lineNum">     222</span>              :         {</span>
+<span id="L223"><span class="lineNum">     223</span> <span class="tlaUNC">           0 :                 uint64          val = itemptr_to_uint64(&amp;ipd[totalpacked]);</span></span>
+<span id="L224"><span class="lineNum">     224</span> <span class="tlaUNC">           0 :                 uint64          delta = val - prev;</span></span>
+<span id="L225"><span class="lineNum">     225</span>              : </span>
+<span id="L226"><span class="lineNum">     226</span>              :                 Assert(val &gt; prev);</span>
+<span id="L227"><span class="lineNum">     227</span>              : </span>
+<span id="L228"><span class="lineNum">     228</span> <span class="tlaUNC">           0 :                 if (endptr - ptr &gt;= MaxBytesPerInteger)</span></span>
+<span id="L229"><span class="lineNum">     229</span> <span class="tlaUNC">           0 :                         encode_varbyte(delta, &amp;ptr);</span></span>
+<span id="L230"><span class="lineNum">     230</span>              :                 else</span>
+<span id="L231"><span class="lineNum">     231</span>              :                 {</span>
+<span id="L232"><span class="lineNum">     232</span>              :                         /*</span>
+<span id="L233"><span class="lineNum">     233</span>              :                          * There are less than 7 bytes left. Have to check if the next</span>
+<span id="L234"><span class="lineNum">     234</span>              :                          * item fits in that space before writing it out.</span>
+<span id="L235"><span class="lineNum">     235</span>              :                          */</span>
+<span id="L236"><span class="lineNum">     236</span>              :                         unsigned char buf[MaxBytesPerInteger];</span>
+<span id="L237"><span class="lineNum">     237</span> <span class="tlaUNC">           0 :                         unsigned char *p = buf;</span></span>
+<span id="L238"><span class="lineNum">     238</span>              : </span>
+<span id="L239"><span class="lineNum">     239</span> <span class="tlaUNC">           0 :                         encode_varbyte(delta, &amp;p);</span></span>
+<span id="L240"><span class="lineNum">     240</span> <span class="tlaUNC">           0 :                         if (p - buf &gt; (endptr - ptr))</span></span>
+<span id="L241"><span class="lineNum">     241</span> <span class="tlaUNC">           0 :                                 break;                  /* output is full */</span></span>
+<span id="L242"><span class="lineNum">     242</span>              : </span>
+<span id="L243"><span class="lineNum">     243</span> <span class="tlaUNC">           0 :                         memcpy(ptr, buf, p - buf);</span></span>
+<span id="L244"><span class="lineNum">     244</span> <span class="tlaUNC">           0 :                         ptr += (p - buf);</span></span>
+<span id="L245"><span class="lineNum">     245</span>              :                 }</span>
+<span id="L246"><span class="lineNum">     246</span> <span class="tlaUNC">           0 :                 prev = val;</span></span>
+<span id="L247"><span class="lineNum">     247</span>              :         }</span>
+<span id="L248"><span class="lineNum">     248</span> <span class="tlaUNC">           0 :         result-&gt;nbytes = ptr - result-&gt;bytes;</span></span>
+<span id="L249"><span class="lineNum">     249</span>              : </span>
+<span id="L250"><span class="lineNum">     250</span>              :         /*</span>
+<span id="L251"><span class="lineNum">     251</span>              :          * If we wrote an odd number of bytes, zero out the padding byte at the</span>
+<span id="L252"><span class="lineNum">     252</span>              :          * end.</span>
+<span id="L253"><span class="lineNum">     253</span>              :          */</span>
+<span id="L254"><span class="lineNum">     254</span> <span class="tlaUNC">           0 :         if (result-&gt;nbytes != SHORTALIGN(result-&gt;nbytes))</span></span>
+<span id="L255"><span class="lineNum">     255</span> <span class="tlaUNC">           0 :                 result-&gt;bytes[result-&gt;nbytes] = 0;</span></span>
+<span id="L256"><span class="lineNum">     256</span>              : </span>
+<span id="L257"><span class="lineNum">     257</span> <span class="tlaUNC">           0 :         if (nwritten)</span></span>
+<span id="L258"><span class="lineNum">     258</span> <span class="tlaUNC">           0 :                 *nwritten = totalpacked;</span></span>
+<span id="L259"><span class="lineNum">     259</span>              : </span>
+<span id="L260"><span class="lineNum">     260</span>              :         Assert(SizeOfGinPostingList(result) &lt;= maxsize);</span>
+<span id="L261"><span class="lineNum">     261</span>              : </span>
+<span id="L262"><span class="lineNum">     262</span>              :         /*</span>
+<span id="L263"><span class="lineNum">     263</span>              :          * Check that the encoded segment decodes back to the original items.</span>
+<span id="L264"><span class="lineNum">     264</span>              :          */</span>
+<span id="L265"><span class="lineNum">     265</span>              : #if defined (CHECK_ENCODING_ROUNDTRIP)</span>
+<span id="L266"><span class="lineNum">     266</span>              :         {</span>
+<span id="L267"><span class="lineNum">     267</span>              :                 int                     ndecoded;</span>
+<span id="L268"><span class="lineNum">     268</span>              :                 ItemPointer tmp = ginPostingListDecode(result, &amp;ndecoded);</span>
+<span id="L269"><span class="lineNum">     269</span>              : </span>
+<span id="L270"><span class="lineNum">     270</span>              :                 Assert(ndecoded == totalpacked);</span>
+<span id="L271"><span class="lineNum">     271</span>              :                 Assert(memcmp(tmp, ipd, ndecoded * sizeof(ItemPointerData)) == 0);</span>
+<span id="L272"><span class="lineNum">     272</span>              :                 pfree(tmp);</span>
+<span id="L273"><span class="lineNum">     273</span>              :         }</span>
+<span id="L274"><span class="lineNum">     274</span>              : #endif</span>
+<span id="L275"><span class="lineNum">     275</span>              : </span>
+<span id="L276"><span class="lineNum">     276</span> <span class="tlaUNC">           0 :         return result;</span></span>
+<span id="L277"><span class="lineNum">     277</span>              : }</span>
+<span id="L278"><span class="lineNum">     278</span>              : </span>
+<span id="L279"><span class="lineNum">     279</span>              : /*</span>
+<span id="L280"><span class="lineNum">     280</span>              :  * Decode a compressed posting list into an array of item pointers.</span>
+<span id="L281"><span class="lineNum">     281</span>              :  * The number of items is returned in *ndecoded.</span>
+<span id="L282"><span class="lineNum">     282</span>              :  */</span>
+<span id="L283"><span class="lineNum">     283</span>              : ItemPointer</span>
+<span id="L284"><span class="lineNum">     284</span> <span class="tlaUNC">           0 : ginPostingListDecode(GinPostingList *plist, int *ndecoded)</span></span>
+<span id="L285"><span class="lineNum">     285</span>              : {</span>
+<span id="L286"><span class="lineNum">     286</span> <span class="tlaUNC">           0 :         return ginPostingListDecodeAllSegments(plist,</span></span>
+<span id="L287"><span class="lineNum">     287</span> <span class="tlaUNC">           0 :                                                                                    SizeOfGinPostingList(plist),</span></span>
+<span id="L288"><span class="lineNum">     288</span>              :                                                                                    ndecoded);</span>
+<span id="L289"><span class="lineNum">     289</span>              : }</span>
+<span id="L290"><span class="lineNum">     290</span>              : </span>
+<span id="L291"><span class="lineNum">     291</span>              : /*</span>
+<span id="L292"><span class="lineNum">     292</span>              :  * Decode multiple posting list segments into an array of item pointers.</span>
+<span id="L293"><span class="lineNum">     293</span>              :  * The number of items is returned in *ndecoded_out. The segments are stored</span>
+<span id="L294"><span class="lineNum">     294</span>              :  * one after each other, with total size 'len' bytes.</span>
+<span id="L295"><span class="lineNum">     295</span>              :  */</span>
+<span id="L296"><span class="lineNum">     296</span>              : ItemPointer</span>
+<span id="L297"><span class="lineNum">     297</span> <span class="tlaUNC">           0 : ginPostingListDecodeAllSegments(GinPostingList *segment, int len, int *ndecoded_out)</span></span>
+<span id="L298"><span class="lineNum">     298</span>              : {</span>
+<span id="L299"><span class="lineNum">     299</span>              :         ItemPointer result;</span>
+<span id="L300"><span class="lineNum">     300</span>              :         int                     nallocated;</span>
+<span id="L301"><span class="lineNum">     301</span>              :         uint64          val;</span>
+<span id="L302"><span class="lineNum">     302</span> <span class="tlaUNC">           0 :         char       *endseg = ((char *) segment) + len;</span></span>
+<span id="L303"><span class="lineNum">     303</span>              :         int                     ndecoded;</span>
+<span id="L304"><span class="lineNum">     304</span>              :         unsigned char *ptr;</span>
+<span id="L305"><span class="lineNum">     305</span>              :         unsigned char *endptr;</span>
+<span id="L306"><span class="lineNum">     306</span>              : </span>
+<span id="L307"><span class="lineNum">     307</span>              :         /*</span>
+<span id="L308"><span class="lineNum">     308</span>              :          * Guess an initial size of the array.</span>
+<span id="L309"><span class="lineNum">     309</span>              :          */</span>
+<span id="L310"><span class="lineNum">     310</span> <span class="tlaUNC">           0 :         nallocated = segment-&gt;nbytes * 2 + 1;</span></span>
+<span id="L311"><span class="lineNum">     311</span> <span class="tlaUNC">           0 :         result = palloc(nallocated * sizeof(ItemPointerData));</span></span>
+<span id="L312"><span class="lineNum">     312</span>              : </span>
+<span id="L313"><span class="lineNum">     313</span> <span class="tlaUNC">           0 :         ndecoded = 0;</span></span>
+<span id="L314"><span class="lineNum">     314</span> <span class="tlaUNC">           0 :         while ((char *) segment &lt; endseg)</span></span>
+<span id="L315"><span class="lineNum">     315</span>              :         {</span>
+<span id="L316"><span class="lineNum">     316</span>              :                 /* enlarge output array if needed */</span>
+<span id="L317"><span class="lineNum">     317</span> <span class="tlaUNC">           0 :                 if (ndecoded &gt;= nallocated)</span></span>
+<span id="L318"><span class="lineNum">     318</span>              :                 {</span>
+<span id="L319"><span class="lineNum">     319</span> <span class="tlaUNC">           0 :                         nallocated *= 2;</span></span>
+<span id="L320"><span class="lineNum">     320</span> <span class="tlaUNC">           0 :                         result = repalloc(result, nallocated * sizeof(ItemPointerData));</span></span>
+<span id="L321"><span class="lineNum">     321</span>              :                 }</span>
+<span id="L322"><span class="lineNum">     322</span>              : </span>
+<span id="L323"><span class="lineNum">     323</span>              :                 /* copy the first item */</span>
+<span id="L324"><span class="lineNum">     324</span>              :                 Assert(OffsetNumberIsValid(ItemPointerGetOffsetNumber(&amp;segment-&gt;first)));</span>
+<span id="L325"><span class="lineNum">     325</span>              :                 Assert(ndecoded == 0 || ginCompareItemPointers(&amp;segment-&gt;first, &amp;result[ndecoded - 1]) &gt; 0);</span>
+<span id="L326"><span class="lineNum">     326</span> <span class="tlaUNC">           0 :                 result[ndecoded] = segment-&gt;first;</span></span>
+<span id="L327"><span class="lineNum">     327</span> <span class="tlaUNC">           0 :                 ndecoded++;</span></span>
+<span id="L328"><span class="lineNum">     328</span>              : </span>
+<span id="L329"><span class="lineNum">     329</span> <span class="tlaUNC">           0 :                 val = itemptr_to_uint64(&amp;segment-&gt;first);</span></span>
+<span id="L330"><span class="lineNum">     330</span> <span class="tlaUNC">           0 :                 ptr = segment-&gt;bytes;</span></span>
+<span id="L331"><span class="lineNum">     331</span> <span class="tlaUNC">           0 :                 endptr = segment-&gt;bytes + segment-&gt;nbytes;</span></span>
+<span id="L332"><span class="lineNum">     332</span> <span class="tlaUNC">           0 :                 while (ptr &lt; endptr)</span></span>
+<span id="L333"><span class="lineNum">     333</span>              :                 {</span>
+<span id="L334"><span class="lineNum">     334</span>              :                         /* enlarge output array if needed */</span>
+<span id="L335"><span class="lineNum">     335</span> <span class="tlaUNC">           0 :                         if (ndecoded &gt;= nallocated)</span></span>
+<span id="L336"><span class="lineNum">     336</span>              :                         {</span>
+<span id="L337"><span class="lineNum">     337</span> <span class="tlaUNC">           0 :                                 nallocated *= 2;</span></span>
+<span id="L338"><span class="lineNum">     338</span> <span class="tlaUNC">           0 :                                 result = repalloc(result, nallocated * sizeof(ItemPointerData));</span></span>
+<span id="L339"><span class="lineNum">     339</span>              :                         }</span>
+<span id="L340"><span class="lineNum">     340</span>              : </span>
+<span id="L341"><span class="lineNum">     341</span> <span class="tlaUNC">           0 :                         val += decode_varbyte(&amp;ptr);</span></span>
+<span id="L342"><span class="lineNum">     342</span>              : </span>
+<span id="L343"><span class="lineNum">     343</span> <span class="tlaUNC">           0 :                         uint64_to_itemptr(val, &amp;result[ndecoded]);</span></span>
+<span id="L344"><span class="lineNum">     344</span> <span class="tlaUNC">           0 :                         ndecoded++;</span></span>
+<span id="L345"><span class="lineNum">     345</span>              :                 }</span>
+<span id="L346"><span class="lineNum">     346</span> <span class="tlaUNC">           0 :                 segment = GinNextPostingListSegment(segment);</span></span>
+<span id="L347"><span class="lineNum">     347</span>              :         }</span>
+<span id="L348"><span class="lineNum">     348</span>              : </span>
+<span id="L349"><span class="lineNum">     349</span> <span class="tlaUNC">           0 :         if (ndecoded_out)</span></span>
+<span id="L350"><span class="lineNum">     350</span> <span class="tlaUNC">           0 :                 *ndecoded_out = ndecoded;</span></span>
+<span id="L351"><span class="lineNum">     351</span> <span class="tlaUNC">           0 :         return result;</span></span>
+<span id="L352"><span class="lineNum">     352</span>              : }</span>
+<span id="L353"><span class="lineNum">     353</span>              : </span>
+<span id="L354"><span class="lineNum">     354</span>              : /*</span>
+<span id="L355"><span class="lineNum">     355</span>              :  * Add all item pointers from a bunch of posting lists to a TIDBitmap.</span>
+<span id="L356"><span class="lineNum">     356</span>              :  */</span>
+<span id="L357"><span class="lineNum">     357</span>              : int</span>
+<span id="L358"><span class="lineNum">     358</span> <span class="tlaUNC">           0 : ginPostingListDecodeAllSegmentsToTbm(GinPostingList *ptr, int len,</span></span>
+<span id="L359"><span class="lineNum">     359</span>              :                                                                          TIDBitmap *tbm)</span>
+<span id="L360"><span class="lineNum">     360</span>              : {</span>
+<span id="L361"><span class="lineNum">     361</span>              :         int                     ndecoded;</span>
+<span id="L362"><span class="lineNum">     362</span>              :         ItemPointer items;</span>
+<span id="L363"><span class="lineNum">     363</span>              : </span>
+<span id="L364"><span class="lineNum">     364</span> <span class="tlaUNC">           0 :         items = ginPostingListDecodeAllSegments(ptr, len, &amp;ndecoded);</span></span>
+<span id="L365"><span class="lineNum">     365</span> <span class="tlaUNC">           0 :         tbm_add_tuples(tbm, items, ndecoded, false);</span></span>
+<span id="L366"><span class="lineNum">     366</span> <span class="tlaUNC">           0 :         pfree(items);</span></span>
+<span id="L367"><span class="lineNum">     367</span>              : </span>
+<span id="L368"><span class="lineNum">     368</span> <span class="tlaUNC">           0 :         return ndecoded;</span></span>
+<span id="L369"><span class="lineNum">     369</span>              : }</span>
+<span id="L370"><span class="lineNum">     370</span>              : </span>
+<span id="L371"><span class="lineNum">     371</span>              : /*</span>
+<span id="L372"><span class="lineNum">     372</span>              :  * Merge two ordered arrays of itempointers, eliminating any duplicates.</span>
+<span id="L373"><span class="lineNum">     373</span>              :  *</span>
+<span id="L374"><span class="lineNum">     374</span>              :  * Returns a palloc'd array, and *nmerged is set to the number of items in</span>
+<span id="L375"><span class="lineNum">     375</span>              :  * the result, after eliminating duplicates.</span>
+<span id="L376"><span class="lineNum">     376</span>              :  */</span>
+<span id="L377"><span class="lineNum">     377</span>              : ItemPointer</span>
+<span id="L378"><span class="lineNum">     378</span> <span class="tlaUNC">           0 : ginMergeItemPointers(ItemPointerData *a, uint32 na,</span></span>
+<span id="L379"><span class="lineNum">     379</span>              :                                          ItemPointerData *b, uint32 nb,</span>
+<span id="L380"><span class="lineNum">     380</span>              :                                          int *nmerged)</span>
+<span id="L381"><span class="lineNum">     381</span>              : {</span>
+<span id="L382"><span class="lineNum">     382</span>              :         ItemPointerData *dst;</span>
+<span id="L383"><span class="lineNum">     383</span>              : </span>
+<span id="L384"><span class="lineNum">     384</span> <span class="tlaUNC">           0 :         dst = (ItemPointer) palloc((na + nb) * sizeof(ItemPointerData));</span></span>
+<span id="L385"><span class="lineNum">     385</span>              : </span>
+<span id="L386"><span class="lineNum">     386</span>              :         /*</span>
+<span id="L387"><span class="lineNum">     387</span>              :          * If the argument arrays don't overlap, we can just append them to each</span>
+<span id="L388"><span class="lineNum">     388</span>              :          * other.</span>
+<span id="L389"><span class="lineNum">     389</span>              :          */</span>
+<span id="L390"><span class="lineNum">     390</span> <span class="tlaUNC">           0 :         if (na == 0 || nb == 0 || ginCompareItemPointers(&amp;a[na - 1], &amp;b[0]) &lt; 0)</span></span>
+<span id="L391"><span class="lineNum">     391</span>              :         {</span>
+<span id="L392"><span class="lineNum">     392</span> <span class="tlaUNC">           0 :                 memcpy(dst, a, na * sizeof(ItemPointerData));</span></span>
+<span id="L393"><span class="lineNum">     393</span> <span class="tlaUNC">           0 :                 memcpy(&amp;dst[na], b, nb * sizeof(ItemPointerData));</span></span>
+<span id="L394"><span class="lineNum">     394</span> <span class="tlaUNC">           0 :                 *nmerged = na + nb;</span></span>
+<span id="L395"><span class="lineNum">     395</span>              :         }</span>
+<span id="L396"><span class="lineNum">     396</span> <span class="tlaUNC">           0 :         else if (ginCompareItemPointers(&amp;b[nb - 1], &amp;a[0]) &lt; 0)</span></span>
+<span id="L397"><span class="lineNum">     397</span>              :         {</span>
+<span id="L398"><span class="lineNum">     398</span> <span class="tlaUNC">           0 :                 memcpy(dst, b, nb * sizeof(ItemPointerData));</span></span>
+<span id="L399"><span class="lineNum">     399</span> <span class="tlaUNC">           0 :                 memcpy(&amp;dst[nb], a, na * sizeof(ItemPointerData));</span></span>
+<span id="L400"><span class="lineNum">     400</span> <span class="tlaUNC">           0 :                 *nmerged = na + nb;</span></span>
+<span id="L401"><span class="lineNum">     401</span>              :         }</span>
+<span id="L402"><span class="lineNum">     402</span>              :         else</span>
+<span id="L403"><span class="lineNum">     403</span>              :         {</span>
+<span id="L404"><span class="lineNum">     404</span> <span class="tlaUNC">           0 :                 ItemPointerData *dptr = dst;</span></span>
+<span id="L405"><span class="lineNum">     405</span> <span class="tlaUNC">           0 :                 ItemPointerData *aptr = a;</span></span>
+<span id="L406"><span class="lineNum">     406</span> <span class="tlaUNC">           0 :                 ItemPointerData *bptr = b;</span></span>
+<span id="L407"><span class="lineNum">     407</span>              : </span>
+<span id="L408"><span class="lineNum">     408</span> <span class="tlaUNC">           0 :                 while (aptr - a &lt; na &amp;&amp; bptr - b &lt; nb)</span></span>
+<span id="L409"><span class="lineNum">     409</span>              :                 {</span>
+<span id="L410"><span class="lineNum">     410</span> <span class="tlaUNC">           0 :                         int                     cmp = ginCompareItemPointers(aptr, bptr);</span></span>
+<span id="L411"><span class="lineNum">     411</span>              : </span>
+<span id="L412"><span class="lineNum">     412</span> <span class="tlaUNC">           0 :                         if (cmp &gt; 0)</span></span>
+<span id="L413"><span class="lineNum">     413</span> <span class="tlaUNC">           0 :                                 *dptr++ = *bptr++;</span></span>
+<span id="L414"><span class="lineNum">     414</span> <span class="tlaUNC">           0 :                         else if (cmp == 0)</span></span>
+<span id="L415"><span class="lineNum">     415</span>              :                         {</span>
+<span id="L416"><span class="lineNum">     416</span>              :                                 /* only keep one copy of the identical items */</span>
+<span id="L417"><span class="lineNum">     417</span> <span class="tlaUNC">           0 :                                 *dptr++ = *bptr++;</span></span>
+<span id="L418"><span class="lineNum">     418</span> <span class="tlaUNC">           0 :                                 aptr++;</span></span>
+<span id="L419"><span class="lineNum">     419</span>              :                         }</span>
+<span id="L420"><span class="lineNum">     420</span>              :                         else</span>
+<span id="L421"><span class="lineNum">     421</span> <span class="tlaUNC">           0 :                                 *dptr++ = *aptr++;</span></span>
+<span id="L422"><span class="lineNum">     422</span>              :                 }</span>
+<span id="L423"><span class="lineNum">     423</span>              : </span>
+<span id="L424"><span class="lineNum">     424</span> <span class="tlaUNC">           0 :                 while (aptr - a &lt; na)</span></span>
+<span id="L425"><span class="lineNum">     425</span> <span class="tlaUNC">           0 :                         *dptr++ = *aptr++;</span></span>
+<span id="L426"><span class="lineNum">     426</span>              : </span>
+<span id="L427"><span class="lineNum">     427</span> <span class="tlaUNC">           0 :                 while (bptr - b &lt; nb)</span></span>
+<span id="L428"><span class="lineNum">     428</span> <span class="tlaUNC">           0 :                         *dptr++ = *bptr++;</span></span>
+<span id="L429"><span class="lineNum">     429</span>              : </span>
+<span id="L430"><span class="lineNum">     430</span> <span class="tlaUNC">           0 :                 *nmerged = dptr - dst;</span></span>
+<span id="L431"><span class="lineNum">     431</span>              :         }</span>
+<span id="L432"><span class="lineNum">     432</span>              : </span>
+<span id="L433"><span class="lineNum">     433</span> <span class="tlaUNC">           0 :         return dst;</span></span>
+<span id="L434"><span class="lineNum">     434</span>              : }</span>
+        </pre>
+              </td>
+            </tr>
+          </table>
+          <br>
+
+          <table width="100%" border=0 cellspacing=0 cellpadding=0>
+            <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+            <tr><td class="versionInfo">Generated by: <a href="https://github.com//linux-test-project/lcov" target="_parent">LCOV version 2.0-1</a></td></tr>
+          </table>
+          <br>
+
+</body>
+</html>

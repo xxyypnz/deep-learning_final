@@ -1,0 +1,1110 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - coverage_filtered.info - backend/parser/parse_collate.c</title>
+  <link rel="stylesheet" type="text/css" href="../../gcov.css">
+</head>
+
+<body>
+
+          <table width="100%" border=0 cellspacing=0 cellpadding=0>
+            <tr><td class="title">LCOV - code coverage report</td></tr>
+            <tr><td class="ruler"><img src="../../glass.png" width=3 height=3 alt=""></td></tr>
+
+            <tr>
+              <td width="100%">
+                <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="10%" class="headerValue"><a href="../../index.html">top level</a> - <a href="index.html">backend/parser</a> - parse_collate.c<span style="font-size: 80%;"> (source / <a href="parse_collate.c.func-c.html">functions</a>)</span></td>
+            <td width="5%"></td>
+            <td width="5%"></td>
+            <td width="5%" class="headerCovTableHead">Coverage</td>
+            <td width="5%" class="headerCovTableHead" title="Covered + Uncovered code">Total</td>
+            <td width="5%" class="headerCovTableHead" title="Exercised code only">Hit</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">coverage_filtered.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntryLo">64.1&nbsp;%</td>
+            <td class="headerCovTableEntry">270</td>
+            <td class="headerCovTableEntry">173</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test Date:</td>
+            <td class="headerValue">2026-06-06 04:03:43</td>
+            <td></td>
+            <td class="headerItem">Functions:</td>
+            <td class="headerCovTableEntryMed">80.0&nbsp;%</td>
+            <td class="headerCovTableEntry">10</td>
+            <td class="headerCovTableEntry">8</td>
+          </tr>
+                  <tr><td><img src="../../glass.png" width=3 height=3 alt=""></td></tr>
+                </table>
+              </td>
+            </tr>
+
+            <tr><td class="ruler"><img src="../../glass.png" width=3 height=3 alt=""></td></tr>
+          </table>
+
+          <table cellpadding=0 cellspacing=0 border=0>
+            <tr>
+              <td><br></td>
+            </tr>
+            <tr>
+              <td>
+<pre class="sourceHeading">            Line data    Source code</pre>
+<pre class="source">
+<span id="L1"><span class="lineNum">       1</span>              : /*-------------------------------------------------------------------------</span>
+<span id="L2"><span class="lineNum">       2</span>              :  *</span>
+<span id="L3"><span class="lineNum">       3</span>              :  * parse_collate.c</span>
+<span id="L4"><span class="lineNum">       4</span>              :  *              Routines for assigning collation information.</span>
+<span id="L5"><span class="lineNum">       5</span>              :  *</span>
+<span id="L6"><span class="lineNum">       6</span>              :  * We choose to handle collation analysis in a post-pass over the output</span>
+<span id="L7"><span class="lineNum">       7</span>              :  * of expression parse analysis.  This is because we need more state to</span>
+<span id="L8"><span class="lineNum">       8</span>              :  * perform this processing than is needed in the finished tree.  If we</span>
+<span id="L9"><span class="lineNum">       9</span>              :  * did it on-the-fly while building the tree, all that state would have</span>
+<span id="L10"><span class="lineNum">      10</span>              :  * to be kept in expression node trees permanently.  This way, the extra</span>
+<span id="L11"><span class="lineNum">      11</span>              :  * storage is just local variables in this recursive routine.</span>
+<span id="L12"><span class="lineNum">      12</span>              :  *</span>
+<span id="L13"><span class="lineNum">      13</span>              :  * The info that is actually saved in the finished tree is:</span>
+<span id="L14"><span class="lineNum">      14</span>              :  * 1. The output collation of each expression node, or InvalidOid if it</span>
+<span id="L15"><span class="lineNum">      15</span>              :  * returns a noncollatable data type.  This can also be InvalidOid if the</span>
+<span id="L16"><span class="lineNum">      16</span>              :  * result type is collatable but the collation is indeterminate.</span>
+<span id="L17"><span class="lineNum">      17</span>              :  * 2. The collation to be used in executing each function.  InvalidOid means</span>
+<span id="L18"><span class="lineNum">      18</span>              :  * that there are no collatable inputs or their collation is indeterminate.</span>
+<span id="L19"><span class="lineNum">      19</span>              :  * This value is only stored in node types that might call collation-using</span>
+<span id="L20"><span class="lineNum">      20</span>              :  * functions.</span>
+<span id="L21"><span class="lineNum">      21</span>              :  *</span>
+<span id="L22"><span class="lineNum">      22</span>              :  * You might think we could get away with storing only one collation per</span>
+<span id="L23"><span class="lineNum">      23</span>              :  * node, but the two concepts really need to be kept distinct.  Otherwise</span>
+<span id="L24"><span class="lineNum">      24</span>              :  * it's too confusing when a function produces a collatable output type but</span>
+<span id="L25"><span class="lineNum">      25</span>              :  * has no collatable inputs or produces noncollatable output from collatable</span>
+<span id="L26"><span class="lineNum">      26</span>              :  * inputs.</span>
+<span id="L27"><span class="lineNum">      27</span>              :  *</span>
+<span id="L28"><span class="lineNum">      28</span>              :  * Cases with indeterminate collation might result in an error being thrown</span>
+<span id="L29"><span class="lineNum">      29</span>              :  * at runtime.  If we knew exactly which functions require collation</span>
+<span id="L30"><span class="lineNum">      30</span>              :  * information, we could throw those errors at parse time instead.</span>
+<span id="L31"><span class="lineNum">      31</span>              :  *</span>
+<span id="L32"><span class="lineNum">      32</span>              :  * Portions Copyright (c) 1996-2020, PostgreSQL Global Development Group</span>
+<span id="L33"><span class="lineNum">      33</span>              :  * Portions Copyright (c) 1994, Regents of the University of California</span>
+<span id="L34"><span class="lineNum">      34</span>              :  *</span>
+<span id="L35"><span class="lineNum">      35</span>              :  *</span>
+<span id="L36"><span class="lineNum">      36</span>              :  * IDENTIFICATION</span>
+<span id="L37"><span class="lineNum">      37</span>              :  *        src/backend/parser/parse_collate.c</span>
+<span id="L38"><span class="lineNum">      38</span>              :  *</span>
+<span id="L39"><span class="lineNum">      39</span>              :  *-------------------------------------------------------------------------</span>
+<span id="L40"><span class="lineNum">      40</span>              :  */</span>
+<span id="L41"><span class="lineNum">      41</span>              : #include &quot;postgres.h&quot;</span>
+<span id="L42"><span class="lineNum">      42</span>              : </span>
+<span id="L43"><span class="lineNum">      43</span>              : #include &quot;catalog/pg_aggregate.h&quot;</span>
+<span id="L44"><span class="lineNum">      44</span>              : #include &quot;catalog/pg_collation.h&quot;</span>
+<span id="L45"><span class="lineNum">      45</span>              : #include &quot;nodes/makefuncs.h&quot;</span>
+<span id="L46"><span class="lineNum">      46</span>              : #include &quot;nodes/nodeFuncs.h&quot;</span>
+<span id="L47"><span class="lineNum">      47</span>              : #include &quot;parser/parse_collate.h&quot;</span>
+<span id="L48"><span class="lineNum">      48</span>              : #include &quot;utils/lsyscache.h&quot;</span>
+<span id="L49"><span class="lineNum">      49</span>              : </span>
+<span id="L50"><span class="lineNum">      50</span>              : </span>
+<span id="L51"><span class="lineNum">      51</span>              : /*</span>
+<span id="L52"><span class="lineNum">      52</span>              :  * Collation strength (the SQL standard calls this &quot;derivation&quot;).  Order is</span>
+<span id="L53"><span class="lineNum">      53</span>              :  * chosen to allow comparisons to work usefully.  Note: the standard doesn't</span>
+<span id="L54"><span class="lineNum">      54</span>              :  * seem to distinguish between NONE and CONFLICT.</span>
+<span id="L55"><span class="lineNum">      55</span>              :  */</span>
+<span id="L56"><span class="lineNum">      56</span>              : typedef enum</span>
+<span id="L57"><span class="lineNum">      57</span>              : {</span>
+<span id="L58"><span class="lineNum">      58</span>              :         COLLATE_NONE,                           /* expression is of a noncollatable datatype */</span>
+<span id="L59"><span class="lineNum">      59</span>              :         COLLATE_IMPLICIT,                       /* collation was derived implicitly */</span>
+<span id="L60"><span class="lineNum">      60</span>              :         COLLATE_CONFLICT,                       /* we had a conflict of implicit collations */</span>
+<span id="L61"><span class="lineNum">      61</span>              :         COLLATE_EXPLICIT                        /* collation was derived explicitly */</span>
+<span id="L62"><span class="lineNum">      62</span>              : } CollateStrength;</span>
+<span id="L63"><span class="lineNum">      63</span>              : </span>
+<span id="L64"><span class="lineNum">      64</span>              : typedef struct</span>
+<span id="L65"><span class="lineNum">      65</span>              : {</span>
+<span id="L66"><span class="lineNum">      66</span>              :         ParseState *pstate;                     /* parse state (for error reporting) */</span>
+<span id="L67"><span class="lineNum">      67</span>              :         Oid                     collation;              /* OID of current collation, if any */</span>
+<span id="L68"><span class="lineNum">      68</span>              :         CollateStrength strength;       /* strength of current collation choice */</span>
+<span id="L69"><span class="lineNum">      69</span>              :         int                     location;               /* location of expr that set collation */</span>
+<span id="L70"><span class="lineNum">      70</span>              :         /* Remaining fields are only valid when strength == COLLATE_CONFLICT */</span>
+<span id="L71"><span class="lineNum">      71</span>              :         Oid                     collation2;             /* OID of conflicting collation */</span>
+<span id="L72"><span class="lineNum">      72</span>              :         int                     location2;              /* location of expr that set collation2 */</span>
+<span id="L73"><span class="lineNum">      73</span>              : } assign_collations_context;</span>
+<span id="L74"><span class="lineNum">      74</span>              : </span>
+<span id="L75"><span class="lineNum">      75</span>              : static bool assign_query_collations_walker(Node *node, ParseState *pstate);</span>
+<span id="L76"><span class="lineNum">      76</span>              : static bool assign_collations_walker(Node *node,</span>
+<span id="L77"><span class="lineNum">      77</span>              :                                                                          assign_collations_context *context);</span>
+<span id="L78"><span class="lineNum">      78</span>              : static void merge_collation_state(Oid collation,</span>
+<span id="L79"><span class="lineNum">      79</span>              :                                                                   CollateStrength strength,</span>
+<span id="L80"><span class="lineNum">      80</span>              :                                                                   int location,</span>
+<span id="L81"><span class="lineNum">      81</span>              :                                                                   Oid collation2,</span>
+<span id="L82"><span class="lineNum">      82</span>              :                                                                   int location2,</span>
+<span id="L83"><span class="lineNum">      83</span>              :                                                                   assign_collations_context *context);</span>
+<span id="L84"><span class="lineNum">      84</span>              : static void assign_aggregate_collations(Aggref *aggref,</span>
+<span id="L85"><span class="lineNum">      85</span>              :                                                                                 assign_collations_context *loccontext);</span>
+<span id="L86"><span class="lineNum">      86</span>              : static void assign_ordered_set_collations(Aggref *aggref,</span>
+<span id="L87"><span class="lineNum">      87</span>              :                                                                                   assign_collations_context *loccontext);</span>
+<span id="L88"><span class="lineNum">      88</span>              : static void assign_hypothetical_collations(Aggref *aggref,</span>
+<span id="L89"><span class="lineNum">      89</span>              :                                                                                    assign_collations_context *loccontext);</span>
+<span id="L90"><span class="lineNum">      90</span>              : </span>
+<span id="L91"><span class="lineNum">      91</span>              : </span>
+<span id="L92"><span class="lineNum">      92</span>              : /*</span>
+<span id="L93"><span class="lineNum">      93</span>              :  * assign_query_collations()</span>
+<span id="L94"><span class="lineNum">      94</span>              :  *              Mark all expressions in the given Query with collation information.</span>
+<span id="L95"><span class="lineNum">      95</span>              :  *</span>
+<span id="L96"><span class="lineNum">      96</span>              :  * This should be applied to each Query after completion of parse analysis</span>
+<span id="L97"><span class="lineNum">      97</span>              :  * for expressions.  Note that we do not recurse into sub-Queries, since</span>
+<span id="L98"><span class="lineNum">      98</span>              :  * those should have been processed when built.</span>
+<span id="L99"><span class="lineNum">      99</span>              :  */</span>
+<span id="L100"><span class="lineNum">     100</span>              : void</span>
+<span id="L101"><span class="lineNum">     101</span> <span class="tlaGNC tlaBgGNC">         855 : assign_query_collations(ParseState *pstate, Query *query)</span></span>
+<span id="L102"><span class="lineNum">     102</span>              : {</span>
+<span id="L103"><span class="lineNum">     103</span>              :         /*</span>
+<span id="L104"><span class="lineNum">     104</span>              :          * We just use query_tree_walker() to visit all the contained expressions.</span>
+<span id="L105"><span class="lineNum">     105</span>              :          * We can skip the rangetable and CTE subqueries, though, since RTEs and</span>
+<span id="L106"><span class="lineNum">     106</span>              :          * subqueries had better have been processed already (else Vars referring</span>
+<span id="L107"><span class="lineNum">     107</span>              :          * to them would not get created with the right collation).</span>
+<span id="L108"><span class="lineNum">     108</span>              :          */</span>
+<span id="L109"><span class="lineNum">     109</span> <span class="tlaGNC">         855 :         (void) query_tree_walker(query,</span></span>
+<span id="L110"><span class="lineNum">     110</span>              :                                                          assign_query_collations_walker,</span>
+<span id="L111"><span class="lineNum">     111</span>              :                                                          (void *) pstate,</span>
+<span id="L112"><span class="lineNum">     112</span>              :                                                          QTW_IGNORE_RANGE_TABLE |</span>
+<span id="L113"><span class="lineNum">     113</span>              :                                                          QTW_IGNORE_CTE_SUBQUERIES);</span>
+<span id="L114"><span class="lineNum">     114</span> <span class="tlaGNC">         855 : }</span></span>
+<span id="L115"><span class="lineNum">     115</span>              : </span>
+<span id="L116"><span class="lineNum">     116</span>              : /*</span>
+<span id="L117"><span class="lineNum">     117</span>              :  * Walker for assign_query_collations</span>
+<span id="L118"><span class="lineNum">     118</span>              :  *</span>
+<span id="L119"><span class="lineNum">     119</span>              :  * Each expression found by query_tree_walker is processed independently.</span>
+<span id="L120"><span class="lineNum">     120</span>              :  * Note that query_tree_walker may pass us a whole List, such as the</span>
+<span id="L121"><span class="lineNum">     121</span>              :  * targetlist, in which case each subexpression must be processed</span>
+<span id="L122"><span class="lineNum">     122</span>              :  * independently --- we don't want to bleat if two different targetentries</span>
+<span id="L123"><span class="lineNum">     123</span>              :  * have different collations.</span>
+<span id="L124"><span class="lineNum">     124</span>              :  */</span>
+<span id="L125"><span class="lineNum">     125</span>              : static bool</span>
+<span id="L126"><span class="lineNum">     126</span> <span class="tlaGNC">        7697 : assign_query_collations_walker(Node *node, ParseState *pstate)</span></span>
+<span id="L127"><span class="lineNum">     127</span>              : {</span>
+<span id="L128"><span class="lineNum">     128</span>              :         /* Need do nothing for empty subexpressions */</span>
+<span id="L129"><span class="lineNum">     129</span> <span class="tlaGNC">        7697 :         if (node == NULL)</span></span>
+<span id="L130"><span class="lineNum">     130</span> <span class="tlaGNC">        5973 :                 return false;</span></span>
+<span id="L131"><span class="lineNum">     131</span>              : </span>
+<span id="L132"><span class="lineNum">     132</span>              :         /*</span>
+<span id="L133"><span class="lineNum">     133</span>              :          * We don't want to recurse into a set-operations tree; it's already been</span>
+<span id="L134"><span class="lineNum">     134</span>              :          * fully processed in transformSetOperationStmt.</span>
+<span id="L135"><span class="lineNum">     135</span>              :          */</span>
+<span id="L136"><span class="lineNum">     136</span> <span class="tlaGNC">        1724 :         if (IsA(node, SetOperationStmt))</span></span>
+<span id="L137"><span class="lineNum">     137</span> <span class="tlaGNC">          25 :                 return false;</span></span>
+<span id="L138"><span class="lineNum">     138</span>              : </span>
+<span id="L139"><span class="lineNum">     139</span> <span class="tlaGNC">        1699 :         if (IsA(node, List))</span></span>
+<span id="L140"><span class="lineNum">     140</span> <span class="tlaGNC">         840 :                 assign_list_collations(pstate, (List *) node);</span></span>
+<span id="L141"><span class="lineNum">     141</span>              :         else</span>
+<span id="L142"><span class="lineNum">     142</span> <span class="tlaGNC">         859 :                 assign_expr_collations(pstate, node);</span></span>
+<span id="L143"><span class="lineNum">     143</span>              : </span>
+<span id="L144"><span class="lineNum">     144</span> <span class="tlaGNC">        1699 :         return false;</span></span>
+<span id="L145"><span class="lineNum">     145</span>              : }</span>
+<span id="L146"><span class="lineNum">     146</span>              : </span>
+<span id="L147"><span class="lineNum">     147</span>              : /*</span>
+<span id="L148"><span class="lineNum">     148</span>              :  * assign_list_collations()</span>
+<span id="L149"><span class="lineNum">     149</span>              :  *              Mark all nodes in the list of expressions with collation information.</span>
+<span id="L150"><span class="lineNum">     150</span>              :  *</span>
+<span id="L151"><span class="lineNum">     151</span>              :  * The list member expressions are processed independently; they do not have</span>
+<span id="L152"><span class="lineNum">     152</span>              :  * to share a common collation.</span>
+<span id="L153"><span class="lineNum">     153</span>              :  */</span>
+<span id="L154"><span class="lineNum">     154</span>              : void</span>
+<span id="L155"><span class="lineNum">     155</span> <span class="tlaGNC">         961 : assign_list_collations(ParseState *pstate, List *exprs)</span></span>
+<span id="L156"><span class="lineNum">     156</span>              : {</span>
+<span id="L157"><span class="lineNum">     157</span>              :         ListCell   *lc;</span>
+<span id="L158"><span class="lineNum">     158</span>              : </span>
+<span id="L159"><span class="lineNum">     159</span> <span class="tlaGNC">        4278 :         foreach(lc, exprs)</span></span>
+<span id="L160"><span class="lineNum">     160</span>              :         {</span>
+<span id="L161"><span class="lineNum">     161</span> <span class="tlaGNC">        3317 :                 Node       *node = (Node *) lfirst(lc);</span></span>
+<span id="L162"><span class="lineNum">     162</span>              : </span>
+<span id="L163"><span class="lineNum">     163</span> <span class="tlaGNC">        3317 :                 assign_expr_collations(pstate, node);</span></span>
+<span id="L164"><span class="lineNum">     164</span>              :         }</span>
+<span id="L165"><span class="lineNum">     165</span> <span class="tlaGNC">         961 : }</span></span>
+<span id="L166"><span class="lineNum">     166</span>              : </span>
+<span id="L167"><span class="lineNum">     167</span>              : /*</span>
+<span id="L168"><span class="lineNum">     168</span>              :  * assign_expr_collations()</span>
+<span id="L169"><span class="lineNum">     169</span>              :  *              Mark all nodes in the given expression tree with collation information.</span>
+<span id="L170"><span class="lineNum">     170</span>              :  *</span>
+<span id="L171"><span class="lineNum">     171</span>              :  * This is exported for the benefit of various utility commands that process</span>
+<span id="L172"><span class="lineNum">     172</span>              :  * expressions without building a complete Query.  It should be applied after</span>
+<span id="L173"><span class="lineNum">     173</span>              :  * calling transformExpr() plus any expression-modifying operations such as</span>
+<span id="L174"><span class="lineNum">     174</span>              :  * coerce_to_boolean().</span>
+<span id="L175"><span class="lineNum">     175</span>              :  */</span>
+<span id="L176"><span class="lineNum">     176</span>              : void</span>
+<span id="L177"><span class="lineNum">     177</span> <span class="tlaGNC">        4377 : assign_expr_collations(ParseState *pstate, Node *expr)</span></span>
+<span id="L178"><span class="lineNum">     178</span>              : {</span>
+<span id="L179"><span class="lineNum">     179</span>              :         assign_collations_context context;</span>
+<span id="L180"><span class="lineNum">     180</span>              : </span>
+<span id="L181"><span class="lineNum">     181</span>              :         /* initialize context for tree walk */</span>
+<span id="L182"><span class="lineNum">     182</span> <span class="tlaGNC">        4377 :         context.pstate = pstate;</span></span>
+<span id="L183"><span class="lineNum">     183</span> <span class="tlaGNC">        4377 :         context.collation = InvalidOid;</span></span>
+<span id="L184"><span class="lineNum">     184</span> <span class="tlaGNC">        4377 :         context.strength = COLLATE_NONE;</span></span>
+<span id="L185"><span class="lineNum">     185</span> <span class="tlaGNC">        4377 :         context.location = -1;</span></span>
+<span id="L186"><span class="lineNum">     186</span>              : </span>
+<span id="L187"><span class="lineNum">     187</span>              :         /* and away we go */</span>
+<span id="L188"><span class="lineNum">     188</span> <span class="tlaGNC">        4377 :         (void) assign_collations_walker(expr, &amp;context);</span></span>
+<span id="L189"><span class="lineNum">     189</span> <span class="tlaGNC">        4377 : }</span></span>
+<span id="L190"><span class="lineNum">     190</span>              : </span>
+<span id="L191"><span class="lineNum">     191</span>              : /*</span>
+<span id="L192"><span class="lineNum">     192</span>              :  * select_common_collation()</span>
+<span id="L193"><span class="lineNum">     193</span>              :  *              Identify a common collation for a list of expressions.</span>
+<span id="L194"><span class="lineNum">     194</span>              :  *</span>
+<span id="L195"><span class="lineNum">     195</span>              :  * The expressions should all return the same datatype, else this is not</span>
+<span id="L196"><span class="lineNum">     196</span>              :  * terribly meaningful.</span>
+<span id="L197"><span class="lineNum">     197</span>              :  *</span>
+<span id="L198"><span class="lineNum">     198</span>              :  * none_ok means that it is permitted to return InvalidOid, indicating that</span>
+<span id="L199"><span class="lineNum">     199</span>              :  * no common collation could be identified, even for collatable datatypes.</span>
+<span id="L200"><span class="lineNum">     200</span>              :  * Otherwise, an error is thrown for conflict of implicit collations.</span>
+<span id="L201"><span class="lineNum">     201</span>              :  *</span>
+<span id="L202"><span class="lineNum">     202</span>              :  * In theory, none_ok = true reflects the rules of SQL standard clause &quot;Result</span>
+<span id="L203"><span class="lineNum">     203</span>              :  * of data type combinations&quot;, none_ok = false reflects the rules of clause</span>
+<span id="L204"><span class="lineNum">     204</span>              :  * &quot;Collation determination&quot; (in some cases invoked via &quot;Grouping</span>
+<span id="L205"><span class="lineNum">     205</span>              :  * operations&quot;).</span>
+<span id="L206"><span class="lineNum">     206</span>              :  */</span>
+<span id="L207"><span class="lineNum">     207</span>              : Oid</span>
+<span id="L208"><span class="lineNum">     208</span> <span class="tlaGNC">         235 : select_common_collation(ParseState *pstate, List *exprs, bool none_ok)</span></span>
+<span id="L209"><span class="lineNum">     209</span>              : {</span>
+<span id="L210"><span class="lineNum">     210</span>              :         assign_collations_context context;</span>
+<span id="L211"><span class="lineNum">     211</span>              : </span>
+<span id="L212"><span class="lineNum">     212</span>              :         /* initialize context for tree walk */</span>
+<span id="L213"><span class="lineNum">     213</span> <span class="tlaGNC">         235 :         context.pstate = pstate;</span></span>
+<span id="L214"><span class="lineNum">     214</span> <span class="tlaGNC">         235 :         context.collation = InvalidOid;</span></span>
+<span id="L215"><span class="lineNum">     215</span> <span class="tlaGNC">         235 :         context.strength = COLLATE_NONE;</span></span>
+<span id="L216"><span class="lineNum">     216</span> <span class="tlaGNC">         235 :         context.location = -1;</span></span>
+<span id="L217"><span class="lineNum">     217</span>              : </span>
+<span id="L218"><span class="lineNum">     218</span>              :         /* and away we go */</span>
+<span id="L219"><span class="lineNum">     219</span> <span class="tlaGNC">         235 :         (void) assign_collations_walker((Node *) exprs, &amp;context);</span></span>
+<span id="L220"><span class="lineNum">     220</span>              : </span>
+<span id="L221"><span class="lineNum">     221</span>              :         /* deal with collation conflict */</span>
+<span id="L222"><span class="lineNum">     222</span> <span class="tlaGNC">         235 :         if (context.strength == COLLATE_CONFLICT)</span></span>
+<span id="L223"><span class="lineNum">     223</span>              :         {</span>
+<span id="L224"><span class="lineNum">     224</span> <span class="tlaUNC tlaBgUNC">           0 :                 if (none_ok)</span></span>
+<span id="L225"><span class="lineNum">     225</span> <span class="tlaUNC">           0 :                         return InvalidOid;</span></span>
+<span id="L226"><span class="lineNum">     226</span> <span class="tlaUNC">           0 :                 ereport(ERROR,</span></span>
+<span id="L227"><span class="lineNum">     227</span>              :                                 (errcode(ERRCODE_COLLATION_MISMATCH),</span>
+<span id="L228"><span class="lineNum">     228</span>              :                                  errmsg(&quot;collation mismatch between implicit collations \&quot;%s\&quot; and \&quot;%s\&quot;&quot;,</span>
+<span id="L229"><span class="lineNum">     229</span>              :                                                 get_collation_name(context.collation),</span>
+<span id="L230"><span class="lineNum">     230</span>              :                                                 get_collation_name(context.collation2)),</span>
+<span id="L231"><span class="lineNum">     231</span>              :                                  errhint(&quot;You can choose the collation by applying the COLLATE clause to one or both expressions.&quot;),</span>
+<span id="L232"><span class="lineNum">     232</span>              :                                  parser_errposition(context.pstate, context.location2)));</span>
+<span id="L233"><span class="lineNum">     233</span>              :         }</span>
+<span id="L234"><span class="lineNum">     234</span>              : </span>
+<span id="L235"><span class="lineNum">     235</span>              :         /*</span>
+<span id="L236"><span class="lineNum">     236</span>              :          * Note: if strength is still COLLATE_NONE, we'll return InvalidOid, but</span>
+<span id="L237"><span class="lineNum">     237</span>              :          * that's okay because it must mean none of the expressions returned</span>
+<span id="L238"><span class="lineNum">     238</span>              :          * collatable datatypes.</span>
+<span id="L239"><span class="lineNum">     239</span>              :          */</span>
+<span id="L240"><span class="lineNum">     240</span> <span class="tlaGNC tlaBgGNC">         235 :         return context.collation;</span></span>
+<span id="L241"><span class="lineNum">     241</span>              : }</span>
+<span id="L242"><span class="lineNum">     242</span>              : </span>
+<span id="L243"><span class="lineNum">     243</span>              : /*</span>
+<span id="L244"><span class="lineNum">     244</span>              :  * assign_collations_walker()</span>
+<span id="L245"><span class="lineNum">     245</span>              :  *              Recursive guts of collation processing.</span>
+<span id="L246"><span class="lineNum">     246</span>              :  *</span>
+<span id="L247"><span class="lineNum">     247</span>              :  * Nodes with no children (eg, Vars, Consts, Params) must have been marked</span>
+<span id="L248"><span class="lineNum">     248</span>              :  * when built.  All upper-level nodes are marked here.</span>
+<span id="L249"><span class="lineNum">     249</span>              :  *</span>
+<span id="L250"><span class="lineNum">     250</span>              :  * Note: if this is invoked directly on a List, it will attempt to infer a</span>
+<span id="L251"><span class="lineNum">     251</span>              :  * common collation for all the list members.  In particular, it will throw</span>
+<span id="L252"><span class="lineNum">     252</span>              :  * error if there are conflicting explicit collations for different members.</span>
+<span id="L253"><span class="lineNum">     253</span>              :  */</span>
+<span id="L254"><span class="lineNum">     254</span>              : static bool</span>
+<span id="L255"><span class="lineNum">     255</span> <span class="tlaGNC">       18045 : assign_collations_walker(Node *node, assign_collations_context *context)</span></span>
+<span id="L256"><span class="lineNum">     256</span>              : {</span>
+<span id="L257"><span class="lineNum">     257</span>              :         assign_collations_context loccontext;</span>
+<span id="L258"><span class="lineNum">     258</span>              :         Oid                     collation;</span>
+<span id="L259"><span class="lineNum">     259</span>              :         CollateStrength strength;</span>
+<span id="L260"><span class="lineNum">     260</span>              :         int                     location;</span>
+<span id="L261"><span class="lineNum">     261</span>              : </span>
+<span id="L262"><span class="lineNum">     262</span>              :         /* Need do nothing for empty subexpressions */</span>
+<span id="L263"><span class="lineNum">     263</span> <span class="tlaGNC">       18045 :         if (node == NULL)</span></span>
+<span id="L264"><span class="lineNum">     264</span> <span class="tlaGNC">         962 :                 return false;</span></span>
+<span id="L265"><span class="lineNum">     265</span>              : </span>
+<span id="L266"><span class="lineNum">     266</span>              :         /*</span>
+<span id="L267"><span class="lineNum">     267</span>              :          * Prepare for recursion.  For most node types, though not all, the first</span>
+<span id="L268"><span class="lineNum">     268</span>              :          * thing we do is recurse to process all nodes below this one. Each level</span>
+<span id="L269"><span class="lineNum">     269</span>              :          * of the tree has its own local context.</span>
+<span id="L270"><span class="lineNum">     270</span>              :          */</span>
+<span id="L271"><span class="lineNum">     271</span> <span class="tlaGNC">       17083 :         loccontext.pstate = context-&gt;pstate;</span></span>
+<span id="L272"><span class="lineNum">     272</span> <span class="tlaGNC">       17083 :         loccontext.collation = InvalidOid;</span></span>
+<span id="L273"><span class="lineNum">     273</span> <span class="tlaGNC">       17083 :         loccontext.strength = COLLATE_NONE;</span></span>
+<span id="L274"><span class="lineNum">     274</span> <span class="tlaGNC">       17083 :         loccontext.location = -1;</span></span>
+<span id="L275"><span class="lineNum">     275</span>              :         /* Set these fields just to suppress uninitialized-value warnings: */</span>
+<span id="L276"><span class="lineNum">     276</span> <span class="tlaGNC">       17083 :         loccontext.collation2 = InvalidOid;</span></span>
+<span id="L277"><span class="lineNum">     277</span> <span class="tlaGNC">       17083 :         loccontext.location2 = -1;</span></span>
+<span id="L278"><span class="lineNum">     278</span>              : </span>
+<span id="L279"><span class="lineNum">     279</span>              :         /*</span>
+<span id="L280"><span class="lineNum">     280</span>              :          * Recurse if appropriate, then determine the collation for this node.</span>
+<span id="L281"><span class="lineNum">     281</span>              :          *</span>
+<span id="L282"><span class="lineNum">     282</span>              :          * Note: the general cases are at the bottom of the switch, after various</span>
+<span id="L283"><span class="lineNum">     283</span>              :          * special cases.</span>
+<span id="L284"><span class="lineNum">     284</span>              :          */</span>
+<span id="L285"><span class="lineNum">     285</span> <span class="tlaGNC">       17083 :         switch (nodeTag(node))</span></span>
+<span id="L286"><span class="lineNum">     286</span>              :         {</span>
+<span id="L287"><span class="lineNum">     287</span> <span class="tlaUNC tlaBgUNC">           0 :                 case T_CollateExpr:</span></span>
+<span id="L288"><span class="lineNum">     288</span>              :                         {</span>
+<span id="L289"><span class="lineNum">     289</span>              :                                 /*</span>
+<span id="L290"><span class="lineNum">     290</span>              :                                  * COLLATE sets an explicitly derived collation, regardless of</span>
+<span id="L291"><span class="lineNum">     291</span>              :                                  * what the child state is.  But we must recurse to set up</span>
+<span id="L292"><span class="lineNum">     292</span>              :                                  * collation info below here.</span>
+<span id="L293"><span class="lineNum">     293</span>              :                                  */</span>
+<span id="L294"><span class="lineNum">     294</span> <span class="tlaUNC">           0 :                                 CollateExpr *expr = (CollateExpr *) node;</span></span>
+<span id="L295"><span class="lineNum">     295</span>              : </span>
+<span id="L296"><span class="lineNum">     296</span> <span class="tlaUNC">           0 :                                 (void) expression_tree_walker(node,</span></span>
+<span id="L297"><span class="lineNum">     297</span>              :                                                                                           assign_collations_walker,</span>
+<span id="L298"><span class="lineNum">     298</span>              :                                                                                           (void *) &amp;loccontext);</span>
+<span id="L299"><span class="lineNum">     299</span>              : </span>
+<span id="L300"><span class="lineNum">     300</span> <span class="tlaUNC">           0 :                                 collation = expr-&gt;collOid;</span></span>
+<span id="L301"><span class="lineNum">     301</span>              :                                 Assert(OidIsValid(collation));</span>
+<span id="L302"><span class="lineNum">     302</span> <span class="tlaUNC">           0 :                                 strength = COLLATE_EXPLICIT;</span></span>
+<span id="L303"><span class="lineNum">     303</span> <span class="tlaUNC">           0 :                                 location = expr-&gt;location;</span></span>
+<span id="L304"><span class="lineNum">     304</span>              :                         }</span>
+<span id="L305"><span class="lineNum">     305</span> <span class="tlaUNC">           0 :                         break;</span></span>
+<span id="L306"><span class="lineNum">     306</span> <span class="tlaGNC tlaBgGNC">          80 :                 case T_FieldSelect:</span></span>
+<span id="L307"><span class="lineNum">     307</span>              :                         {</span>
+<span id="L308"><span class="lineNum">     308</span>              :                                 /*</span>
+<span id="L309"><span class="lineNum">     309</span>              :                                  * For FieldSelect, the result has the field's declared</span>
+<span id="L310"><span class="lineNum">     310</span>              :                                  * collation, independently of what happened in the arguments.</span>
+<span id="L311"><span class="lineNum">     311</span>              :                                  * (The immediate argument must be composite and thus not</span>
+<span id="L312"><span class="lineNum">     312</span>              :                                  * collatable, anyhow.)  The field's collation was already</span>
+<span id="L313"><span class="lineNum">     313</span>              :                                  * looked up and saved in the node.</span>
+<span id="L314"><span class="lineNum">     314</span>              :                                  */</span>
+<span id="L315"><span class="lineNum">     315</span> <span class="tlaGNC">          80 :                                 FieldSelect *expr = (FieldSelect *) node;</span></span>
+<span id="L316"><span class="lineNum">     316</span>              : </span>
+<span id="L317"><span class="lineNum">     317</span>              :                                 /* ... but first, recurse */</span>
+<span id="L318"><span class="lineNum">     318</span> <span class="tlaGNC">          80 :                                 (void) expression_tree_walker(node,</span></span>
+<span id="L319"><span class="lineNum">     319</span>              :                                                                                           assign_collations_walker,</span>
+<span id="L320"><span class="lineNum">     320</span>              :                                                                                           (void *) &amp;loccontext);</span>
+<span id="L321"><span class="lineNum">     321</span>              : </span>
+<span id="L322"><span class="lineNum">     322</span> <span class="tlaGNC">          80 :                                 if (OidIsValid(expr-&gt;resultcollid))</span></span>
+<span id="L323"><span class="lineNum">     323</span>              :                                 {</span>
+<span id="L324"><span class="lineNum">     324</span>              :                                         /* Node's result type is collatable. */</span>
+<span id="L325"><span class="lineNum">     325</span>              :                                         /* Pass up field's collation as an implicit choice. */</span>
+<span id="L326"><span class="lineNum">     326</span> <span class="tlaGNC">          18 :                                         collation = expr-&gt;resultcollid;</span></span>
+<span id="L327"><span class="lineNum">     327</span> <span class="tlaGNC">          18 :                                         strength = COLLATE_IMPLICIT;</span></span>
+<span id="L328"><span class="lineNum">     328</span> <span class="tlaGNC">          18 :                                         location = exprLocation(node);</span></span>
+<span id="L329"><span class="lineNum">     329</span>              :                                 }</span>
+<span id="L330"><span class="lineNum">     330</span>              :                                 else</span>
+<span id="L331"><span class="lineNum">     331</span>              :                                 {</span>
+<span id="L332"><span class="lineNum">     332</span>              :                                         /* Node's result type isn't collatable. */</span>
+<span id="L333"><span class="lineNum">     333</span> <span class="tlaGNC">          62 :                                         collation = InvalidOid;</span></span>
+<span id="L334"><span class="lineNum">     334</span> <span class="tlaGNC">          62 :                                         strength = COLLATE_NONE;</span></span>
+<span id="L335"><span class="lineNum">     335</span> <span class="tlaGNC">          62 :                                         location = -1;  /* won't be used */</span></span>
+<span id="L336"><span class="lineNum">     336</span>              :                                 }</span>
+<span id="L337"><span class="lineNum">     337</span>              :                         }</span>
+<span id="L338"><span class="lineNum">     338</span> <span class="tlaGNC">          80 :                         break;</span></span>
+<span id="L339"><span class="lineNum">     339</span> <span class="tlaUNC tlaBgUNC">           0 :                 case T_RowExpr:</span></span>
+<span id="L340"><span class="lineNum">     340</span>              :                         {</span>
+<span id="L341"><span class="lineNum">     341</span>              :                                 /*</span>
+<span id="L342"><span class="lineNum">     342</span>              :                                  * RowExpr is a special case because the subexpressions are</span>
+<span id="L343"><span class="lineNum">     343</span>              :                                  * independent: we don't want to complain if some of them have</span>
+<span id="L344"><span class="lineNum">     344</span>              :                                  * incompatible explicit collations.</span>
+<span id="L345"><span class="lineNum">     345</span>              :                                  */</span>
+<span id="L346"><span class="lineNum">     346</span> <span class="tlaUNC">           0 :                                 RowExpr    *expr = (RowExpr *) node;</span></span>
+<span id="L347"><span class="lineNum">     347</span>              : </span>
+<span id="L348"><span class="lineNum">     348</span> <span class="tlaUNC">           0 :                                 assign_list_collations(context-&gt;pstate, expr-&gt;args);</span></span>
+<span id="L349"><span class="lineNum">     349</span>              : </span>
+<span id="L350"><span class="lineNum">     350</span>              :                                 /*</span>
+<span id="L351"><span class="lineNum">     351</span>              :                                  * Since the result is always composite and therefore never</span>
+<span id="L352"><span class="lineNum">     352</span>              :                                  * has a collation, we can just stop here: this node has no</span>
+<span id="L353"><span class="lineNum">     353</span>              :                                  * impact on the collation of its parent.</span>
+<span id="L354"><span class="lineNum">     354</span>              :                                  */</span>
+<span id="L355"><span class="lineNum">     355</span> <span class="tlaUNC">           0 :                                 return false;   /* done */</span></span>
+<span id="L356"><span class="lineNum">     356</span>              :                         }</span>
+<span id="L357"><span class="lineNum">     357</span> <span class="tlaUNC">           0 :                 case T_RowCompareExpr:</span></span>
+<span id="L358"><span class="lineNum">     358</span>              :                         {</span>
+<span id="L359"><span class="lineNum">     359</span>              :                                 /*</span>
+<span id="L360"><span class="lineNum">     360</span>              :                                  * For RowCompare, we have to find the common collation of</span>
+<span id="L361"><span class="lineNum">     361</span>              :                                  * each pair of input columns and build a list.  If we can't</span>
+<span id="L362"><span class="lineNum">     362</span>              :                                  * find a common collation, we just put InvalidOid into the</span>
+<span id="L363"><span class="lineNum">     363</span>              :                                  * list, which may or may not cause an error at runtime.</span>
+<span id="L364"><span class="lineNum">     364</span>              :                                  */</span>
+<span id="L365"><span class="lineNum">     365</span> <span class="tlaUNC">           0 :                                 RowCompareExpr *expr = (RowCompareExpr *) node;</span></span>
+<span id="L366"><span class="lineNum">     366</span> <span class="tlaUNC">           0 :                                 List       *colls = NIL;</span></span>
+<span id="L367"><span class="lineNum">     367</span>              :                                 ListCell   *l;</span>
+<span id="L368"><span class="lineNum">     368</span>              :                                 ListCell   *r;</span>
+<span id="L369"><span class="lineNum">     369</span>              : </span>
+<span id="L370"><span class="lineNum">     370</span> <span class="tlaUNC">           0 :                                 forboth(l, expr-&gt;largs, r, expr-&gt;rargs)</span></span>
+<span id="L371"><span class="lineNum">     371</span>              :                                 {</span>
+<span id="L372"><span class="lineNum">     372</span> <span class="tlaUNC">           0 :                                         Node       *le = (Node *) lfirst(l);</span></span>
+<span id="L373"><span class="lineNum">     373</span> <span class="tlaUNC">           0 :                                         Node       *re = (Node *) lfirst(r);</span></span>
+<span id="L374"><span class="lineNum">     374</span>              :                                         Oid                     coll;</span>
+<span id="L375"><span class="lineNum">     375</span>              : </span>
+<span id="L376"><span class="lineNum">     376</span> <span class="tlaUNC">           0 :                                         coll = select_common_collation(context-&gt;pstate,</span></span>
+<span id="L377"><span class="lineNum">     377</span> <span class="tlaUNC">           0 :                                                                                                    list_make2(le, re),</span></span>
+<span id="L378"><span class="lineNum">     378</span>              :                                                                                                    true);</span>
+<span id="L379"><span class="lineNum">     379</span> <span class="tlaUNC">           0 :                                         colls = lappend_oid(colls, coll);</span></span>
+<span id="L380"><span class="lineNum">     380</span>              :                                 }</span>
+<span id="L381"><span class="lineNum">     381</span> <span class="tlaUNC">           0 :                                 expr-&gt;inputcollids = colls;</span></span>
+<span id="L382"><span class="lineNum">     382</span>              : </span>
+<span id="L383"><span class="lineNum">     383</span>              :                                 /*</span>
+<span id="L384"><span class="lineNum">     384</span>              :                                  * Since the result is always boolean and therefore never has</span>
+<span id="L385"><span class="lineNum">     385</span>              :                                  * a collation, we can just stop here: this node has no impact</span>
+<span id="L386"><span class="lineNum">     386</span>              :                                  * on the collation of its parent.</span>
+<span id="L387"><span class="lineNum">     387</span>              :                                  */</span>
+<span id="L388"><span class="lineNum">     388</span> <span class="tlaUNC">           0 :                                 return false;   /* done */</span></span>
+<span id="L389"><span class="lineNum">     389</span>              :                         }</span>
+<span id="L390"><span class="lineNum">     390</span> <span class="tlaGNC tlaBgGNC">         900 :                 case T_CoerceToDomain:</span></span>
+<span id="L391"><span class="lineNum">     391</span>              :                         {</span>
+<span id="L392"><span class="lineNum">     392</span>              :                                 /*</span>
+<span id="L393"><span class="lineNum">     393</span>              :                                  * If the domain declaration included a non-default COLLATE</span>
+<span id="L394"><span class="lineNum">     394</span>              :                                  * spec, then use that collation as the output collation of</span>
+<span id="L395"><span class="lineNum">     395</span>              :                                  * the coercion.  Otherwise allow the input collation to</span>
+<span id="L396"><span class="lineNum">     396</span>              :                                  * bubble up.  (The input should be of the domain's base type,</span>
+<span id="L397"><span class="lineNum">     397</span>              :                                  * therefore we don't need to worry about it not being</span>
+<span id="L398"><span class="lineNum">     398</span>              :                                  * collatable when the domain is.)</span>
+<span id="L399"><span class="lineNum">     399</span>              :                                  */</span>
+<span id="L400"><span class="lineNum">     400</span> <span class="tlaGNC">         900 :                                 CoerceToDomain *expr = (CoerceToDomain *) node;</span></span>
+<span id="L401"><span class="lineNum">     401</span> <span class="tlaGNC">         900 :                                 Oid                     typcollation = get_typcollation(expr-&gt;resulttype);</span></span>
+<span id="L402"><span class="lineNum">     402</span>              : </span>
+<span id="L403"><span class="lineNum">     403</span>              :                                 /* ... but first, recurse */</span>
+<span id="L404"><span class="lineNum">     404</span> <span class="tlaGNC">         900 :                                 (void) expression_tree_walker(node,</span></span>
+<span id="L405"><span class="lineNum">     405</span>              :                                                                                           assign_collations_walker,</span>
+<span id="L406"><span class="lineNum">     406</span>              :                                                                                           (void *) &amp;loccontext);</span>
+<span id="L407"><span class="lineNum">     407</span>              : </span>
+<span id="L408"><span class="lineNum">     408</span> <span class="tlaGNC">         900 :                                 if (OidIsValid(typcollation))</span></span>
+<span id="L409"><span class="lineNum">     409</span>              :                                 {</span>
+<span id="L410"><span class="lineNum">     410</span>              :                                         /* Node's result type is collatable. */</span>
+<span id="L411"><span class="lineNum">     411</span> <span class="tlaGNC">         765 :                                         if (typcollation == DEFAULT_COLLATION_OID)</span></span>
+<span id="L412"><span class="lineNum">     412</span>              :                                         {</span>
+<span id="L413"><span class="lineNum">     413</span>              :                                                 /* Collation state bubbles up from child. */</span>
+<span id="L414"><span class="lineNum">     414</span> <span class="tlaUNC tlaBgUNC">           0 :                                                 collation = loccontext.collation;</span></span>
+<span id="L415"><span class="lineNum">     415</span> <span class="tlaUNC">           0 :                                                 strength = loccontext.strength;</span></span>
+<span id="L416"><span class="lineNum">     416</span> <span class="tlaUNC">           0 :                                                 location = loccontext.location;</span></span>
+<span id="L417"><span class="lineNum">     417</span>              :                                         }</span>
+<span id="L418"><span class="lineNum">     418</span>              :                                         else</span>
+<span id="L419"><span class="lineNum">     419</span>              :                                         {</span>
+<span id="L420"><span class="lineNum">     420</span>              :                                                 /* Use domain's collation as an implicit choice. */</span>
+<span id="L421"><span class="lineNum">     421</span> <span class="tlaGNC tlaBgGNC">         765 :                                                 collation = typcollation;</span></span>
+<span id="L422"><span class="lineNum">     422</span> <span class="tlaGNC">         765 :                                                 strength = COLLATE_IMPLICIT;</span></span>
+<span id="L423"><span class="lineNum">     423</span> <span class="tlaGNC">         765 :                                                 location = exprLocation(node);</span></span>
+<span id="L424"><span class="lineNum">     424</span>              :                                         }</span>
+<span id="L425"><span class="lineNum">     425</span>              :                                 }</span>
+<span id="L426"><span class="lineNum">     426</span>              :                                 else</span>
+<span id="L427"><span class="lineNum">     427</span>              :                                 {</span>
+<span id="L428"><span class="lineNum">     428</span>              :                                         /* Node's result type isn't collatable. */</span>
+<span id="L429"><span class="lineNum">     429</span> <span class="tlaGNC">         135 :                                         collation = InvalidOid;</span></span>
+<span id="L430"><span class="lineNum">     430</span> <span class="tlaGNC">         135 :                                         strength = COLLATE_NONE;</span></span>
+<span id="L431"><span class="lineNum">     431</span> <span class="tlaGNC">         135 :                                         location = -1;  /* won't be used */</span></span>
+<span id="L432"><span class="lineNum">     432</span>              :                                 }</span>
+<span id="L433"><span class="lineNum">     433</span>              : </span>
+<span id="L434"><span class="lineNum">     434</span>              :                                 /*</span>
+<span id="L435"><span class="lineNum">     435</span>              :                                  * Save the state into the expression node.  We know it</span>
+<span id="L436"><span class="lineNum">     436</span>              :                                  * doesn't care about input collation.</span>
+<span id="L437"><span class="lineNum">     437</span>              :                                  */</span>
+<span id="L438"><span class="lineNum">     438</span> <span class="tlaGNC">         900 :                                 if (strength == COLLATE_CONFLICT)</span></span>
+<span id="L439"><span class="lineNum">     439</span> <span class="tlaUNC tlaBgUNC">           0 :                                         exprSetCollation(node, InvalidOid);</span></span>
+<span id="L440"><span class="lineNum">     440</span>              :                                 else</span>
+<span id="L441"><span class="lineNum">     441</span> <span class="tlaGNC tlaBgGNC">         900 :                                         exprSetCollation(node, collation);</span></span>
+<span id="L442"><span class="lineNum">     442</span>              :                         }</span>
+<span id="L443"><span class="lineNum">     443</span> <span class="tlaGNC">         900 :                         break;</span></span>
+<span id="L444"><span class="lineNum">     444</span> <span class="tlaGNC">        3170 :                 case T_TargetEntry:</span></span>
+<span id="L445"><span class="lineNum">     445</span> <span class="tlaGNC">        3170 :                         (void) expression_tree_walker(node,</span></span>
+<span id="L446"><span class="lineNum">     446</span>              :                                                                                   assign_collations_walker,</span>
+<span id="L447"><span class="lineNum">     447</span>              :                                                                                   (void *) &amp;loccontext);</span>
+<span id="L448"><span class="lineNum">     448</span>              : </span>
+<span id="L449"><span class="lineNum">     449</span>              :                         /*</span>
+<span id="L450"><span class="lineNum">     450</span>              :                          * TargetEntry can have only one child, and should bubble that</span>
+<span id="L451"><span class="lineNum">     451</span>              :                          * state up to its parent.  We can't use the general-case code</span>
+<span id="L452"><span class="lineNum">     452</span>              :                          * below because exprType and friends don't work on TargetEntry.</span>
+<span id="L453"><span class="lineNum">     453</span>              :                          */</span>
+<span id="L454"><span class="lineNum">     454</span> <span class="tlaGNC">        3170 :                         collation = loccontext.collation;</span></span>
+<span id="L455"><span class="lineNum">     455</span> <span class="tlaGNC">        3170 :                         strength = loccontext.strength;</span></span>
+<span id="L456"><span class="lineNum">     456</span> <span class="tlaGNC">        3170 :                         location = loccontext.location;</span></span>
+<span id="L457"><span class="lineNum">     457</span>              : </span>
+<span id="L458"><span class="lineNum">     458</span>              :                         /*</span>
+<span id="L459"><span class="lineNum">     459</span>              :                          * Throw error if the collation is indeterminate for a TargetEntry</span>
+<span id="L460"><span class="lineNum">     460</span>              :                          * that is a sort/group target.  We prefer to do this now, instead</span>
+<span id="L461"><span class="lineNum">     461</span>              :                          * of leaving the comparison functions to fail at runtime, because</span>
+<span id="L462"><span class="lineNum">     462</span>              :                          * we can give a syntax error pointer to help locate the problem.</span>
+<span id="L463"><span class="lineNum">     463</span>              :                          * There are some cases where there might not be a failure, for</span>
+<span id="L464"><span class="lineNum">     464</span>              :                          * example if the planner chooses to use hash aggregation instead</span>
+<span id="L465"><span class="lineNum">     465</span>              :                          * of sorting for grouping; but it seems better to predictably</span>
+<span id="L466"><span class="lineNum">     466</span>              :                          * throw an error.  (Compare transformSetOperationTree, which will</span>
+<span id="L467"><span class="lineNum">     467</span>              :                          * throw error for indeterminate collation of set-op columns, even</span>
+<span id="L468"><span class="lineNum">     468</span>              :                          * though the planner might be able to implement the set-op</span>
+<span id="L469"><span class="lineNum">     469</span>              :                          * without sorting.)</span>
+<span id="L470"><span class="lineNum">     470</span>              :                          */</span>
+<span id="L471"><span class="lineNum">     471</span> <span class="tlaGNC">        3170 :                         if (strength == COLLATE_CONFLICT &amp;&amp;</span></span>
+<span id="L472"><span class="lineNum">     472</span> <span class="tlaUNC tlaBgUNC">           0 :                                 ((TargetEntry *) node)-&gt;ressortgroupref != 0)</span></span>
+<span id="L473"><span class="lineNum">     473</span> <span class="tlaUNC">           0 :                                 ereport(ERROR,</span></span>
+<span id="L474"><span class="lineNum">     474</span>              :                                                 (errcode(ERRCODE_COLLATION_MISMATCH),</span>
+<span id="L475"><span class="lineNum">     475</span>              :                                                  errmsg(&quot;collation mismatch between implicit collations \&quot;%s\&quot; and \&quot;%s\&quot;&quot;,</span>
+<span id="L476"><span class="lineNum">     476</span>              :                                                                 get_collation_name(loccontext.collation),</span>
+<span id="L477"><span class="lineNum">     477</span>              :                                                                 get_collation_name(loccontext.collation2)),</span>
+<span id="L478"><span class="lineNum">     478</span>              :                                                  errhint(&quot;You can choose the collation by applying the COLLATE clause to one or both expressions.&quot;),</span>
+<span id="L479"><span class="lineNum">     479</span>              :                                                  parser_errposition(context-&gt;pstate,</span>
+<span id="L480"><span class="lineNum">     480</span>              :                                                                                         loccontext.location2)));</span>
+<span id="L481"><span class="lineNum">     481</span> <span class="tlaGNC tlaBgGNC">        3170 :                         break;</span></span>
+<span id="L482"><span class="lineNum">     482</span> <span class="tlaGNC">        1915 :                 case T_InferenceElem:</span></span>
+<span id="L483"><span class="lineNum">     483</span>              :                 case T_RangeTblRef:</span>
+<span id="L484"><span class="lineNum">     484</span>              :                 case T_JoinExpr:</span>
+<span id="L485"><span class="lineNum">     485</span>              :                 case T_FromExpr:</span>
+<span id="L486"><span class="lineNum">     486</span>              :                 case T_OnConflictExpr:</span>
+<span id="L487"><span class="lineNum">     487</span>              :                 case T_SortGroupClause:</span>
+<span id="L488"><span class="lineNum">     488</span> <span class="tlaGNC">        1915 :                         (void) expression_tree_walker(node,</span></span>
+<span id="L489"><span class="lineNum">     489</span>              :                                                                                   assign_collations_walker,</span>
+<span id="L490"><span class="lineNum">     490</span>              :                                                                                   (void *) &amp;loccontext);</span>
+<span id="L491"><span class="lineNum">     491</span>              : </span>
+<span id="L492"><span class="lineNum">     492</span>              :                         /*</span>
+<span id="L493"><span class="lineNum">     493</span>              :                          * When we're invoked on a query's jointree, we don't need to do</span>
+<span id="L494"><span class="lineNum">     494</span>              :                          * anything with join nodes except recurse through them to process</span>
+<span id="L495"><span class="lineNum">     495</span>              :                          * WHERE/ON expressions.  So just stop here.  Likewise, we don't</span>
+<span id="L496"><span class="lineNum">     496</span>              :                          * need to do anything when invoked on sort/group lists.</span>
+<span id="L497"><span class="lineNum">     497</span>              :                          */</span>
+<span id="L498"><span class="lineNum">     498</span> <span class="tlaGNC">        1915 :                         return false;</span></span>
+<span id="L499"><span class="lineNum">     499</span> <span class="tlaGNC">          64 :                 case T_Query:</span></span>
+<span id="L500"><span class="lineNum">     500</span>              :                         {</span>
+<span id="L501"><span class="lineNum">     501</span>              :                                 /*</span>
+<span id="L502"><span class="lineNum">     502</span>              :                                  * We get here when we're invoked on the Query belonging to a</span>
+<span id="L503"><span class="lineNum">     503</span>              :                                  * SubLink.  Act as though the Query returns its first output</span>
+<span id="L504"><span class="lineNum">     504</span>              :                                  * column, which indeed is what it does for EXPR_SUBLINK and</span>
+<span id="L505"><span class="lineNum">     505</span>              :                                  * ARRAY_SUBLINK cases.  In the cases where the SubLink</span>
+<span id="L506"><span class="lineNum">     506</span>              :                                  * returns boolean, this info will be ignored.  Special case:</span>
+<span id="L507"><span class="lineNum">     507</span>              :                                  * in EXISTS, the Query might return no columns, in which case</span>
+<span id="L508"><span class="lineNum">     508</span>              :                                  * we need do nothing.</span>
+<span id="L509"><span class="lineNum">     509</span>              :                                  *</span>
+<span id="L510"><span class="lineNum">     510</span>              :                                  * We needn't recurse, since the Query is already processed.</span>
+<span id="L511"><span class="lineNum">     511</span>              :                                  */</span>
+<span id="L512"><span class="lineNum">     512</span> <span class="tlaGNC">          64 :                                 Query      *qtree = (Query *) node;</span></span>
+<span id="L513"><span class="lineNum">     513</span>              :                                 TargetEntry *tent;</span>
+<span id="L514"><span class="lineNum">     514</span>              : </span>
+<span id="L515"><span class="lineNum">     515</span> <span class="tlaGNC">          64 :                                 if (qtree-&gt;targetList == NIL)</span></span>
+<span id="L516"><span class="lineNum">     516</span> <span class="tlaUNC tlaBgUNC">           0 :                                         return false;</span></span>
+<span id="L517"><span class="lineNum">     517</span> <span class="tlaGNC tlaBgGNC">          64 :                                 tent = linitial_node(TargetEntry, qtree-&gt;targetList);</span></span>
+<span id="L518"><span class="lineNum">     518</span> <span class="tlaGNC">          64 :                                 if (tent-&gt;resjunk)</span></span>
+<span id="L519"><span class="lineNum">     519</span> <span class="tlaUNC tlaBgUNC">           0 :                                         return false;</span></span>
+<span id="L520"><span class="lineNum">     520</span>              : </span>
+<span id="L521"><span class="lineNum">     521</span> <span class="tlaGNC tlaBgGNC">          64 :                                 collation = exprCollation((Node *) tent-&gt;expr);</span></span>
+<span id="L522"><span class="lineNum">     522</span>              :                                 /* collation doesn't change if it's converted to array */</span>
+<span id="L523"><span class="lineNum">     523</span> <span class="tlaGNC">          64 :                                 strength = COLLATE_IMPLICIT;</span></span>
+<span id="L524"><span class="lineNum">     524</span> <span class="tlaGNC">          64 :                                 location = exprLocation((Node *) tent-&gt;expr);</span></span>
+<span id="L525"><span class="lineNum">     525</span>              :                         }</span>
+<span id="L526"><span class="lineNum">     526</span> <span class="tlaGNC">          64 :                         break;</span></span>
+<span id="L527"><span class="lineNum">     527</span> <span class="tlaGNC">         939 :                 case T_List:</span></span>
+<span id="L528"><span class="lineNum">     528</span> <span class="tlaGNC">         939 :                         (void) expression_tree_walker(node,</span></span>
+<span id="L529"><span class="lineNum">     529</span>              :                                                                                   assign_collations_walker,</span>
+<span id="L530"><span class="lineNum">     530</span>              :                                                                                   (void *) &amp;loccontext);</span>
+<span id="L531"><span class="lineNum">     531</span>              : </span>
+<span id="L532"><span class="lineNum">     532</span>              :                         /*</span>
+<span id="L533"><span class="lineNum">     533</span>              :                          * When processing a list, collation state just bubbles up from</span>
+<span id="L534"><span class="lineNum">     534</span>              :                          * the list elements.</span>
+<span id="L535"><span class="lineNum">     535</span>              :                          */</span>
+<span id="L536"><span class="lineNum">     536</span> <span class="tlaGNC">         939 :                         collation = loccontext.collation;</span></span>
+<span id="L537"><span class="lineNum">     537</span> <span class="tlaGNC">         939 :                         strength = loccontext.strength;</span></span>
+<span id="L538"><span class="lineNum">     538</span> <span class="tlaGNC">         939 :                         location = loccontext.location;</span></span>
+<span id="L539"><span class="lineNum">     539</span> <span class="tlaGNC">         939 :                         break;</span></span>
+<span id="L540"><span class="lineNum">     540</span>              : </span>
+<span id="L541"><span class="lineNum">     541</span> <span class="tlaGNC">        6966 :                 case T_Var:</span></span>
+<span id="L542"><span class="lineNum">     542</span>              :                 case T_Const:</span>
+<span id="L543"><span class="lineNum">     543</span>              :                 case T_Param:</span>
+<span id="L544"><span class="lineNum">     544</span>              :                 case T_CoerceToDomainValue:</span>
+<span id="L545"><span class="lineNum">     545</span>              :                 case T_CaseTestExpr:</span>
+<span id="L546"><span class="lineNum">     546</span>              :                 case T_SetToDefault:</span>
+<span id="L547"><span class="lineNum">     547</span>              :                 case T_CurrentOfExpr:</span>
+<span id="L548"><span class="lineNum">     548</span>              : </span>
+<span id="L549"><span class="lineNum">     549</span>              :                         /*</span>
+<span id="L550"><span class="lineNum">     550</span>              :                          * General case for childless expression nodes.  These should</span>
+<span id="L551"><span class="lineNum">     551</span>              :                          * already have a collation assigned; it is not this function's</span>
+<span id="L552"><span class="lineNum">     552</span>              :                          * responsibility to look into the catalogs for base-case</span>
+<span id="L553"><span class="lineNum">     553</span>              :                          * information.</span>
+<span id="L554"><span class="lineNum">     554</span>              :                          */</span>
+<span id="L555"><span class="lineNum">     555</span> <span class="tlaGNC">        6966 :                         collation = exprCollation(node);</span></span>
+<span id="L556"><span class="lineNum">     556</span>              : </span>
+<span id="L557"><span class="lineNum">     557</span>              :                         /*</span>
+<span id="L558"><span class="lineNum">     558</span>              :                          * Note: in most cases, there will be an assigned collation</span>
+<span id="L559"><span class="lineNum">     559</span>              :                          * whenever type_is_collatable(exprType(node)); but an exception</span>
+<span id="L560"><span class="lineNum">     560</span>              :                          * occurs for a Var referencing a subquery output column for which</span>
+<span id="L561"><span class="lineNum">     561</span>              :                          * a unique collation was not determinable.  That may lead to a</span>
+<span id="L562"><span class="lineNum">     562</span>              :                          * runtime failure if a collation-sensitive function is applied to</span>
+<span id="L563"><span class="lineNum">     563</span>              :                          * the Var.</span>
+<span id="L564"><span class="lineNum">     564</span>              :                          */</span>
+<span id="L565"><span class="lineNum">     565</span>              : </span>
+<span id="L566"><span class="lineNum">     566</span> <span class="tlaGNC">        6966 :                         if (OidIsValid(collation))</span></span>
+<span id="L567"><span class="lineNum">     567</span> <span class="tlaGNC">        2127 :                                 strength = COLLATE_IMPLICIT;</span></span>
+<span id="L568"><span class="lineNum">     568</span>              :                         else</span>
+<span id="L569"><span class="lineNum">     569</span> <span class="tlaGNC">        4839 :                                 strength = COLLATE_NONE;</span></span>
+<span id="L570"><span class="lineNum">     570</span> <span class="tlaGNC">        6966 :                         location = exprLocation(node);</span></span>
+<span id="L571"><span class="lineNum">     571</span> <span class="tlaGNC">        6966 :                         break;</span></span>
+<span id="L572"><span class="lineNum">     572</span>              : </span>
+<span id="L573"><span class="lineNum">     573</span> <span class="tlaGNC">        3049 :                 default:</span></span>
+<span id="L574"><span class="lineNum">     574</span>              :                         {</span>
+<span id="L575"><span class="lineNum">     575</span>              :                                 /*</span>
+<span id="L576"><span class="lineNum">     576</span>              :                                  * General case for most expression nodes with children. First</span>
+<span id="L577"><span class="lineNum">     577</span>              :                                  * recurse, then figure out what to assign to this node.</span>
+<span id="L578"><span class="lineNum">     578</span>              :                                  */</span>
+<span id="L579"><span class="lineNum">     579</span>              :                                 Oid                     typcollation;</span>
+<span id="L580"><span class="lineNum">     580</span>              : </span>
+<span id="L581"><span class="lineNum">     581</span>              :                                 /*</span>
+<span id="L582"><span class="lineNum">     582</span>              :                                  * For most node types, we want to treat all the child</span>
+<span id="L583"><span class="lineNum">     583</span>              :                                  * expressions alike; but there are a few exceptions, hence</span>
+<span id="L584"><span class="lineNum">     584</span>              :                                  * this inner switch.</span>
+<span id="L585"><span class="lineNum">     585</span>              :                                  */</span>
+<span id="L586"><span class="lineNum">     586</span> <span class="tlaGNC">        3049 :                                 switch (nodeTag(node))</span></span>
+<span id="L587"><span class="lineNum">     587</span>              :                                 {</span>
+<span id="L588"><span class="lineNum">     588</span> <span class="tlaGNC">          38 :                                         case T_Aggref:</span></span>
+<span id="L589"><span class="lineNum">     589</span>              :                                                 {</span>
+<span id="L590"><span class="lineNum">     590</span>              :                                                         /*</span>
+<span id="L591"><span class="lineNum">     591</span>              :                                                          * Aggref is messy enough that we give it its own</span>
+<span id="L592"><span class="lineNum">     592</span>              :                                                          * function, in fact three of them.  The FILTER</span>
+<span id="L593"><span class="lineNum">     593</span>              :                                                          * clause is independent of the rest of the</span>
+<span id="L594"><span class="lineNum">     594</span>              :                                                          * aggregate, however, so it can be processed</span>
+<span id="L595"><span class="lineNum">     595</span>              :                                                          * separately.</span>
+<span id="L596"><span class="lineNum">     596</span>              :                                                          */</span>
+<span id="L597"><span class="lineNum">     597</span> <span class="tlaGNC">          38 :                                                         Aggref     *aggref = (Aggref *) node;</span></span>
+<span id="L598"><span class="lineNum">     598</span>              : </span>
+<span id="L599"><span class="lineNum">     599</span> <span class="tlaGNC">          38 :                                                         switch (aggref-&gt;aggkind)</span></span>
+<span id="L600"><span class="lineNum">     600</span>              :                                                         {</span>
+<span id="L601"><span class="lineNum">     601</span> <span class="tlaGNC">          38 :                                                                 case AGGKIND_NORMAL:</span></span>
+<span id="L602"><span class="lineNum">     602</span> <span class="tlaGNC">          38 :                                                                         assign_aggregate_collations(aggref,</span></span>
+<span id="L603"><span class="lineNum">     603</span>              :                                                                                                                                 &amp;loccontext);</span>
+<span id="L604"><span class="lineNum">     604</span> <span class="tlaGNC">          38 :                                                                         break;</span></span>
+<span id="L605"><span class="lineNum">     605</span> <span class="tlaUNC tlaBgUNC">           0 :                                                                 case AGGKIND_ORDERED_SET:</span></span>
+<span id="L606"><span class="lineNum">     606</span> <span class="tlaUNC">           0 :                                                                         assign_ordered_set_collations(aggref,</span></span>
+<span id="L607"><span class="lineNum">     607</span>              :                                                                                                                                   &amp;loccontext);</span>
+<span id="L608"><span class="lineNum">     608</span> <span class="tlaUNC">           0 :                                                                         break;</span></span>
+<span id="L609"><span class="lineNum">     609</span> <span class="tlaUNC">           0 :                                                                 case AGGKIND_HYPOTHETICAL:</span></span>
+<span id="L610"><span class="lineNum">     610</span> <span class="tlaUNC">           0 :                                                                         assign_hypothetical_collations(aggref,</span></span>
+<span id="L611"><span class="lineNum">     611</span>              :                                                                                                                                    &amp;loccontext);</span>
+<span id="L612"><span class="lineNum">     612</span> <span class="tlaUNC">           0 :                                                                         break;</span></span>
+<span id="L613"><span class="lineNum">     613</span> <span class="tlaUNC">           0 :                                                                 default:</span></span>
+<span id="L614"><span class="lineNum">     614</span> <span class="tlaUNC">           0 :                                                                         elog(ERROR, &quot;unrecognized aggkind: %d&quot;,</span></span>
+<span id="L615"><span class="lineNum">     615</span>              :                                                                                  (int) aggref-&gt;aggkind);</span>
+<span id="L616"><span class="lineNum">     616</span>              :                                                         }</span>
+<span id="L617"><span class="lineNum">     617</span>              : </span>
+<span id="L618"><span class="lineNum">     618</span> <span class="tlaGNC tlaBgGNC">          38 :                                                         assign_expr_collations(context-&gt;pstate,</span></span>
+<span id="L619"><span class="lineNum">     619</span> <span class="tlaGNC">          38 :                                                                                                    (Node *) aggref-&gt;aggfilter);</span></span>
+<span id="L620"><span class="lineNum">     620</span>              :                                                 }</span>
+<span id="L621"><span class="lineNum">     621</span> <span class="tlaGNC">          38 :                                                 break;</span></span>
+<span id="L622"><span class="lineNum">     622</span> <span class="tlaGNC">           1 :                                         case T_WindowFunc:</span></span>
+<span id="L623"><span class="lineNum">     623</span>              :                                                 {</span>
+<span id="L624"><span class="lineNum">     624</span>              :                                                         /*</span>
+<span id="L625"><span class="lineNum">     625</span>              :                                                          * WindowFunc requires special processing only for</span>
+<span id="L626"><span class="lineNum">     626</span>              :                                                          * its aggfilter clause, as for aggregates.</span>
+<span id="L627"><span class="lineNum">     627</span>              :                                                          */</span>
+<span id="L628"><span class="lineNum">     628</span> <span class="tlaGNC">           1 :                                                         WindowFunc *wfunc = (WindowFunc *) node;</span></span>
+<span id="L629"><span class="lineNum">     629</span>              : </span>
+<span id="L630"><span class="lineNum">     630</span> <span class="tlaGNC">           1 :                                                         (void) assign_collations_walker((Node *) wfunc-&gt;args,</span></span>
+<span id="L631"><span class="lineNum">     631</span>              :                                                                                                                         &amp;loccontext);</span>
+<span id="L632"><span class="lineNum">     632</span>              : </span>
+<span id="L633"><span class="lineNum">     633</span> <span class="tlaGNC">           1 :                                                         assign_expr_collations(context-&gt;pstate,</span></span>
+<span id="L634"><span class="lineNum">     634</span> <span class="tlaGNC">           1 :                                                                                                    (Node *) wfunc-&gt;aggfilter);</span></span>
+<span id="L635"><span class="lineNum">     635</span>              :                                                 }</span>
+<span id="L636"><span class="lineNum">     636</span> <span class="tlaGNC">           1 :                                                 break;</span></span>
+<span id="L637"><span class="lineNum">     637</span> <span class="tlaGNC">         150 :                                         case T_CaseExpr:</span></span>
+<span id="L638"><span class="lineNum">     638</span>              :                                                 {</span>
+<span id="L639"><span class="lineNum">     639</span>              :                                                         /*</span>
+<span id="L640"><span class="lineNum">     640</span>              :                                                          * CaseExpr is a special case because we do not</span>
+<span id="L641"><span class="lineNum">     641</span>              :                                                          * want to recurse into the test expression (if</span>
+<span id="L642"><span class="lineNum">     642</span>              :                                                          * any).  It was already marked with collations</span>
+<span id="L643"><span class="lineNum">     643</span>              :                                                          * during transformCaseExpr, and furthermore its</span>
+<span id="L644"><span class="lineNum">     644</span>              :                                                          * collation is not relevant to the result of the</span>
+<span id="L645"><span class="lineNum">     645</span>              :                                                          * CASE --- only the output expressions are.</span>
+<span id="L646"><span class="lineNum">     646</span>              :                                                          */</span>
+<span id="L647"><span class="lineNum">     647</span> <span class="tlaGNC">         150 :                                                         CaseExpr   *expr = (CaseExpr *) node;</span></span>
+<span id="L648"><span class="lineNum">     648</span>              :                                                         ListCell   *lc;</span>
+<span id="L649"><span class="lineNum">     649</span>              : </span>
+<span id="L650"><span class="lineNum">     650</span> <span class="tlaGNC">         439 :                                                         foreach(lc, expr-&gt;args)</span></span>
+<span id="L651"><span class="lineNum">     651</span>              :                                                         {</span>
+<span id="L652"><span class="lineNum">     652</span> <span class="tlaGNC">         289 :                                                                 CaseWhen   *when = lfirst_node(CaseWhen, lc);</span></span>
+<span id="L653"><span class="lineNum">     653</span>              : </span>
+<span id="L654"><span class="lineNum">     654</span>              :                                                                 /*</span>
+<span id="L655"><span class="lineNum">     655</span>              :                                                                  * The condition expressions mustn't affect</span>
+<span id="L656"><span class="lineNum">     656</span>              :                                                                  * the CASE's result collation either; but</span>
+<span id="L657"><span class="lineNum">     657</span>              :                                                                  * since they are known to yield boolean, it's</span>
+<span id="L658"><span class="lineNum">     658</span>              :                                                                  * safe to recurse directly on them --- they</span>
+<span id="L659"><span class="lineNum">     659</span>              :                                                                  * won't change loccontext.</span>
+<span id="L660"><span class="lineNum">     660</span>              :                                                                  */</span>
+<span id="L661"><span class="lineNum">     661</span> <span class="tlaGNC">         289 :                                                                 (void) assign_collations_walker((Node *) when-&gt;expr,</span></span>
+<span id="L662"><span class="lineNum">     662</span>              :                                                                                                                                 &amp;loccontext);</span>
+<span id="L663"><span class="lineNum">     663</span> <span class="tlaGNC">         289 :                                                                 (void) assign_collations_walker((Node *) when-&gt;result,</span></span>
+<span id="L664"><span class="lineNum">     664</span>              :                                                                                                                                 &amp;loccontext);</span>
+<span id="L665"><span class="lineNum">     665</span>              :                                                         }</span>
+<span id="L666"><span class="lineNum">     666</span> <span class="tlaGNC">         150 :                                                         (void) assign_collations_walker((Node *) expr-&gt;defresult,</span></span>
+<span id="L667"><span class="lineNum">     667</span>              :                                                                                                                         &amp;loccontext);</span>
+<span id="L668"><span class="lineNum">     668</span>              :                                                 }</span>
+<span id="L669"><span class="lineNum">     669</span> <span class="tlaGNC">         150 :                                                 break;</span></span>
+<span id="L670"><span class="lineNum">     670</span> <span class="tlaGNC">        2860 :                                         default:</span></span>
+<span id="L671"><span class="lineNum">     671</span>              : </span>
+<span id="L672"><span class="lineNum">     672</span>              :                                                 /*</span>
+<span id="L673"><span class="lineNum">     673</span>              :                                                  * Normal case: all child expressions contribute</span>
+<span id="L674"><span class="lineNum">     674</span>              :                                                  * equally to loccontext.</span>
+<span id="L675"><span class="lineNum">     675</span>              :                                                  */</span>
+<span id="L676"><span class="lineNum">     676</span> <span class="tlaGNC">        2860 :                                                 (void) expression_tree_walker(node,</span></span>
+<span id="L677"><span class="lineNum">     677</span>              :                                                                                                           assign_collations_walker,</span>
+<span id="L678"><span class="lineNum">     678</span>              :                                                                                                           (void *) &amp;loccontext);</span>
+<span id="L679"><span class="lineNum">     679</span> <span class="tlaGNC">        2860 :                                                 break;</span></span>
+<span id="L680"><span class="lineNum">     680</span>              :                                 }</span>
+<span id="L681"><span class="lineNum">     681</span>              : </span>
+<span id="L682"><span class="lineNum">     682</span>              :                                 /*</span>
+<span id="L683"><span class="lineNum">     683</span>              :                                  * Now figure out what collation to assign to this node.</span>
+<span id="L684"><span class="lineNum">     684</span>              :                                  */</span>
+<span id="L685"><span class="lineNum">     685</span> <span class="tlaGNC">        3049 :                                 typcollation = get_typcollation(exprType(node));</span></span>
+<span id="L686"><span class="lineNum">     686</span> <span class="tlaGNC">        3049 :                                 if (OidIsValid(typcollation))</span></span>
+<span id="L687"><span class="lineNum">     687</span>              :                                 {</span>
+<span id="L688"><span class="lineNum">     688</span>              :                                         /* Node's result is collatable; what about its input? */</span>
+<span id="L689"><span class="lineNum">     689</span> <span class="tlaGNC">         665 :                                         if (loccontext.strength &gt; COLLATE_NONE)</span></span>
+<span id="L690"><span class="lineNum">     690</span>              :                                         {</span>
+<span id="L691"><span class="lineNum">     691</span>              :                                                 /* Collation state bubbles up from children. */</span>
+<span id="L692"><span class="lineNum">     692</span> <span class="tlaGNC">         457 :                                                 collation = loccontext.collation;</span></span>
+<span id="L693"><span class="lineNum">     693</span> <span class="tlaGNC">         457 :                                                 strength = loccontext.strength;</span></span>
+<span id="L694"><span class="lineNum">     694</span> <span class="tlaGNC">         457 :                                                 location = loccontext.location;</span></span>
+<span id="L695"><span class="lineNum">     695</span>              :                                         }</span>
+<span id="L696"><span class="lineNum">     696</span>              :                                         else</span>
+<span id="L697"><span class="lineNum">     697</span>              :                                         {</span>
+<span id="L698"><span class="lineNum">     698</span>              :                                                 /*</span>
+<span id="L699"><span class="lineNum">     699</span>              :                                                  * Collatable output produced without any collatable</span>
+<span id="L700"><span class="lineNum">     700</span>              :                                                  * input.  Use the type's collation (which is usually</span>
+<span id="L701"><span class="lineNum">     701</span>              :                                                  * DEFAULT_COLLATION_OID, but might be different for a</span>
+<span id="L702"><span class="lineNum">     702</span>              :                                                  * domain).</span>
+<span id="L703"><span class="lineNum">     703</span>              :                                                  */</span>
+<span id="L704"><span class="lineNum">     704</span> <span class="tlaGNC">         208 :                                                 collation = typcollation;</span></span>
+<span id="L705"><span class="lineNum">     705</span> <span class="tlaGNC">         208 :                                                 strength = COLLATE_IMPLICIT;</span></span>
+<span id="L706"><span class="lineNum">     706</span> <span class="tlaGNC">         208 :                                                 location = exprLocation(node);</span></span>
+<span id="L707"><span class="lineNum">     707</span>              :                                         }</span>
+<span id="L708"><span class="lineNum">     708</span>              :                                 }</span>
+<span id="L709"><span class="lineNum">     709</span>              :                                 else</span>
+<span id="L710"><span class="lineNum">     710</span>              :                                 {</span>
+<span id="L711"><span class="lineNum">     711</span>              :                                         /* Node's result type isn't collatable. */</span>
+<span id="L712"><span class="lineNum">     712</span> <span class="tlaGNC">        2384 :                                         collation = InvalidOid;</span></span>
+<span id="L713"><span class="lineNum">     713</span> <span class="tlaGNC">        2384 :                                         strength = COLLATE_NONE;</span></span>
+<span id="L714"><span class="lineNum">     714</span> <span class="tlaGNC">        2384 :                                         location = -1;  /* won't be used */</span></span>
+<span id="L715"><span class="lineNum">     715</span>              :                                 }</span>
+<span id="L716"><span class="lineNum">     716</span>              : </span>
+<span id="L717"><span class="lineNum">     717</span>              :                                 /*</span>
+<span id="L718"><span class="lineNum">     718</span>              :                                  * Save the result collation into the expression node. If the</span>
+<span id="L719"><span class="lineNum">     719</span>              :                                  * state is COLLATE_CONFLICT, we'll set the collation to</span>
+<span id="L720"><span class="lineNum">     720</span>              :                                  * InvalidOid, which might result in an error at runtime.</span>
+<span id="L721"><span class="lineNum">     721</span>              :                                  */</span>
+<span id="L722"><span class="lineNum">     722</span> <span class="tlaGNC">        3049 :                                 if (strength == COLLATE_CONFLICT)</span></span>
+<span id="L723"><span class="lineNum">     723</span> <span class="tlaUNC tlaBgUNC">           0 :                                         exprSetCollation(node, InvalidOid);</span></span>
+<span id="L724"><span class="lineNum">     724</span>              :                                 else</span>
+<span id="L725"><span class="lineNum">     725</span> <span class="tlaGNC tlaBgGNC">        3049 :                                         exprSetCollation(node, collation);</span></span>
+<span id="L726"><span class="lineNum">     726</span>              : </span>
+<span id="L727"><span class="lineNum">     727</span>              :                                 /*</span>
+<span id="L728"><span class="lineNum">     728</span>              :                                  * Likewise save the input collation, which is the one that</span>
+<span id="L729"><span class="lineNum">     729</span>              :                                  * any function called by this node should use.</span>
+<span id="L730"><span class="lineNum">     730</span>              :                                  */</span>
+<span id="L731"><span class="lineNum">     731</span> <span class="tlaGNC">        3049 :                                 if (loccontext.strength == COLLATE_CONFLICT)</span></span>
+<span id="L732"><span class="lineNum">     732</span> <span class="tlaUNC tlaBgUNC">           0 :                                         exprSetInputCollation(node, InvalidOid);</span></span>
+<span id="L733"><span class="lineNum">     733</span>              :                                 else</span>
+<span id="L734"><span class="lineNum">     734</span> <span class="tlaGNC tlaBgGNC">        3049 :                                         exprSetInputCollation(node, loccontext.collation);</span></span>
+<span id="L735"><span class="lineNum">     735</span>              :                         }</span>
+<span id="L736"><span class="lineNum">     736</span> <span class="tlaGNC">        3049 :                         break;</span></span>
+<span id="L737"><span class="lineNum">     737</span>              :         }</span>
+<span id="L738"><span class="lineNum">     738</span>              : </span>
+<span id="L739"><span class="lineNum">     739</span>              :         /*</span>
+<span id="L740"><span class="lineNum">     740</span>              :          * Now, merge my information into my parent's state.</span>
+<span id="L741"><span class="lineNum">     741</span>              :          */</span>
+<span id="L742"><span class="lineNum">     742</span> <span class="tlaGNC">       15168 :         merge_collation_state(collation,</span></span>
+<span id="L743"><span class="lineNum">     743</span>              :                                                   strength,</span>
+<span id="L744"><span class="lineNum">     744</span>              :                                                   location,</span>
+<span id="L745"><span class="lineNum">     745</span>              :                                                   loccontext.collation2,</span>
+<span id="L746"><span class="lineNum">     746</span>              :                                                   loccontext.location2,</span>
+<span id="L747"><span class="lineNum">     747</span>              :                                                   context);</span>
+<span id="L748"><span class="lineNum">     748</span>              : </span>
+<span id="L749"><span class="lineNum">     749</span> <span class="tlaGNC">       15168 :         return false;</span></span>
+<span id="L750"><span class="lineNum">     750</span>              : }</span>
+<span id="L751"><span class="lineNum">     751</span>              : </span>
+<span id="L752"><span class="lineNum">     752</span>              : /*</span>
+<span id="L753"><span class="lineNum">     753</span>              :  * Merge collation state of a subexpression into the context for its parent.</span>
+<span id="L754"><span class="lineNum">     754</span>              :  */</span>
+<span id="L755"><span class="lineNum">     755</span>              : static void</span>
+<span id="L756"><span class="lineNum">     756</span> <span class="tlaGNC">       15168 : merge_collation_state(Oid collation,</span></span>
+<span id="L757"><span class="lineNum">     757</span>              :                                           CollateStrength strength,</span>
+<span id="L758"><span class="lineNum">     758</span>              :                                           int location,</span>
+<span id="L759"><span class="lineNum">     759</span>              :                                           Oid collation2,</span>
+<span id="L760"><span class="lineNum">     760</span>              :                                           int location2,</span>
+<span id="L761"><span class="lineNum">     761</span>              :                                           assign_collations_context *context)</span>
+<span id="L762"><span class="lineNum">     762</span>              : {</span>
+<span id="L763"><span class="lineNum">     763</span>              :         /*</span>
+<span id="L764"><span class="lineNum">     764</span>              :          * If the collation strength for this node is different from what's</span>
+<span id="L765"><span class="lineNum">     765</span>              :          * already in *context, then this node either dominates or is dominated by</span>
+<span id="L766"><span class="lineNum">     766</span>              :          * earlier siblings.</span>
+<span id="L767"><span class="lineNum">     767</span>              :          */</span>
+<span id="L768"><span class="lineNum">     768</span> <span class="tlaGNC">       15168 :         if (strength &gt; context-&gt;strength)</span></span>
+<span id="L769"><span class="lineNum">     769</span>              :         {</span>
+<span id="L770"><span class="lineNum">     770</span>              :                 /* Override previous parent state */</span>
+<span id="L771"><span class="lineNum">     771</span> <span class="tlaGNC">        4573 :                 context-&gt;collation = collation;</span></span>
+<span id="L772"><span class="lineNum">     772</span> <span class="tlaGNC">        4573 :                 context-&gt;strength = strength;</span></span>
+<span id="L773"><span class="lineNum">     773</span> <span class="tlaGNC">        4573 :                 context-&gt;location = location;</span></span>
+<span id="L774"><span class="lineNum">     774</span>              :                 /* Bubble up error info if applicable */</span>
+<span id="L775"><span class="lineNum">     775</span> <span class="tlaGNC">        4573 :                 if (strength == COLLATE_CONFLICT)</span></span>
+<span id="L776"><span class="lineNum">     776</span>              :                 {</span>
+<span id="L777"><span class="lineNum">     777</span> <span class="tlaUNC tlaBgUNC">           0 :                         context-&gt;collation2 = collation2;</span></span>
+<span id="L778"><span class="lineNum">     778</span> <span class="tlaUNC">           0 :                         context-&gt;location2 = location2;</span></span>
+<span id="L779"><span class="lineNum">     779</span>              :                 }</span>
+<span id="L780"><span class="lineNum">     780</span>              :         }</span>
+<span id="L781"><span class="lineNum">     781</span> <span class="tlaGNC tlaBgGNC">       10595 :         else if (strength == context-&gt;strength)</span></span>
+<span id="L782"><span class="lineNum">     782</span>              :         {</span>
+<span id="L783"><span class="lineNum">     783</span>              :                 /* Merge, or detect error if there's a collation conflict */</span>
+<span id="L784"><span class="lineNum">     784</span> <span class="tlaGNC">       10331 :                 switch (strength)</span></span>
+<span id="L785"><span class="lineNum">     785</span>              :                 {</span>
+<span id="L786"><span class="lineNum">     786</span> <span class="tlaGNC">        9756 :                         case COLLATE_NONE:</span></span>
+<span id="L787"><span class="lineNum">     787</span>              :                                 /* Nothing + nothing is still nothing */</span>
+<span id="L788"><span class="lineNum">     788</span> <span class="tlaGNC">        9756 :                                 break;</span></span>
+<span id="L789"><span class="lineNum">     789</span> <span class="tlaGNC">         575 :                         case COLLATE_IMPLICIT:</span></span>
+<span id="L790"><span class="lineNum">     790</span> <span class="tlaGNC">         575 :                                 if (collation != context-&gt;collation)</span></span>
+<span id="L791"><span class="lineNum">     791</span>              :                                 {</span>
+<span id="L792"><span class="lineNum">     792</span>              :                                         /*</span>
+<span id="L793"><span class="lineNum">     793</span>              :                                          * Non-default implicit collation always beats default.</span>
+<span id="L794"><span class="lineNum">     794</span>              :                                          */</span>
+<span id="L795"><span class="lineNum">     795</span> <span class="tlaGNC">          49 :                                         if (context-&gt;collation == DEFAULT_COLLATION_OID)</span></span>
+<span id="L796"><span class="lineNum">     796</span>              :                                         {</span>
+<span id="L797"><span class="lineNum">     797</span>              :                                                 /* Override previous parent state */</span>
+<span id="L798"><span class="lineNum">     798</span> <span class="tlaGNC">           6 :                                                 context-&gt;collation = collation;</span></span>
+<span id="L799"><span class="lineNum">     799</span> <span class="tlaGNC">           6 :                                                 context-&gt;strength = strength;</span></span>
+<span id="L800"><span class="lineNum">     800</span> <span class="tlaGNC">           6 :                                                 context-&gt;location = location;</span></span>
+<span id="L801"><span class="lineNum">     801</span>              :                                         }</span>
+<span id="L802"><span class="lineNum">     802</span> <span class="tlaGNC">          43 :                                         else if (collation != DEFAULT_COLLATION_OID)</span></span>
+<span id="L803"><span class="lineNum">     803</span>              :                                         {</span>
+<span id="L804"><span class="lineNum">     804</span>              :                                                 /*</span>
+<span id="L805"><span class="lineNum">     805</span>              :                                                  * Oops, we have a conflict.  We cannot throw error</span>
+<span id="L806"><span class="lineNum">     806</span>              :                                                  * here, since the conflict could be resolved by a</span>
+<span id="L807"><span class="lineNum">     807</span>              :                                                  * later sibling CollateExpr, or the parent might not</span>
+<span id="L808"><span class="lineNum">     808</span>              :                                                  * care about collation anyway.  Return enough info to</span>
+<span id="L809"><span class="lineNum">     809</span>              :                                                  * throw the error later, if needed.</span>
+<span id="L810"><span class="lineNum">     810</span>              :                                                  */</span>
+<span id="L811"><span class="lineNum">     811</span> <span class="tlaUNC tlaBgUNC">           0 :                                                 context-&gt;strength = COLLATE_CONFLICT;</span></span>
+<span id="L812"><span class="lineNum">     812</span> <span class="tlaUNC">           0 :                                                 context-&gt;collation2 = collation;</span></span>
+<span id="L813"><span class="lineNum">     813</span> <span class="tlaUNC">           0 :                                                 context-&gt;location2 = location;</span></span>
+<span id="L814"><span class="lineNum">     814</span>              :                                         }</span>
+<span id="L815"><span class="lineNum">     815</span>              :                                 }</span>
+<span id="L816"><span class="lineNum">     816</span> <span class="tlaGNC tlaBgGNC">         575 :                                 break;</span></span>
+<span id="L817"><span class="lineNum">     817</span> <span class="tlaUNC tlaBgUNC">           0 :                         case COLLATE_CONFLICT:</span></span>
+<span id="L818"><span class="lineNum">     818</span>              :                                 /* We're still conflicted ... */</span>
+<span id="L819"><span class="lineNum">     819</span> <span class="tlaUNC">           0 :                                 break;</span></span>
+<span id="L820"><span class="lineNum">     820</span> <span class="tlaUNC">           0 :                         case COLLATE_EXPLICIT:</span></span>
+<span id="L821"><span class="lineNum">     821</span> <span class="tlaUNC">           0 :                                 if (collation != context-&gt;collation)</span></span>
+<span id="L822"><span class="lineNum">     822</span>              :                                 {</span>
+<span id="L823"><span class="lineNum">     823</span>              :                                         /*</span>
+<span id="L824"><span class="lineNum">     824</span>              :                                          * Oops, we have a conflict of explicit COLLATE clauses.</span>
+<span id="L825"><span class="lineNum">     825</span>              :                                          * Here we choose to throw error immediately; that is what</span>
+<span id="L826"><span class="lineNum">     826</span>              :                                          * the SQL standard says to do, and there's no good reason</span>
+<span id="L827"><span class="lineNum">     827</span>              :                                          * to be less strict.</span>
+<span id="L828"><span class="lineNum">     828</span>              :                                          */</span>
+<span id="L829"><span class="lineNum">     829</span> <span class="tlaUNC">           0 :                                         ereport(ERROR,</span></span>
+<span id="L830"><span class="lineNum">     830</span>              :                                                         (errcode(ERRCODE_COLLATION_MISMATCH),</span>
+<span id="L831"><span class="lineNum">     831</span>              :                                                          errmsg(&quot;collation mismatch between explicit collations \&quot;%s\&quot; and \&quot;%s\&quot;&quot;,</span>
+<span id="L832"><span class="lineNum">     832</span>              :                                                                         get_collation_name(context-&gt;collation),</span>
+<span id="L833"><span class="lineNum">     833</span>              :                                                                         get_collation_name(collation)),</span>
+<span id="L834"><span class="lineNum">     834</span>              :                                                          parser_errposition(context-&gt;pstate, location)));</span>
+<span id="L835"><span class="lineNum">     835</span>              :                                 }</span>
+<span id="L836"><span class="lineNum">     836</span> <span class="tlaUNC">           0 :                                 break;</span></span>
+<span id="L837"><span class="lineNum">     837</span>              :                 }</span>
+<span id="L838"><span class="lineNum">     838</span>              :         }</span>
+<span id="L839"><span class="lineNum">     839</span> <span class="tlaGNC tlaBgGNC">       15168 : }</span></span>
+<span id="L840"><span class="lineNum">     840</span>              : </span>
+<span id="L841"><span class="lineNum">     841</span>              : /*</span>
+<span id="L842"><span class="lineNum">     842</span>              :  * Aggref is a special case because expressions used only for ordering</span>
+<span id="L843"><span class="lineNum">     843</span>              :  * shouldn't be taken to conflict with each other or with regular args,</span>
+<span id="L844"><span class="lineNum">     844</span>              :  * indeed shouldn't affect the aggregate's result collation at all.</span>
+<span id="L845"><span class="lineNum">     845</span>              :  * We handle this by applying assign_expr_collations() to them rather than</span>
+<span id="L846"><span class="lineNum">     846</span>              :  * passing down our loccontext.</span>
+<span id="L847"><span class="lineNum">     847</span>              :  *</span>
+<span id="L848"><span class="lineNum">     848</span>              :  * Note that we recurse to each TargetEntry, not directly to its contained</span>
+<span id="L849"><span class="lineNum">     849</span>              :  * expression, so that the case above for T_TargetEntry will complain if we</span>
+<span id="L850"><span class="lineNum">     850</span>              :  * can't resolve a collation for an ORDER BY item (whether or not it is also</span>
+<span id="L851"><span class="lineNum">     851</span>              :  * a normal aggregate arg).</span>
+<span id="L852"><span class="lineNum">     852</span>              :  *</span>
+<span id="L853"><span class="lineNum">     853</span>              :  * We need not recurse into the aggorder or aggdistinct lists, because those</span>
+<span id="L854"><span class="lineNum">     854</span>              :  * contain only SortGroupClause nodes which we need not process.</span>
+<span id="L855"><span class="lineNum">     855</span>              :  */</span>
+<span id="L856"><span class="lineNum">     856</span>              : static void</span>
+<span id="L857"><span class="lineNum">     857</span> <span class="tlaGNC">          38 : assign_aggregate_collations(Aggref *aggref,</span></span>
+<span id="L858"><span class="lineNum">     858</span>              :                                                         assign_collations_context *loccontext)</span>
+<span id="L859"><span class="lineNum">     859</span>              : {</span>
+<span id="L860"><span class="lineNum">     860</span>              :         ListCell   *lc;</span>
+<span id="L861"><span class="lineNum">     861</span>              : </span>
+<span id="L862"><span class="lineNum">     862</span>              :         /* Plain aggregates have no direct args */</span>
+<span id="L863"><span class="lineNum">     863</span>              :         Assert(aggref-&gt;aggdirectargs == NIL);</span>
+<span id="L864"><span class="lineNum">     864</span>              : </span>
+<span id="L865"><span class="lineNum">     865</span>              :         /* Process aggregated args, holding resjunk ones at arm's length */</span>
+<span id="L866"><span class="lineNum">     866</span> <span class="tlaGNC">          64 :         foreach(lc, aggref-&gt;args)</span></span>
+<span id="L867"><span class="lineNum">     867</span>              :         {</span>
+<span id="L868"><span class="lineNum">     868</span> <span class="tlaGNC">          26 :                 TargetEntry *tle = lfirst_node(TargetEntry, lc);</span></span>
+<span id="L869"><span class="lineNum">     869</span>              : </span>
+<span id="L870"><span class="lineNum">     870</span> <span class="tlaGNC">          26 :                 if (tle-&gt;resjunk)</span></span>
+<span id="L871"><span class="lineNum">     871</span> <span class="tlaGNC">           1 :                         assign_expr_collations(loccontext-&gt;pstate, (Node *) tle);</span></span>
+<span id="L872"><span class="lineNum">     872</span>              :                 else</span>
+<span id="L873"><span class="lineNum">     873</span> <span class="tlaGNC">          25 :                         (void) assign_collations_walker((Node *) tle, loccontext);</span></span>
+<span id="L874"><span class="lineNum">     874</span>              :         }</span>
+<span id="L875"><span class="lineNum">     875</span> <span class="tlaGNC">          38 : }</span></span>
+<span id="L876"><span class="lineNum">     876</span>              : </span>
+<span id="L877"><span class="lineNum">     877</span>              : /*</span>
+<span id="L878"><span class="lineNum">     878</span>              :  * For ordered-set aggregates, it's somewhat unclear how best to proceed.</span>
+<span id="L879"><span class="lineNum">     879</span>              :  * The spec-defined inverse distribution functions have only one sort column</span>
+<span id="L880"><span class="lineNum">     880</span>              :  * and don't return collatable types, but this is clearly too restrictive in</span>
+<span id="L881"><span class="lineNum">     881</span>              :  * the general case.  Our solution is to consider that the aggregate's direct</span>
+<span id="L882"><span class="lineNum">     882</span>              :  * arguments contribute normally to determination of the aggregate's own</span>
+<span id="L883"><span class="lineNum">     883</span>              :  * collation, while aggregated arguments contribute only when the aggregate</span>
+<span id="L884"><span class="lineNum">     884</span>              :  * is designed to have exactly one aggregated argument (i.e., it has a single</span>
+<span id="L885"><span class="lineNum">     885</span>              :  * aggregated argument and is non-variadic).  If it can have more than one</span>
+<span id="L886"><span class="lineNum">     886</span>              :  * aggregated argument, we process the aggregated arguments as independent</span>
+<span id="L887"><span class="lineNum">     887</span>              :  * sort columns.  This avoids throwing error for something like</span>
+<span id="L888"><span class="lineNum">     888</span>              :  *              agg(...) within group (order by x collate &quot;foo&quot;, y collate &quot;bar&quot;)</span>
+<span id="L889"><span class="lineNum">     889</span>              :  * while also guaranteeing that variadic aggregates don't change in behavior</span>
+<span id="L890"><span class="lineNum">     890</span>              :  * depending on how many sort columns a particular call happens to have.</span>
+<span id="L891"><span class="lineNum">     891</span>              :  *</span>
+<span id="L892"><span class="lineNum">     892</span>              :  * Otherwise this is much like the plain-aggregate case.</span>
+<span id="L893"><span class="lineNum">     893</span>              :  */</span>
+<span id="L894"><span class="lineNum">     894</span>              : static void</span>
+<span id="L895"><span class="lineNum">     895</span> <span class="tlaUNC tlaBgUNC">           0 : assign_ordered_set_collations(Aggref *aggref,</span></span>
+<span id="L896"><span class="lineNum">     896</span>              :                                                           assign_collations_context *loccontext)</span>
+<span id="L897"><span class="lineNum">     897</span>              : {</span>
+<span id="L898"><span class="lineNum">     898</span>              :         bool            merge_sort_collations;</span>
+<span id="L899"><span class="lineNum">     899</span>              :         ListCell   *lc;</span>
+<span id="L900"><span class="lineNum">     900</span>              : </span>
+<span id="L901"><span class="lineNum">     901</span>              :         /* Merge sort collations to parent only if there can be only one */</span>
+<span id="L902"><span class="lineNum">     902</span> <span class="tlaUNC">           0 :         merge_sort_collations = (list_length(aggref-&gt;args) == 1 &amp;&amp;</span></span>
+<span id="L903"><span class="lineNum">     903</span> <span class="tlaUNC">           0 :                                                          get_func_variadictype(aggref-&gt;aggfnoid) == InvalidOid);</span></span>
+<span id="L904"><span class="lineNum">     904</span>              : </span>
+<span id="L905"><span class="lineNum">     905</span>              :         /* Direct args, if any, are normal children of the Aggref node */</span>
+<span id="L906"><span class="lineNum">     906</span> <span class="tlaUNC">           0 :         (void) assign_collations_walker((Node *) aggref-&gt;aggdirectargs,</span></span>
+<span id="L907"><span class="lineNum">     907</span>              :                                                                         loccontext);</span>
+<span id="L908"><span class="lineNum">     908</span>              : </span>
+<span id="L909"><span class="lineNum">     909</span>              :         /* Process aggregated args appropriately */</span>
+<span id="L910"><span class="lineNum">     910</span> <span class="tlaUNC">           0 :         foreach(lc, aggref-&gt;args)</span></span>
+<span id="L911"><span class="lineNum">     911</span>              :         {</span>
+<span id="L912"><span class="lineNum">     912</span> <span class="tlaUNC">           0 :                 TargetEntry *tle = lfirst_node(TargetEntry, lc);</span></span>
+<span id="L913"><span class="lineNum">     913</span>              : </span>
+<span id="L914"><span class="lineNum">     914</span> <span class="tlaUNC">           0 :                 if (merge_sort_collations)</span></span>
+<span id="L915"><span class="lineNum">     915</span> <span class="tlaUNC">           0 :                         (void) assign_collations_walker((Node *) tle, loccontext);</span></span>
+<span id="L916"><span class="lineNum">     916</span>              :                 else</span>
+<span id="L917"><span class="lineNum">     917</span> <span class="tlaUNC">           0 :                         assign_expr_collations(loccontext-&gt;pstate, (Node *) tle);</span></span>
+<span id="L918"><span class="lineNum">     918</span>              :         }</span>
+<span id="L919"><span class="lineNum">     919</span> <span class="tlaUNC">           0 : }</span></span>
+<span id="L920"><span class="lineNum">     920</span>              : </span>
+<span id="L921"><span class="lineNum">     921</span>              : /*</span>
+<span id="L922"><span class="lineNum">     922</span>              :  * Hypothetical-set aggregates are even more special: per spec, we need to</span>
+<span id="L923"><span class="lineNum">     923</span>              :  * unify the collations of each pair of hypothetical and aggregated args.</span>
+<span id="L924"><span class="lineNum">     924</span>              :  * And we need to force the choice of collation down into the sort column</span>
+<span id="L925"><span class="lineNum">     925</span>              :  * to ensure that the sort happens with the chosen collation.  Other than</span>
+<span id="L926"><span class="lineNum">     926</span>              :  * that, the behavior is like regular ordered-set aggregates.  Note that</span>
+<span id="L927"><span class="lineNum">     927</span>              :  * hypothetical direct arguments contribute to the aggregate collation</span>
+<span id="L928"><span class="lineNum">     928</span>              :  * only when their partner aggregated arguments do.</span>
+<span id="L929"><span class="lineNum">     929</span>              :  */</span>
+<span id="L930"><span class="lineNum">     930</span>              : static void</span>
+<span id="L931"><span class="lineNum">     931</span> <span class="tlaUNC">           0 : assign_hypothetical_collations(Aggref *aggref,</span></span>
+<span id="L932"><span class="lineNum">     932</span>              :                                                            assign_collations_context *loccontext)</span>
+<span id="L933"><span class="lineNum">     933</span>              : {</span>
+<span id="L934"><span class="lineNum">     934</span> <span class="tlaUNC">           0 :         ListCell   *h_cell = list_head(aggref-&gt;aggdirectargs);</span></span>
+<span id="L935"><span class="lineNum">     935</span> <span class="tlaUNC">           0 :         ListCell   *s_cell = list_head(aggref-&gt;args);</span></span>
+<span id="L936"><span class="lineNum">     936</span>              :         bool            merge_sort_collations;</span>
+<span id="L937"><span class="lineNum">     937</span>              :         int                     extra_args;</span>
+<span id="L938"><span class="lineNum">     938</span>              : </span>
+<span id="L939"><span class="lineNum">     939</span>              :         /* Merge sort collations to parent only if there can be only one */</span>
+<span id="L940"><span class="lineNum">     940</span> <span class="tlaUNC">           0 :         merge_sort_collations = (list_length(aggref-&gt;args) == 1 &amp;&amp;</span></span>
+<span id="L941"><span class="lineNum">     941</span> <span class="tlaUNC">           0 :                                                          get_func_variadictype(aggref-&gt;aggfnoid) == InvalidOid);</span></span>
+<span id="L942"><span class="lineNum">     942</span>              : </span>
+<span id="L943"><span class="lineNum">     943</span>              :         /* Process any non-hypothetical direct args */</span>
+<span id="L944"><span class="lineNum">     944</span> <span class="tlaUNC">           0 :         extra_args = list_length(aggref-&gt;aggdirectargs) - list_length(aggref-&gt;args);</span></span>
+<span id="L945"><span class="lineNum">     945</span>              :         Assert(extra_args &gt;= 0);</span>
+<span id="L946"><span class="lineNum">     946</span> <span class="tlaUNC">           0 :         while (extra_args-- &gt; 0)</span></span>
+<span id="L947"><span class="lineNum">     947</span>              :         {</span>
+<span id="L948"><span class="lineNum">     948</span> <span class="tlaUNC">           0 :                 (void) assign_collations_walker((Node *) lfirst(h_cell), loccontext);</span></span>
+<span id="L949"><span class="lineNum">     949</span> <span class="tlaUNC">           0 :                 h_cell = lnext(aggref-&gt;aggdirectargs, h_cell);</span></span>
+<span id="L950"><span class="lineNum">     950</span>              :         }</span>
+<span id="L951"><span class="lineNum">     951</span>              : </span>
+<span id="L952"><span class="lineNum">     952</span>              :         /* Scan hypothetical args and aggregated args in parallel */</span>
+<span id="L953"><span class="lineNum">     953</span> <span class="tlaUNC">           0 :         while (h_cell &amp;&amp; s_cell)</span></span>
+<span id="L954"><span class="lineNum">     954</span>              :         {</span>
+<span id="L955"><span class="lineNum">     955</span> <span class="tlaUNC">           0 :                 Node       *h_arg = (Node *) lfirst(h_cell);</span></span>
+<span id="L956"><span class="lineNum">     956</span> <span class="tlaUNC">           0 :                 TargetEntry *s_tle = (TargetEntry *) lfirst(s_cell);</span></span>
+<span id="L957"><span class="lineNum">     957</span>              :                 assign_collations_context paircontext;</span>
+<span id="L958"><span class="lineNum">     958</span>              : </span>
+<span id="L959"><span class="lineNum">     959</span>              :                 /*</span>
+<span id="L960"><span class="lineNum">     960</span>              :                  * Assign collations internally in this pair of expressions, then</span>
+<span id="L961"><span class="lineNum">     961</span>              :                  * choose a common collation for them.  This should match</span>
+<span id="L962"><span class="lineNum">     962</span>              :                  * select_common_collation(), but we can't use that function as-is</span>
+<span id="L963"><span class="lineNum">     963</span>              :                  * because we need access to the whole collation state so we can</span>
+<span id="L964"><span class="lineNum">     964</span>              :                  * bubble it up to the aggregate function's level.</span>
+<span id="L965"><span class="lineNum">     965</span>              :                  */</span>
+<span id="L966"><span class="lineNum">     966</span> <span class="tlaUNC">           0 :                 paircontext.pstate = loccontext-&gt;pstate;</span></span>
+<span id="L967"><span class="lineNum">     967</span> <span class="tlaUNC">           0 :                 paircontext.collation = InvalidOid;</span></span>
+<span id="L968"><span class="lineNum">     968</span> <span class="tlaUNC">           0 :                 paircontext.strength = COLLATE_NONE;</span></span>
+<span id="L969"><span class="lineNum">     969</span> <span class="tlaUNC">           0 :                 paircontext.location = -1;</span></span>
+<span id="L970"><span class="lineNum">     970</span>              :                 /* Set these fields just to suppress uninitialized-value warnings: */</span>
+<span id="L971"><span class="lineNum">     971</span> <span class="tlaUNC">           0 :                 paircontext.collation2 = InvalidOid;</span></span>
+<span id="L972"><span class="lineNum">     972</span> <span class="tlaUNC">           0 :                 paircontext.location2 = -1;</span></span>
+<span id="L973"><span class="lineNum">     973</span>              : </span>
+<span id="L974"><span class="lineNum">     974</span> <span class="tlaUNC">           0 :                 (void) assign_collations_walker(h_arg, &amp;paircontext);</span></span>
+<span id="L975"><span class="lineNum">     975</span> <span class="tlaUNC">           0 :                 (void) assign_collations_walker((Node *) s_tle-&gt;expr, &amp;paircontext);</span></span>
+<span id="L976"><span class="lineNum">     976</span>              : </span>
+<span id="L977"><span class="lineNum">     977</span>              :                 /* deal with collation conflict */</span>
+<span id="L978"><span class="lineNum">     978</span> <span class="tlaUNC">           0 :                 if (paircontext.strength == COLLATE_CONFLICT)</span></span>
+<span id="L979"><span class="lineNum">     979</span> <span class="tlaUNC">           0 :                         ereport(ERROR,</span></span>
+<span id="L980"><span class="lineNum">     980</span>              :                                         (errcode(ERRCODE_COLLATION_MISMATCH),</span>
+<span id="L981"><span class="lineNum">     981</span>              :                                          errmsg(&quot;collation mismatch between implicit collations \&quot;%s\&quot; and \&quot;%s\&quot;&quot;,</span>
+<span id="L982"><span class="lineNum">     982</span>              :                                                         get_collation_name(paircontext.collation),</span>
+<span id="L983"><span class="lineNum">     983</span>              :                                                         get_collation_name(paircontext.collation2)),</span>
+<span id="L984"><span class="lineNum">     984</span>              :                                          errhint(&quot;You can choose the collation by applying the COLLATE clause to one or both expressions.&quot;),</span>
+<span id="L985"><span class="lineNum">     985</span>              :                                          parser_errposition(paircontext.pstate,</span>
+<span id="L986"><span class="lineNum">     986</span>              :                                                                                 paircontext.location2)));</span>
+<span id="L987"><span class="lineNum">     987</span>              : </span>
+<span id="L988"><span class="lineNum">     988</span>              :                 /*</span>
+<span id="L989"><span class="lineNum">     989</span>              :                  * At this point paircontext.collation can be InvalidOid only if the</span>
+<span id="L990"><span class="lineNum">     990</span>              :                  * type is not collatable; no need to do anything in that case.  If we</span>
+<span id="L991"><span class="lineNum">     991</span>              :                  * do have to change the sort column's collation, do it by inserting a</span>
+<span id="L992"><span class="lineNum">     992</span>              :                  * RelabelType node into the sort column TLE.</span>
+<span id="L993"><span class="lineNum">     993</span>              :                  *</span>
+<span id="L994"><span class="lineNum">     994</span>              :                  * XXX This is pretty grotty for a couple of reasons:</span>
+<span id="L995"><span class="lineNum">     995</span>              :                  * assign_collations_walker isn't supposed to be changing the</span>
+<span id="L996"><span class="lineNum">     996</span>              :                  * expression structure like this, and a parse-time change of</span>
+<span id="L997"><span class="lineNum">     997</span>              :                  * collation ought to be signaled by a CollateExpr not a RelabelType</span>
+<span id="L998"><span class="lineNum">     998</span>              :                  * (the use of RelabelType for collation marking is supposed to be a</span>
+<span id="L999"><span class="lineNum">     999</span>              :                  * planner/executor thing only).  But we have no better alternative.</span>
+<span id="L1000"><span class="lineNum">    1000</span>              :                  * In particular, injecting a CollateExpr could result in the</span>
+<span id="L1001"><span class="lineNum">    1001</span>              :                  * expression being interpreted differently after dump/reload, since</span>
+<span id="L1002"><span class="lineNum">    1002</span>              :                  * we might be effectively promoting an implicit collation to</span>
+<span id="L1003"><span class="lineNum">    1003</span>              :                  * explicit.  This kluge is relying on ruleutils.c not printing a</span>
+<span id="L1004"><span class="lineNum">    1004</span>              :                  * COLLATE clause for a RelabelType, and probably on some other</span>
+<span id="L1005"><span class="lineNum">    1005</span>              :                  * fragile behaviors.</span>
+<span id="L1006"><span class="lineNum">    1006</span>              :                  */</span>
+<span id="L1007"><span class="lineNum">    1007</span> <span class="tlaUNC">           0 :                 if (OidIsValid(paircontext.collation) &amp;&amp;</span></span>
+<span id="L1008"><span class="lineNum">    1008</span> <span class="tlaUNC">           0 :                         paircontext.collation != exprCollation((Node *) s_tle-&gt;expr))</span></span>
+<span id="L1009"><span class="lineNum">    1009</span>              :                 {</span>
+<span id="L1010"><span class="lineNum">    1010</span> <span class="tlaUNC">           0 :                         s_tle-&gt;expr = (Expr *)</span></span>
+<span id="L1011"><span class="lineNum">    1011</span> <span class="tlaUNC">           0 :                                 makeRelabelType(s_tle-&gt;expr,</span></span>
+<span id="L1012"><span class="lineNum">    1012</span> <span class="tlaUNC">           0 :                                                                 exprType((Node *) s_tle-&gt;expr),</span></span>
+<span id="L1013"><span class="lineNum">    1013</span> <span class="tlaUNC">           0 :                                                                 exprTypmod((Node *) s_tle-&gt;expr),</span></span>
+<span id="L1014"><span class="lineNum">    1014</span>              :                                                                 paircontext.collation,</span>
+<span id="L1015"><span class="lineNum">    1015</span>              :                                                                 COERCE_IMPLICIT_CAST);</span>
+<span id="L1016"><span class="lineNum">    1016</span>              :                 }</span>
+<span id="L1017"><span class="lineNum">    1017</span>              : </span>
+<span id="L1018"><span class="lineNum">    1018</span>              :                 /*</span>
+<span id="L1019"><span class="lineNum">    1019</span>              :                  * If appropriate, merge this column's collation state up to the</span>
+<span id="L1020"><span class="lineNum">    1020</span>              :                  * aggregate function.</span>
+<span id="L1021"><span class="lineNum">    1021</span>              :                  */</span>
+<span id="L1022"><span class="lineNum">    1022</span> <span class="tlaUNC">           0 :                 if (merge_sort_collations)</span></span>
+<span id="L1023"><span class="lineNum">    1023</span> <span class="tlaUNC">           0 :                         merge_collation_state(paircontext.collation,</span></span>
+<span id="L1024"><span class="lineNum">    1024</span>              :                                                                   paircontext.strength,</span>
+<span id="L1025"><span class="lineNum">    1025</span>              :                                                                   paircontext.location,</span>
+<span id="L1026"><span class="lineNum">    1026</span>              :                                                                   paircontext.collation2,</span>
+<span id="L1027"><span class="lineNum">    1027</span>              :                                                                   paircontext.location2,</span>
+<span id="L1028"><span class="lineNum">    1028</span>              :                                                                   loccontext);</span>
+<span id="L1029"><span class="lineNum">    1029</span>              : </span>
+<span id="L1030"><span class="lineNum">    1030</span> <span class="tlaUNC">           0 :                 h_cell = lnext(aggref-&gt;aggdirectargs, h_cell);</span></span>
+<span id="L1031"><span class="lineNum">    1031</span> <span class="tlaUNC">           0 :                 s_cell = lnext(aggref-&gt;args, s_cell);</span></span>
+<span id="L1032"><span class="lineNum">    1032</span>              :         }</span>
+<span id="L1033"><span class="lineNum">    1033</span>              :         Assert(h_cell == NULL &amp;&amp; s_cell == NULL);</span>
+<span id="L1034"><span class="lineNum">    1034</span> <span class="tlaUNC">           0 : }</span></span>
+        </pre>
+              </td>
+            </tr>
+          </table>
+          <br>
+
+          <table width="100%" border=0 cellspacing=0 cellpadding=0>
+            <tr><td class="ruler"><img src="../../glass.png" width=3 height=3 alt=""></td></tr>
+            <tr><td class="versionInfo">Generated by: <a href="https://github.com//linux-test-project/lcov" target="_parent">LCOV version 2.0-1</a></td></tr>
+          </table>
+          <br>
+
+</body>
+</html>

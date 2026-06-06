@@ -1,0 +1,644 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - coverage_filtered.info - backend/access/transam/varsup.c</title>
+  <link rel="stylesheet" type="text/css" href="../../../gcov.css">
+</head>
+
+<body>
+
+          <table width="100%" border=0 cellspacing=0 cellpadding=0>
+            <tr><td class="title">LCOV - code coverage report</td></tr>
+            <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+
+            <tr>
+              <td width="100%">
+                <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="10%" class="headerValue"><a href="../../../index.html">top level</a> - <a href="index.html">backend/access/transam</a> - varsup.c<span style="font-size: 80%;"> (source / <a href="varsup.c.func-c.html">functions</a>)</span></td>
+            <td width="5%"></td>
+            <td width="5%"></td>
+            <td width="5%" class="headerCovTableHead">Coverage</td>
+            <td width="5%" class="headerCovTableHead" title="Covered + Uncovered code">Total</td>
+            <td width="5%" class="headerCovTableHead" title="Exercised code only">Hit</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">coverage_filtered.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntryLo">60.4&nbsp;%</td>
+            <td class="headerCovTableEntry">139</td>
+            <td class="headerCovTableEntry">84</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test Date:</td>
+            <td class="headerValue">2026-06-06 02:50:27</td>
+            <td></td>
+            <td class="headerItem">Functions:</td>
+            <td class="headerCovTableEntryMed">85.7&nbsp;%</td>
+            <td class="headerCovTableEntry">7</td>
+            <td class="headerCovTableEntry">6</td>
+          </tr>
+                  <tr><td><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+                </table>
+              </td>
+            </tr>
+
+            <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+          </table>
+
+          <table cellpadding=0 cellspacing=0 border=0>
+            <tr>
+              <td><br></td>
+            </tr>
+            <tr>
+              <td>
+<pre class="sourceHeading">            Line data    Source code</pre>
+<pre class="source">
+<span id="L1"><span class="lineNum">       1</span>              : /*-------------------------------------------------------------------------</span>
+<span id="L2"><span class="lineNum">       2</span>              :  *</span>
+<span id="L3"><span class="lineNum">       3</span>              :  * varsup.c</span>
+<span id="L4"><span class="lineNum">       4</span>              :  *        postgres OID &amp; XID variables support routines</span>
+<span id="L5"><span class="lineNum">       5</span>              :  *</span>
+<span id="L6"><span class="lineNum">       6</span>              :  * Copyright (c) 2000-2020, PostgreSQL Global Development Group</span>
+<span id="L7"><span class="lineNum">       7</span>              :  *</span>
+<span id="L8"><span class="lineNum">       8</span>              :  * IDENTIFICATION</span>
+<span id="L9"><span class="lineNum">       9</span>              :  *        src/backend/access/transam/varsup.c</span>
+<span id="L10"><span class="lineNum">      10</span>              :  *</span>
+<span id="L11"><span class="lineNum">      11</span>              :  *-------------------------------------------------------------------------</span>
+<span id="L12"><span class="lineNum">      12</span>              :  */</span>
+<span id="L13"><span class="lineNum">      13</span>              : </span>
+<span id="L14"><span class="lineNum">      14</span>              : #include &quot;postgres.h&quot;</span>
+<span id="L15"><span class="lineNum">      15</span>              : </span>
+<span id="L16"><span class="lineNum">      16</span>              : #include &quot;access/clog.h&quot;</span>
+<span id="L17"><span class="lineNum">      17</span>              : #include &quot;access/commit_ts.h&quot;</span>
+<span id="L18"><span class="lineNum">      18</span>              : #include &quot;access/subtrans.h&quot;</span>
+<span id="L19"><span class="lineNum">      19</span>              : #include &quot;access/transam.h&quot;</span>
+<span id="L20"><span class="lineNum">      20</span>              : #include &quot;access/xact.h&quot;</span>
+<span id="L21"><span class="lineNum">      21</span>              : #include &quot;access/xlog.h&quot;</span>
+<span id="L22"><span class="lineNum">      22</span>              : #include &quot;commands/dbcommands.h&quot;</span>
+<span id="L23"><span class="lineNum">      23</span>              : #include &quot;miscadmin.h&quot;</span>
+<span id="L24"><span class="lineNum">      24</span>              : #include &quot;postmaster/autovacuum.h&quot;</span>
+<span id="L25"><span class="lineNum">      25</span>              : #include &quot;storage/pmsignal.h&quot;</span>
+<span id="L26"><span class="lineNum">      26</span>              : #include &quot;storage/proc.h&quot;</span>
+<span id="L27"><span class="lineNum">      27</span>              : #include &quot;utils/syscache.h&quot;</span>
+<span id="L28"><span class="lineNum">      28</span>              : </span>
+<span id="L29"><span class="lineNum">      29</span>              : </span>
+<span id="L30"><span class="lineNum">      30</span>              : /* Number of OIDs to prefetch (preallocate) per XLOG write */</span>
+<span id="L31"><span class="lineNum">      31</span>              : #define VAR_OID_PREFETCH                8192</span>
+<span id="L32"><span class="lineNum">      32</span>              : </span>
+<span id="L33"><span class="lineNum">      33</span>              : /* pointer to &quot;variable cache&quot; in shared memory (set up by shmem.c) */</span>
+<span id="L34"><span class="lineNum">      34</span>              : VariableCache ShmemVariableCache = NULL;</span>
+<span id="L35"><span class="lineNum">      35</span>              : </span>
+<span id="L36"><span class="lineNum">      36</span>              : </span>
+<span id="L37"><span class="lineNum">      37</span>              : /*</span>
+<span id="L38"><span class="lineNum">      38</span>              :  * Allocate the next FullTransactionId for a new transaction or</span>
+<span id="L39"><span class="lineNum">      39</span>              :  * subtransaction.</span>
+<span id="L40"><span class="lineNum">      40</span>              :  *</span>
+<span id="L41"><span class="lineNum">      41</span>              :  * The new XID is also stored into MyPgXact before returning.</span>
+<span id="L42"><span class="lineNum">      42</span>              :  *</span>
+<span id="L43"><span class="lineNum">      43</span>              :  * Note: when this is called, we are actually already inside a valid</span>
+<span id="L44"><span class="lineNum">      44</span>              :  * transaction, since XIDs are now not allocated until the transaction</span>
+<span id="L45"><span class="lineNum">      45</span>              :  * does something.  So it is safe to do a database lookup if we want to</span>
+<span id="L46"><span class="lineNum">      46</span>              :  * issue a warning about XID wrap.</span>
+<span id="L47"><span class="lineNum">      47</span>              :  */</span>
+<span id="L48"><span class="lineNum">      48</span>              : FullTransactionId</span>
+<span id="L49"><span class="lineNum">      49</span> <span class="tlaGNC tlaBgGNC">        1194 : GetNewTransactionId(bool isSubXact)</span></span>
+<span id="L50"><span class="lineNum">      50</span>              : {</span>
+<span id="L51"><span class="lineNum">      51</span>              :         FullTransactionId full_xid;</span>
+<span id="L52"><span class="lineNum">      52</span>              :         TransactionId xid;</span>
+<span id="L53"><span class="lineNum">      53</span>              : </span>
+<span id="L54"><span class="lineNum">      54</span>              :         /*</span>
+<span id="L55"><span class="lineNum">      55</span>              :          * Workers synchronize transaction state at the beginning of each parallel</span>
+<span id="L56"><span class="lineNum">      56</span>              :          * operation, so we can't account for new XIDs after that point.</span>
+<span id="L57"><span class="lineNum">      57</span>              :          */</span>
+<span id="L58"><span class="lineNum">      58</span> <span class="tlaGNC">        1194 :         if (IsInParallelMode())</span></span>
+<span id="L59"><span class="lineNum">      59</span> <span class="tlaUNC tlaBgUNC">           0 :                 elog(ERROR, &quot;cannot assign TransactionIds during a parallel operation&quot;);</span></span>
+<span id="L60"><span class="lineNum">      60</span>              : </span>
+<span id="L61"><span class="lineNum">      61</span>              :         /*</span>
+<span id="L62"><span class="lineNum">      62</span>              :          * During bootstrap initialization, we return the special bootstrap</span>
+<span id="L63"><span class="lineNum">      63</span>              :          * transaction id.</span>
+<span id="L64"><span class="lineNum">      64</span>              :          */</span>
+<span id="L65"><span class="lineNum">      65</span> <span class="tlaGNC tlaBgGNC">        1194 :         if (IsBootstrapProcessingMode())</span></span>
+<span id="L66"><span class="lineNum">      66</span>              :         {</span>
+<span id="L67"><span class="lineNum">      67</span>              :                 Assert(!isSubXact);</span>
+<span id="L68"><span class="lineNum">      68</span> <span class="tlaGNC">           1 :                 MyPgXact-&gt;xid = BootstrapTransactionId;</span></span>
+<span id="L69"><span class="lineNum">      69</span> <span class="tlaGNC">           1 :                 return FullTransactionIdFromEpochAndXid(0, BootstrapTransactionId);</span></span>
+<span id="L70"><span class="lineNum">      70</span>              :         }</span>
+<span id="L71"><span class="lineNum">      71</span>              : </span>
+<span id="L72"><span class="lineNum">      72</span>              :         /* safety check, we should never get this far in a HS standby */</span>
+<span id="L73"><span class="lineNum">      73</span> <span class="tlaGNC">        1193 :         if (RecoveryInProgress())</span></span>
+<span id="L74"><span class="lineNum">      74</span> <span class="tlaUNC tlaBgUNC">           0 :                 elog(ERROR, &quot;cannot assign TransactionIds during recovery&quot;);</span></span>
+<span id="L75"><span class="lineNum">      75</span>              : </span>
+<span id="L76"><span class="lineNum">      76</span> <span class="tlaGNC tlaBgGNC">        1193 :         LWLockAcquire(XidGenLock, LW_EXCLUSIVE);</span></span>
+<span id="L77"><span class="lineNum">      77</span>              : </span>
+<span id="L78"><span class="lineNum">      78</span> <span class="tlaGNC">        1193 :         full_xid = ShmemVariableCache-&gt;nextFullXid;</span></span>
+<span id="L79"><span class="lineNum">      79</span> <span class="tlaGNC">        1193 :         xid = XidFromFullTransactionId(full_xid);</span></span>
+<span id="L80"><span class="lineNum">      80</span>              : </span>
+<span id="L81"><span class="lineNum">      81</span>              :         /*----------</span>
+<span id="L82"><span class="lineNum">      82</span>              :          * Check to see if it's safe to assign another XID.  This protects against</span>
+<span id="L83"><span class="lineNum">      83</span>              :          * catastrophic data loss due to XID wraparound.  The basic rules are:</span>
+<span id="L84"><span class="lineNum">      84</span>              :          *</span>
+<span id="L85"><span class="lineNum">      85</span>              :          * If we're past xidVacLimit, start trying to force autovacuum cycles.</span>
+<span id="L86"><span class="lineNum">      86</span>              :          * If we're past xidWarnLimit, start issuing warnings.</span>
+<span id="L87"><span class="lineNum">      87</span>              :          * If we're past xidStopLimit, refuse to execute transactions, unless</span>
+<span id="L88"><span class="lineNum">      88</span>              :          * we are running in single-user mode (which gives an escape hatch</span>
+<span id="L89"><span class="lineNum">      89</span>              :          * to the DBA who somehow got past the earlier defenses).</span>
+<span id="L90"><span class="lineNum">      90</span>              :          *</span>
+<span id="L91"><span class="lineNum">      91</span>              :          * Note that this coding also appears in GetNewMultiXactId.</span>
+<span id="L92"><span class="lineNum">      92</span>              :          *----------</span>
+<span id="L93"><span class="lineNum">      93</span>              :          */</span>
+<span id="L94"><span class="lineNum">      94</span> <span class="tlaGNC">        1193 :         if (TransactionIdFollowsOrEquals(xid, ShmemVariableCache-&gt;xidVacLimit))</span></span>
+<span id="L95"><span class="lineNum">      95</span>              :         {</span>
+<span id="L96"><span class="lineNum">      96</span>              :                 /*</span>
+<span id="L97"><span class="lineNum">      97</span>              :                  * For safety's sake, we release XidGenLock while sending signals,</span>
+<span id="L98"><span class="lineNum">      98</span>              :                  * warnings, etc.  This is not so much because we care about</span>
+<span id="L99"><span class="lineNum">      99</span>              :                  * preserving concurrency in this situation, as to avoid any</span>
+<span id="L100"><span class="lineNum">     100</span>              :                  * possibility of deadlock while doing get_database_name(). First,</span>
+<span id="L101"><span class="lineNum">     101</span>              :                  * copy all the shared values we'll need in this path.</span>
+<span id="L102"><span class="lineNum">     102</span>              :                  */</span>
+<span id="L103"><span class="lineNum">     103</span> <span class="tlaUNC tlaBgUNC">           0 :                 TransactionId xidWarnLimit = ShmemVariableCache-&gt;xidWarnLimit;</span></span>
+<span id="L104"><span class="lineNum">     104</span> <span class="tlaUNC">           0 :                 TransactionId xidStopLimit = ShmemVariableCache-&gt;xidStopLimit;</span></span>
+<span id="L105"><span class="lineNum">     105</span> <span class="tlaUNC">           0 :                 TransactionId xidWrapLimit = ShmemVariableCache-&gt;xidWrapLimit;</span></span>
+<span id="L106"><span class="lineNum">     106</span> <span class="tlaUNC">           0 :                 Oid                     oldest_datoid = ShmemVariableCache-&gt;oldestXidDB;</span></span>
+<span id="L107"><span class="lineNum">     107</span>              : </span>
+<span id="L108"><span class="lineNum">     108</span> <span class="tlaUNC">           0 :                 LWLockRelease(XidGenLock);</span></span>
+<span id="L109"><span class="lineNum">     109</span>              : </span>
+<span id="L110"><span class="lineNum">     110</span>              :                 /*</span>
+<span id="L111"><span class="lineNum">     111</span>              :                  * To avoid swamping the postmaster with signals, we issue the autovac</span>
+<span id="L112"><span class="lineNum">     112</span>              :                  * request only once per 64K transaction starts.  This still gives</span>
+<span id="L113"><span class="lineNum">     113</span>              :                  * plenty of chances before we get into real trouble.</span>
+<span id="L114"><span class="lineNum">     114</span>              :                  */</span>
+<span id="L115"><span class="lineNum">     115</span> <span class="tlaUNC">           0 :                 if (IsUnderPostmaster &amp;&amp; (xid % 65536) == 0)</span></span>
+<span id="L116"><span class="lineNum">     116</span> <span class="tlaUNC">           0 :                         SendPostmasterSignal(PMSIGNAL_START_AUTOVAC_LAUNCHER);</span></span>
+<span id="L117"><span class="lineNum">     117</span>              : </span>
+<span id="L118"><span class="lineNum">     118</span> <span class="tlaUNC">           0 :                 if (IsUnderPostmaster &amp;&amp;</span></span>
+<span id="L119"><span class="lineNum">     119</span> <span class="tlaUNC">           0 :                         TransactionIdFollowsOrEquals(xid, xidStopLimit))</span></span>
+<span id="L120"><span class="lineNum">     120</span>              :                 {</span>
+<span id="L121"><span class="lineNum">     121</span> <span class="tlaUNC">           0 :                         char       *oldest_datname = get_database_name(oldest_datoid);</span></span>
+<span id="L122"><span class="lineNum">     122</span>              : </span>
+<span id="L123"><span class="lineNum">     123</span>              :                         /* complain even if that DB has disappeared */</span>
+<span id="L124"><span class="lineNum">     124</span> <span class="tlaUNC">           0 :                         if (oldest_datname)</span></span>
+<span id="L125"><span class="lineNum">     125</span> <span class="tlaUNC">           0 :                                 ereport(ERROR,</span></span>
+<span id="L126"><span class="lineNum">     126</span>              :                                                 (errcode(ERRCODE_PROGRAM_LIMIT_EXCEEDED),</span>
+<span id="L127"><span class="lineNum">     127</span>              :                                                  errmsg(&quot;database is not accepting commands to avoid wraparound data loss in database \&quot;%s\&quot;&quot;,</span>
+<span id="L128"><span class="lineNum">     128</span>              :                                                                 oldest_datname),</span>
+<span id="L129"><span class="lineNum">     129</span>              :                                                  errhint(&quot;Stop the postmaster and vacuum that database in single-user mode.\n&quot;</span>
+<span id="L130"><span class="lineNum">     130</span>              :                                                                  &quot;You might also need to commit or roll back old prepared transactions, or drop stale replication slots.&quot;)));</span>
+<span id="L131"><span class="lineNum">     131</span>              :                         else</span>
+<span id="L132"><span class="lineNum">     132</span> <span class="tlaUNC">           0 :                                 ereport(ERROR,</span></span>
+<span id="L133"><span class="lineNum">     133</span>              :                                                 (errcode(ERRCODE_PROGRAM_LIMIT_EXCEEDED),</span>
+<span id="L134"><span class="lineNum">     134</span>              :                                                  errmsg(&quot;database is not accepting commands to avoid wraparound data loss in database with OID %u&quot;,</span>
+<span id="L135"><span class="lineNum">     135</span>              :                                                                 oldest_datoid),</span>
+<span id="L136"><span class="lineNum">     136</span>              :                                                  errhint(&quot;Stop the postmaster and vacuum that database in single-user mode.\n&quot;</span>
+<span id="L137"><span class="lineNum">     137</span>              :                                                                  &quot;You might also need to commit or roll back old prepared transactions, or drop stale replication slots.&quot;)));</span>
+<span id="L138"><span class="lineNum">     138</span>              :                 }</span>
+<span id="L139"><span class="lineNum">     139</span> <span class="tlaUNC">           0 :                 else if (TransactionIdFollowsOrEquals(xid, xidWarnLimit))</span></span>
+<span id="L140"><span class="lineNum">     140</span>              :                 {</span>
+<span id="L141"><span class="lineNum">     141</span> <span class="tlaUNC">           0 :                         char       *oldest_datname = get_database_name(oldest_datoid);</span></span>
+<span id="L142"><span class="lineNum">     142</span>              : </span>
+<span id="L143"><span class="lineNum">     143</span>              :                         /* complain even if that DB has disappeared */</span>
+<span id="L144"><span class="lineNum">     144</span> <span class="tlaUNC">           0 :                         if (oldest_datname)</span></span>
+<span id="L145"><span class="lineNum">     145</span> <span class="tlaUNC">           0 :                                 ereport(WARNING,</span></span>
+<span id="L146"><span class="lineNum">     146</span>              :                                                 (errmsg(&quot;database \&quot;%s\&quot; must be vacuumed within %u transactions&quot;,</span>
+<span id="L147"><span class="lineNum">     147</span>              :                                                                 oldest_datname,</span>
+<span id="L148"><span class="lineNum">     148</span>              :                                                                 xidWrapLimit - xid),</span>
+<span id="L149"><span class="lineNum">     149</span>              :                                                  errhint(&quot;To avoid a database shutdown, execute a database-wide VACUUM in that database.\n&quot;</span>
+<span id="L150"><span class="lineNum">     150</span>              :                                                                  &quot;You might also need to commit or roll back old prepared transactions, or drop stale replication slots.&quot;)));</span>
+<span id="L151"><span class="lineNum">     151</span>              :                         else</span>
+<span id="L152"><span class="lineNum">     152</span> <span class="tlaUNC">           0 :                                 ereport(WARNING,</span></span>
+<span id="L153"><span class="lineNum">     153</span>              :                                                 (errmsg(&quot;database with OID %u must be vacuumed within %u transactions&quot;,</span>
+<span id="L154"><span class="lineNum">     154</span>              :                                                                 oldest_datoid,</span>
+<span id="L155"><span class="lineNum">     155</span>              :                                                                 xidWrapLimit - xid),</span>
+<span id="L156"><span class="lineNum">     156</span>              :                                                  errhint(&quot;To avoid a database shutdown, execute a database-wide VACUUM in that database.\n&quot;</span>
+<span id="L157"><span class="lineNum">     157</span>              :                                                                  &quot;You might also need to commit or roll back old prepared transactions, or drop stale replication slots.&quot;)));</span>
+<span id="L158"><span class="lineNum">     158</span>              :                 }</span>
+<span id="L159"><span class="lineNum">     159</span>              : </span>
+<span id="L160"><span class="lineNum">     160</span>              :                 /* Re-acquire lock and start over */</span>
+<span id="L161"><span class="lineNum">     161</span> <span class="tlaUNC">           0 :                 LWLockAcquire(XidGenLock, LW_EXCLUSIVE);</span></span>
+<span id="L162"><span class="lineNum">     162</span> <span class="tlaUNC">           0 :                 full_xid = ShmemVariableCache-&gt;nextFullXid;</span></span>
+<span id="L163"><span class="lineNum">     163</span> <span class="tlaUNC">           0 :                 xid = XidFromFullTransactionId(full_xid);</span></span>
+<span id="L164"><span class="lineNum">     164</span>              :         }</span>
+<span id="L165"><span class="lineNum">     165</span>              : </span>
+<span id="L166"><span class="lineNum">     166</span>              :         /*</span>
+<span id="L167"><span class="lineNum">     167</span>              :          * If we are allocating the first XID of a new page of the commit log,</span>
+<span id="L168"><span class="lineNum">     168</span>              :          * zero out that commit-log page before returning. We must do this while</span>
+<span id="L169"><span class="lineNum">     169</span>              :          * holding XidGenLock, else another xact could acquire and commit a later</span>
+<span id="L170"><span class="lineNum">     170</span>              :          * XID before we zero the page.  Fortunately, a page of the commit log</span>
+<span id="L171"><span class="lineNum">     171</span>              :          * holds 32K or more transactions, so we don't have to do this very often.</span>
+<span id="L172"><span class="lineNum">     172</span>              :          *</span>
+<span id="L173"><span class="lineNum">     173</span>              :          * Extend pg_subtrans and pg_commit_ts too.</span>
+<span id="L174"><span class="lineNum">     174</span>              :          */</span>
+<span id="L175"><span class="lineNum">     175</span> <span class="tlaGNC tlaBgGNC">        1193 :         ExtendCLOG(xid);</span></span>
+<span id="L176"><span class="lineNum">     176</span> <span class="tlaGNC">        1193 :         ExtendCommitTs(xid);</span></span>
+<span id="L177"><span class="lineNum">     177</span> <span class="tlaGNC">        1193 :         ExtendSUBTRANS(xid);</span></span>
+<span id="L178"><span class="lineNum">     178</span>              : </span>
+<span id="L179"><span class="lineNum">     179</span>              :         /*</span>
+<span id="L180"><span class="lineNum">     180</span>              :          * Now advance the nextFullXid counter.  This must not happen until after</span>
+<span id="L181"><span class="lineNum">     181</span>              :          * we have successfully completed ExtendCLOG() --- if that routine fails,</span>
+<span id="L182"><span class="lineNum">     182</span>              :          * we want the next incoming transaction to try it again.  We cannot</span>
+<span id="L183"><span class="lineNum">     183</span>              :          * assign more XIDs until there is CLOG space for them.</span>
+<span id="L184"><span class="lineNum">     184</span>              :          */</span>
+<span id="L185"><span class="lineNum">     185</span> <span class="tlaGNC">        1193 :         FullTransactionIdAdvance(&amp;ShmemVariableCache-&gt;nextFullXid);</span></span>
+<span id="L186"><span class="lineNum">     186</span>              : </span>
+<span id="L187"><span class="lineNum">     187</span>              :         /*</span>
+<span id="L188"><span class="lineNum">     188</span>              :          * We must store the new XID into the shared ProcArray before releasing</span>
+<span id="L189"><span class="lineNum">     189</span>              :          * XidGenLock.  This ensures that every active XID older than</span>
+<span id="L190"><span class="lineNum">     190</span>              :          * latestCompletedXid is present in the ProcArray, which is essential for</span>
+<span id="L191"><span class="lineNum">     191</span>              :          * correct OldestXmin tracking; see src/backend/access/transam/README.</span>
+<span id="L192"><span class="lineNum">     192</span>              :          *</span>
+<span id="L193"><span class="lineNum">     193</span>              :          * Note that readers of PGXACT xid fields should be careful to fetch the</span>
+<span id="L194"><span class="lineNum">     194</span>              :          * value only once, rather than assume they can read a value multiple</span>
+<span id="L195"><span class="lineNum">     195</span>              :          * times and get the same answer each time.  Note we are assuming that</span>
+<span id="L196"><span class="lineNum">     196</span>              :          * TransactionId and int fetch/store are atomic.</span>
+<span id="L197"><span class="lineNum">     197</span>              :          *</span>
+<span id="L198"><span class="lineNum">     198</span>              :          * The same comments apply to the subxact xid count and overflow fields.</span>
+<span id="L199"><span class="lineNum">     199</span>              :          *</span>
+<span id="L200"><span class="lineNum">     200</span>              :          * Use of a write barrier prevents dangerous code rearrangement in this</span>
+<span id="L201"><span class="lineNum">     201</span>              :          * function; other backends could otherwise e.g. be examining my subxids</span>
+<span id="L202"><span class="lineNum">     202</span>              :          * info concurrently, and we don't want them to see an invalid</span>
+<span id="L203"><span class="lineNum">     203</span>              :          * intermediate state, such as an incremented nxids before the array entry</span>
+<span id="L204"><span class="lineNum">     204</span>              :          * is filled.</span>
+<span id="L205"><span class="lineNum">     205</span>              :          *</span>
+<span id="L206"><span class="lineNum">     206</span>              :          * Other processes that read nxids should do so before reading xids</span>
+<span id="L207"><span class="lineNum">     207</span>              :          * elements with a pg_read_barrier() in between, so that they can be sure</span>
+<span id="L208"><span class="lineNum">     208</span>              :          * not to read an uninitialized array element; see</span>
+<span id="L209"><span class="lineNum">     209</span>              :          * src/backend/storage/lmgr/README.barrier.</span>
+<span id="L210"><span class="lineNum">     210</span>              :          *</span>
+<span id="L211"><span class="lineNum">     211</span>              :          * If there's no room to fit a subtransaction XID into PGPROC, set the</span>
+<span id="L212"><span class="lineNum">     212</span>              :          * cache-overflowed flag instead.  This forces readers to look in</span>
+<span id="L213"><span class="lineNum">     213</span>              :          * pg_subtrans to map subtransaction XIDs up to top-level XIDs. There is a</span>
+<span id="L214"><span class="lineNum">     214</span>              :          * race-condition window, in that the new XID will not appear as running</span>
+<span id="L215"><span class="lineNum">     215</span>              :          * until its parent link has been placed into pg_subtrans. However, that</span>
+<span id="L216"><span class="lineNum">     216</span>              :          * will happen before anyone could possibly have a reason to inquire about</span>
+<span id="L217"><span class="lineNum">     217</span>              :          * the status of the XID, so it seems OK.  (Snapshots taken during this</span>
+<span id="L218"><span class="lineNum">     218</span>              :          * window *will* include the parent XID, so they will deliver the correct</span>
+<span id="L219"><span class="lineNum">     219</span>              :          * answer later on when someone does have a reason to inquire.)</span>
+<span id="L220"><span class="lineNum">     220</span>              :          */</span>
+<span id="L221"><span class="lineNum">     221</span> <span class="tlaGNC">        1193 :         if (!isSubXact)</span></span>
+<span id="L222"><span class="lineNum">     222</span> <span class="tlaGNC">        1186 :                 MyPgXact-&gt;xid = xid; /* LWLockRelease acts as barrier */</span></span>
+<span id="L223"><span class="lineNum">     223</span>              :         else</span>
+<span id="L224"><span class="lineNum">     224</span>              :         {</span>
+<span id="L225"><span class="lineNum">     225</span> <span class="tlaGNC">           7 :                 int                     nxids = MyPgXact-&gt;nxids;</span></span>
+<span id="L226"><span class="lineNum">     226</span>              : </span>
+<span id="L227"><span class="lineNum">     227</span> <span class="tlaGNC">           7 :                 if (nxids &lt; PGPROC_MAX_CACHED_SUBXIDS)</span></span>
+<span id="L228"><span class="lineNum">     228</span>              :                 {</span>
+<span id="L229"><span class="lineNum">     229</span> <span class="tlaGNC">           7 :                         MyProc-&gt;subxids.xids[nxids] = xid;</span></span>
+<span id="L230"><span class="lineNum">     230</span> <span class="tlaGNC">           7 :                         pg_write_barrier();</span></span>
+<span id="L231"><span class="lineNum">     231</span> <span class="tlaGNC">           7 :                         MyPgXact-&gt;nxids = nxids + 1;</span></span>
+<span id="L232"><span class="lineNum">     232</span>              :                 }</span>
+<span id="L233"><span class="lineNum">     233</span>              :                 else</span>
+<span id="L234"><span class="lineNum">     234</span> <span class="tlaUNC tlaBgUNC">           0 :                         MyPgXact-&gt;overflowed = true;</span></span>
+<span id="L235"><span class="lineNum">     235</span>              :         }</span>
+<span id="L236"><span class="lineNum">     236</span>              : </span>
+<span id="L237"><span class="lineNum">     237</span> <span class="tlaGNC tlaBgGNC">        1193 :         LWLockRelease(XidGenLock);</span></span>
+<span id="L238"><span class="lineNum">     238</span>              : </span>
+<span id="L239"><span class="lineNum">     239</span> <span class="tlaGNC">        1193 :         return full_xid;</span></span>
+<span id="L240"><span class="lineNum">     240</span>              : }</span>
+<span id="L241"><span class="lineNum">     241</span>              : </span>
+<span id="L242"><span class="lineNum">     242</span>              : /*</span>
+<span id="L243"><span class="lineNum">     243</span>              :  * Read nextFullXid but don't allocate it.</span>
+<span id="L244"><span class="lineNum">     244</span>              :  */</span>
+<span id="L245"><span class="lineNum">     245</span>              : FullTransactionId</span>
+<span id="L246"><span class="lineNum">     246</span> <span class="tlaGNC">         311 : ReadNextFullTransactionId(void)</span></span>
+<span id="L247"><span class="lineNum">     247</span>              : {</span>
+<span id="L248"><span class="lineNum">     248</span>              :         FullTransactionId fullXid;</span>
+<span id="L249"><span class="lineNum">     249</span>              : </span>
+<span id="L250"><span class="lineNum">     250</span> <span class="tlaGNC">         311 :         LWLockAcquire(XidGenLock, LW_SHARED);</span></span>
+<span id="L251"><span class="lineNum">     251</span> <span class="tlaGNC">         311 :         fullXid = ShmemVariableCache-&gt;nextFullXid;</span></span>
+<span id="L252"><span class="lineNum">     252</span> <span class="tlaGNC">         311 :         LWLockRelease(XidGenLock);</span></span>
+<span id="L253"><span class="lineNum">     253</span>              : </span>
+<span id="L254"><span class="lineNum">     254</span> <span class="tlaGNC">         311 :         return fullXid;</span></span>
+<span id="L255"><span class="lineNum">     255</span>              : }</span>
+<span id="L256"><span class="lineNum">     256</span>              : </span>
+<span id="L257"><span class="lineNum">     257</span>              : /*</span>
+<span id="L258"><span class="lineNum">     258</span>              :  * Advance nextFullXid to the value after a given xid.  The epoch is inferred.</span>
+<span id="L259"><span class="lineNum">     259</span>              :  * This must only be called during recovery or from two-phase start-up code.</span>
+<span id="L260"><span class="lineNum">     260</span>              :  */</span>
+<span id="L261"><span class="lineNum">     261</span>              : void</span>
+<span id="L262"><span class="lineNum">     262</span> <span class="tlaUNC tlaBgUNC">           0 : AdvanceNextFullTransactionIdPastXid(TransactionId xid)</span></span>
+<span id="L263"><span class="lineNum">     263</span>              : {</span>
+<span id="L264"><span class="lineNum">     264</span>              :         FullTransactionId newNextFullXid;</span>
+<span id="L265"><span class="lineNum">     265</span>              :         TransactionId next_xid;</span>
+<span id="L266"><span class="lineNum">     266</span>              :         uint32          epoch;</span>
+<span id="L267"><span class="lineNum">     267</span>              : </span>
+<span id="L268"><span class="lineNum">     268</span>              :         /*</span>
+<span id="L269"><span class="lineNum">     269</span>              :          * It is safe to read nextFullXid without a lock, because this is only</span>
+<span id="L270"><span class="lineNum">     270</span>              :          * called from the startup process or single-process mode, meaning that no</span>
+<span id="L271"><span class="lineNum">     271</span>              :          * other process can modify it.</span>
+<span id="L272"><span class="lineNum">     272</span>              :          */</span>
+<span id="L273"><span class="lineNum">     273</span>              :         Assert(AmStartupProcess() || !IsUnderPostmaster);</span>
+<span id="L274"><span class="lineNum">     274</span>              : </span>
+<span id="L275"><span class="lineNum">     275</span>              :         /* Fast return if this isn't an xid high enough to move the needle. */</span>
+<span id="L276"><span class="lineNum">     276</span> <span class="tlaUNC">           0 :         next_xid = XidFromFullTransactionId(ShmemVariableCache-&gt;nextFullXid);</span></span>
+<span id="L277"><span class="lineNum">     277</span> <span class="tlaUNC">           0 :         if (!TransactionIdFollowsOrEquals(xid, next_xid))</span></span>
+<span id="L278"><span class="lineNum">     278</span> <span class="tlaUNC">           0 :                 return;</span></span>
+<span id="L279"><span class="lineNum">     279</span>              : </span>
+<span id="L280"><span class="lineNum">     280</span>              :         /*</span>
+<span id="L281"><span class="lineNum">     281</span>              :          * Compute the FullTransactionId that comes after the given xid.  To do</span>
+<span id="L282"><span class="lineNum">     282</span>              :          * this, we preserve the existing epoch, but detect when we've wrapped</span>
+<span id="L283"><span class="lineNum">     283</span>              :          * into a new epoch.  This is necessary because WAL records and 2PC state</span>
+<span id="L284"><span class="lineNum">     284</span>              :          * currently contain 32 bit xids.  The wrap logic is safe in those cases</span>
+<span id="L285"><span class="lineNum">     285</span>              :          * because the span of active xids cannot exceed one epoch at any given</span>
+<span id="L286"><span class="lineNum">     286</span>              :          * point in the WAL stream.</span>
+<span id="L287"><span class="lineNum">     287</span>              :          */</span>
+<span id="L288"><span class="lineNum">     288</span> <span class="tlaUNC">           0 :         TransactionIdAdvance(xid);</span></span>
+<span id="L289"><span class="lineNum">     289</span> <span class="tlaUNC">           0 :         epoch = EpochFromFullTransactionId(ShmemVariableCache-&gt;nextFullXid);</span></span>
+<span id="L290"><span class="lineNum">     290</span> <span class="tlaUNC">           0 :         if (unlikely(xid &lt; next_xid))</span></span>
+<span id="L291"><span class="lineNum">     291</span> <span class="tlaUNC">           0 :                 ++epoch;</span></span>
+<span id="L292"><span class="lineNum">     292</span> <span class="tlaUNC">           0 :         newNextFullXid = FullTransactionIdFromEpochAndXid(epoch, xid);</span></span>
+<span id="L293"><span class="lineNum">     293</span>              : </span>
+<span id="L294"><span class="lineNum">     294</span>              :         /*</span>
+<span id="L295"><span class="lineNum">     295</span>              :          * We still need to take a lock to modify the value when there are</span>
+<span id="L296"><span class="lineNum">     296</span>              :          * concurrent readers.</span>
+<span id="L297"><span class="lineNum">     297</span>              :          */</span>
+<span id="L298"><span class="lineNum">     298</span> <span class="tlaUNC">           0 :         LWLockAcquire(XidGenLock, LW_EXCLUSIVE);</span></span>
+<span id="L299"><span class="lineNum">     299</span> <span class="tlaUNC">           0 :         ShmemVariableCache-&gt;nextFullXid = newNextFullXid;</span></span>
+<span id="L300"><span class="lineNum">     300</span> <span class="tlaUNC">           0 :         LWLockRelease(XidGenLock);</span></span>
+<span id="L301"><span class="lineNum">     301</span>              : }</span>
+<span id="L302"><span class="lineNum">     302</span>              : </span>
+<span id="L303"><span class="lineNum">     303</span>              : /*</span>
+<span id="L304"><span class="lineNum">     304</span>              :  * Advance the cluster-wide value for the oldest valid clog entry.</span>
+<span id="L305"><span class="lineNum">     305</span>              :  *</span>
+<span id="L306"><span class="lineNum">     306</span>              :  * We must acquire XactTruncationLock to advance the oldestClogXid. It's not</span>
+<span id="L307"><span class="lineNum">     307</span>              :  * necessary to hold the lock during the actual clog truncation, only when we</span>
+<span id="L308"><span class="lineNum">     308</span>              :  * advance the limit, as code looking up arbitrary xids is required to hold</span>
+<span id="L309"><span class="lineNum">     309</span>              :  * XactTruncationLock from when it tests oldestClogXid through to when it</span>
+<span id="L310"><span class="lineNum">     310</span>              :  * completes the clog lookup.</span>
+<span id="L311"><span class="lineNum">     311</span>              :  */</span>
+<span id="L312"><span class="lineNum">     312</span>              : void</span>
+<span id="L313"><span class="lineNum">     313</span> <span class="tlaGNC tlaBgGNC">           4 : AdvanceOldestClogXid(TransactionId oldest_datfrozenxid)</span></span>
+<span id="L314"><span class="lineNum">     314</span>              : {</span>
+<span id="L315"><span class="lineNum">     315</span> <span class="tlaGNC">           4 :         LWLockAcquire(XactTruncationLock, LW_EXCLUSIVE);</span></span>
+<span id="L316"><span class="lineNum">     316</span> <span class="tlaGNC">           4 :         if (TransactionIdPrecedes(ShmemVariableCache-&gt;oldestClogXid,</span></span>
+<span id="L317"><span class="lineNum">     317</span>              :                                                           oldest_datfrozenxid))</span>
+<span id="L318"><span class="lineNum">     318</span>              :         {</span>
+<span id="L319"><span class="lineNum">     319</span> <span class="tlaGNC">           3 :                 ShmemVariableCache-&gt;oldestClogXid = oldest_datfrozenxid;</span></span>
+<span id="L320"><span class="lineNum">     320</span>              :         }</span>
+<span id="L321"><span class="lineNum">     321</span> <span class="tlaGNC">           4 :         LWLockRelease(XactTruncationLock);</span></span>
+<span id="L322"><span class="lineNum">     322</span> <span class="tlaGNC">           4 : }</span></span>
+<span id="L323"><span class="lineNum">     323</span>              : </span>
+<span id="L324"><span class="lineNum">     324</span>              : /*</span>
+<span id="L325"><span class="lineNum">     325</span>              :  * Determine the last safe XID to allocate using the currently oldest</span>
+<span id="L326"><span class="lineNum">     326</span>              :  * datfrozenxid (ie, the oldest XID that might exist in any database</span>
+<span id="L327"><span class="lineNum">     327</span>              :  * of our cluster), and the OID of the (or a) database with that value.</span>
+<span id="L328"><span class="lineNum">     328</span>              :  */</span>
+<span id="L329"><span class="lineNum">     329</span>              : void</span>
+<span id="L330"><span class="lineNum">     330</span> <span class="tlaGNC">           6 : SetTransactionIdLimit(TransactionId oldest_datfrozenxid, Oid oldest_datoid)</span></span>
+<span id="L331"><span class="lineNum">     331</span>              : {</span>
+<span id="L332"><span class="lineNum">     332</span>              :         TransactionId xidVacLimit;</span>
+<span id="L333"><span class="lineNum">     333</span>              :         TransactionId xidWarnLimit;</span>
+<span id="L334"><span class="lineNum">     334</span>              :         TransactionId xidStopLimit;</span>
+<span id="L335"><span class="lineNum">     335</span>              :         TransactionId xidWrapLimit;</span>
+<span id="L336"><span class="lineNum">     336</span>              :         TransactionId curXid;</span>
+<span id="L337"><span class="lineNum">     337</span>              : </span>
+<span id="L338"><span class="lineNum">     338</span>              :         Assert(TransactionIdIsNormal(oldest_datfrozenxid));</span>
+<span id="L339"><span class="lineNum">     339</span>              : </span>
+<span id="L340"><span class="lineNum">     340</span>              :         /*</span>
+<span id="L341"><span class="lineNum">     341</span>              :          * The place where we actually get into deep trouble is halfway around</span>
+<span id="L342"><span class="lineNum">     342</span>              :          * from the oldest potentially-existing XID.  (This calculation is</span>
+<span id="L343"><span class="lineNum">     343</span>              :          * probably off by one or two counts, because the special XIDs reduce the</span>
+<span id="L344"><span class="lineNum">     344</span>              :          * size of the loop a little bit.  But we throw in plenty of slop below,</span>
+<span id="L345"><span class="lineNum">     345</span>              :          * so it doesn't matter.)</span>
+<span id="L346"><span class="lineNum">     346</span>              :          */</span>
+<span id="L347"><span class="lineNum">     347</span> <span class="tlaGNC">           6 :         xidWrapLimit = oldest_datfrozenxid + (MaxTransactionId &gt;&gt; 1);</span></span>
+<span id="L348"><span class="lineNum">     348</span> <span class="tlaGNC">           6 :         if (xidWrapLimit &lt; FirstNormalTransactionId)</span></span>
+<span id="L349"><span class="lineNum">     349</span> <span class="tlaUNC tlaBgUNC">           0 :                 xidWrapLimit += FirstNormalTransactionId;</span></span>
+<span id="L350"><span class="lineNum">     350</span>              : </span>
+<span id="L351"><span class="lineNum">     351</span>              :         /*</span>
+<span id="L352"><span class="lineNum">     352</span>              :          * We'll refuse to continue assigning XIDs in interactive mode once we get</span>
+<span id="L353"><span class="lineNum">     353</span>              :          * within 1M transactions of data loss.  This leaves lots of room for the</span>
+<span id="L354"><span class="lineNum">     354</span>              :          * DBA to fool around fixing things in a standalone backend, while not</span>
+<span id="L355"><span class="lineNum">     355</span>              :          * being significant compared to total XID space. (Note that since</span>
+<span id="L356"><span class="lineNum">     356</span>              :          * vacuuming requires one transaction per table cleaned, we had better be</span>
+<span id="L357"><span class="lineNum">     357</span>              :          * sure there's lots of XIDs left...)</span>
+<span id="L358"><span class="lineNum">     358</span>              :          */</span>
+<span id="L359"><span class="lineNum">     359</span> <span class="tlaGNC tlaBgGNC">           6 :         xidStopLimit = xidWrapLimit - 1000000;</span></span>
+<span id="L360"><span class="lineNum">     360</span> <span class="tlaGNC">           6 :         if (xidStopLimit &lt; FirstNormalTransactionId)</span></span>
+<span id="L361"><span class="lineNum">     361</span> <span class="tlaUNC tlaBgUNC">           0 :                 xidStopLimit -= FirstNormalTransactionId;</span></span>
+<span id="L362"><span class="lineNum">     362</span>              : </span>
+<span id="L363"><span class="lineNum">     363</span>              :         /*</span>
+<span id="L364"><span class="lineNum">     364</span>              :          * We'll start complaining loudly when we get within 10M transactions of</span>
+<span id="L365"><span class="lineNum">     365</span>              :          * the stop point.  This is kind of arbitrary, but if you let your gas</span>
+<span id="L366"><span class="lineNum">     366</span>              :          * gauge get down to 1% of full, would you be looking for the next gas</span>
+<span id="L367"><span class="lineNum">     367</span>              :          * station?  We need to be fairly liberal about this number because there</span>
+<span id="L368"><span class="lineNum">     368</span>              :          * are lots of scenarios where most transactions are done by automatic</span>
+<span id="L369"><span class="lineNum">     369</span>              :          * clients that won't pay attention to warnings. (No, we're not gonna make</span>
+<span id="L370"><span class="lineNum">     370</span>              :          * this configurable.  If you know enough to configure it, you know enough</span>
+<span id="L371"><span class="lineNum">     371</span>              :          * to not get in this kind of trouble in the first place.)</span>
+<span id="L372"><span class="lineNum">     372</span>              :          */</span>
+<span id="L373"><span class="lineNum">     373</span> <span class="tlaGNC tlaBgGNC">           6 :         xidWarnLimit = xidStopLimit - 10000000;</span></span>
+<span id="L374"><span class="lineNum">     374</span> <span class="tlaGNC">           6 :         if (xidWarnLimit &lt; FirstNormalTransactionId)</span></span>
+<span id="L375"><span class="lineNum">     375</span> <span class="tlaUNC tlaBgUNC">           0 :                 xidWarnLimit -= FirstNormalTransactionId;</span></span>
+<span id="L376"><span class="lineNum">     376</span>              : </span>
+<span id="L377"><span class="lineNum">     377</span>              :         /*</span>
+<span id="L378"><span class="lineNum">     378</span>              :          * We'll start trying to force autovacuums when oldest_datfrozenxid gets</span>
+<span id="L379"><span class="lineNum">     379</span>              :          * to be more than autovacuum_freeze_max_age transactions old.</span>
+<span id="L380"><span class="lineNum">     380</span>              :          *</span>
+<span id="L381"><span class="lineNum">     381</span>              :          * Note: guc.c ensures that autovacuum_freeze_max_age is in a sane range,</span>
+<span id="L382"><span class="lineNum">     382</span>              :          * so that xidVacLimit will be well before xidWarnLimit.</span>
+<span id="L383"><span class="lineNum">     383</span>              :          *</span>
+<span id="L384"><span class="lineNum">     384</span>              :          * Note: autovacuum_freeze_max_age is a PGC_POSTMASTER parameter so that</span>
+<span id="L385"><span class="lineNum">     385</span>              :          * we don't have to worry about dealing with on-the-fly changes in its</span>
+<span id="L386"><span class="lineNum">     386</span>              :          * value.  It doesn't look practical to update shared state from a GUC</span>
+<span id="L387"><span class="lineNum">     387</span>              :          * assign hook (too many processes would try to execute the hook,</span>
+<span id="L388"><span class="lineNum">     388</span>              :          * resulting in race conditions as well as crashes of those not connected</span>
+<span id="L389"><span class="lineNum">     389</span>              :          * to shared memory).  Perhaps this can be improved someday.  See also</span>
+<span id="L390"><span class="lineNum">     390</span>              :          * SetMultiXactIdLimit.</span>
+<span id="L391"><span class="lineNum">     391</span>              :          */</span>
+<span id="L392"><span class="lineNum">     392</span> <span class="tlaGNC tlaBgGNC">           6 :         xidVacLimit = oldest_datfrozenxid + autovacuum_freeze_max_age;</span></span>
+<span id="L393"><span class="lineNum">     393</span> <span class="tlaGNC">           6 :         if (xidVacLimit &lt; FirstNormalTransactionId)</span></span>
+<span id="L394"><span class="lineNum">     394</span> <span class="tlaUNC tlaBgUNC">           0 :                 xidVacLimit += FirstNormalTransactionId;</span></span>
+<span id="L395"><span class="lineNum">     395</span>              : </span>
+<span id="L396"><span class="lineNum">     396</span>              :         /* Grab lock for just long enough to set the new limit values */</span>
+<span id="L397"><span class="lineNum">     397</span> <span class="tlaGNC tlaBgGNC">           6 :         LWLockAcquire(XidGenLock, LW_EXCLUSIVE);</span></span>
+<span id="L398"><span class="lineNum">     398</span> <span class="tlaGNC">           6 :         ShmemVariableCache-&gt;oldestXid = oldest_datfrozenxid;</span></span>
+<span id="L399"><span class="lineNum">     399</span> <span class="tlaGNC">           6 :         ShmemVariableCache-&gt;xidVacLimit = xidVacLimit;</span></span>
+<span id="L400"><span class="lineNum">     400</span> <span class="tlaGNC">           6 :         ShmemVariableCache-&gt;xidWarnLimit = xidWarnLimit;</span></span>
+<span id="L401"><span class="lineNum">     401</span> <span class="tlaGNC">           6 :         ShmemVariableCache-&gt;xidStopLimit = xidStopLimit;</span></span>
+<span id="L402"><span class="lineNum">     402</span> <span class="tlaGNC">           6 :         ShmemVariableCache-&gt;xidWrapLimit = xidWrapLimit;</span></span>
+<span id="L403"><span class="lineNum">     403</span> <span class="tlaGNC">           6 :         ShmemVariableCache-&gt;oldestXidDB = oldest_datoid;</span></span>
+<span id="L404"><span class="lineNum">     404</span> <span class="tlaGNC">           6 :         curXid = XidFromFullTransactionId(ShmemVariableCache-&gt;nextFullXid);</span></span>
+<span id="L405"><span class="lineNum">     405</span> <span class="tlaGNC">           6 :         LWLockRelease(XidGenLock);</span></span>
+<span id="L406"><span class="lineNum">     406</span>              : </span>
+<span id="L407"><span class="lineNum">     407</span>              :         /* Log the info */</span>
+<span id="L408"><span class="lineNum">     408</span> <span class="tlaGNC">           6 :         ereport(DEBUG1,</span></span>
+<span id="L409"><span class="lineNum">     409</span>              :                         (errmsg(&quot;transaction ID wrap limit is %u, limited by database with OID %u&quot;,</span>
+<span id="L410"><span class="lineNum">     410</span>              :                                         xidWrapLimit, oldest_datoid)));</span>
+<span id="L411"><span class="lineNum">     411</span>              : </span>
+<span id="L412"><span class="lineNum">     412</span>              :         /*</span>
+<span id="L413"><span class="lineNum">     413</span>              :          * If past the autovacuum force point, immediately signal an autovac</span>
+<span id="L414"><span class="lineNum">     414</span>              :          * request.  The reason for this is that autovac only processes one</span>
+<span id="L415"><span class="lineNum">     415</span>              :          * database per invocation.  Once it's finished cleaning up the oldest</span>
+<span id="L416"><span class="lineNum">     416</span>              :          * database, it'll call here, and we'll signal the postmaster to start</span>
+<span id="L417"><span class="lineNum">     417</span>              :          * another iteration immediately if there are still any old databases.</span>
+<span id="L418"><span class="lineNum">     418</span>              :          */</span>
+<span id="L419"><span class="lineNum">     419</span> <span class="tlaGNC">           6 :         if (TransactionIdFollowsOrEquals(curXid, xidVacLimit) &amp;&amp;</span></span>
+<span id="L420"><span class="lineNum">     420</span> <span class="tlaUNC tlaBgUNC">           0 :                 IsUnderPostmaster &amp;&amp; !InRecovery)</span></span>
+<span id="L421"><span class="lineNum">     421</span> <span class="tlaUNC">           0 :                 SendPostmasterSignal(PMSIGNAL_START_AUTOVAC_LAUNCHER);</span></span>
+<span id="L422"><span class="lineNum">     422</span>              : </span>
+<span id="L423"><span class="lineNum">     423</span>              :         /* Give an immediate warning if past the wrap warn point */</span>
+<span id="L424"><span class="lineNum">     424</span> <span class="tlaGNC tlaBgGNC">           6 :         if (TransactionIdFollowsOrEquals(curXid, xidWarnLimit) &amp;&amp; !InRecovery)</span></span>
+<span id="L425"><span class="lineNum">     425</span>              :         {</span>
+<span id="L426"><span class="lineNum">     426</span>              :                 char       *oldest_datname;</span>
+<span id="L427"><span class="lineNum">     427</span>              : </span>
+<span id="L428"><span class="lineNum">     428</span>              :                 /*</span>
+<span id="L429"><span class="lineNum">     429</span>              :                  * We can be called when not inside a transaction, for example during</span>
+<span id="L430"><span class="lineNum">     430</span>              :                  * StartupXLOG().  In such a case we cannot do database access, so we</span>
+<span id="L431"><span class="lineNum">     431</span>              :                  * must just report the oldest DB's OID.</span>
+<span id="L432"><span class="lineNum">     432</span>              :                  *</span>
+<span id="L433"><span class="lineNum">     433</span>              :                  * Note: it's also possible that get_database_name fails and returns</span>
+<span id="L434"><span class="lineNum">     434</span>              :                  * NULL, for example because the database just got dropped.  We'll</span>
+<span id="L435"><span class="lineNum">     435</span>              :                  * still warn, even though the warning might now be unnecessary.</span>
+<span id="L436"><span class="lineNum">     436</span>              :                  */</span>
+<span id="L437"><span class="lineNum">     437</span> <span class="tlaUNC tlaBgUNC">           0 :                 if (IsTransactionState())</span></span>
+<span id="L438"><span class="lineNum">     438</span> <span class="tlaUNC">           0 :                         oldest_datname = get_database_name(oldest_datoid);</span></span>
+<span id="L439"><span class="lineNum">     439</span>              :                 else</span>
+<span id="L440"><span class="lineNum">     440</span> <span class="tlaUNC">           0 :                         oldest_datname = NULL;</span></span>
+<span id="L441"><span class="lineNum">     441</span>              : </span>
+<span id="L442"><span class="lineNum">     442</span> <span class="tlaUNC">           0 :                 if (oldest_datname)</span></span>
+<span id="L443"><span class="lineNum">     443</span> <span class="tlaUNC">           0 :                         ereport(WARNING,</span></span>
+<span id="L444"><span class="lineNum">     444</span>              :                                         (errmsg(&quot;database \&quot;%s\&quot; must be vacuumed within %u transactions&quot;,</span>
+<span id="L445"><span class="lineNum">     445</span>              :                                                         oldest_datname,</span>
+<span id="L446"><span class="lineNum">     446</span>              :                                                         xidWrapLimit - curXid),</span>
+<span id="L447"><span class="lineNum">     447</span>              :                                          errhint(&quot;To avoid a database shutdown, execute a database-wide VACUUM in that database.\n&quot;</span>
+<span id="L448"><span class="lineNum">     448</span>              :                                                          &quot;You might also need to commit or roll back old prepared transactions, or drop stale replication slots.&quot;)));</span>
+<span id="L449"><span class="lineNum">     449</span>              :                 else</span>
+<span id="L450"><span class="lineNum">     450</span> <span class="tlaUNC">           0 :                         ereport(WARNING,</span></span>
+<span id="L451"><span class="lineNum">     451</span>              :                                         (errmsg(&quot;database with OID %u must be vacuumed within %u transactions&quot;,</span>
+<span id="L452"><span class="lineNum">     452</span>              :                                                         oldest_datoid,</span>
+<span id="L453"><span class="lineNum">     453</span>              :                                                         xidWrapLimit - curXid),</span>
+<span id="L454"><span class="lineNum">     454</span>              :                                          errhint(&quot;To avoid a database shutdown, execute a database-wide VACUUM in that database.\n&quot;</span>
+<span id="L455"><span class="lineNum">     455</span>              :                                                          &quot;You might also need to commit or roll back old prepared transactions, or drop stale replication slots.&quot;)));</span>
+<span id="L456"><span class="lineNum">     456</span>              :         }</span>
+<span id="L457"><span class="lineNum">     457</span> <span class="tlaGNC tlaBgGNC">           6 : }</span></span>
+<span id="L458"><span class="lineNum">     458</span>              : </span>
+<span id="L459"><span class="lineNum">     459</span>              : </span>
+<span id="L460"><span class="lineNum">     460</span>              : /*</span>
+<span id="L461"><span class="lineNum">     461</span>              :  * ForceTransactionIdLimitUpdate -- does the XID wrap-limit data need updating?</span>
+<span id="L462"><span class="lineNum">     462</span>              :  *</span>
+<span id="L463"><span class="lineNum">     463</span>              :  * We primarily check whether oldestXidDB is valid.  The cases we have in</span>
+<span id="L464"><span class="lineNum">     464</span>              :  * mind are that that database was dropped, or the field was reset to zero</span>
+<span id="L465"><span class="lineNum">     465</span>              :  * by pg_resetwal.  In either case we should force recalculation of the</span>
+<span id="L466"><span class="lineNum">     466</span>              :  * wrap limit.  Also do it if oldestXid is old enough to be forcing</span>
+<span id="L467"><span class="lineNum">     467</span>              :  * autovacuums or other actions; this ensures we update our state as soon</span>
+<span id="L468"><span class="lineNum">     468</span>              :  * as possible once extra overhead is being incurred.</span>
+<span id="L469"><span class="lineNum">     469</span>              :  */</span>
+<span id="L470"><span class="lineNum">     470</span>              : bool</span>
+<span id="L471"><span class="lineNum">     471</span> <span class="tlaGNC">          23 : ForceTransactionIdLimitUpdate(void)</span></span>
+<span id="L472"><span class="lineNum">     472</span>              : {</span>
+<span id="L473"><span class="lineNum">     473</span>              :         TransactionId nextXid;</span>
+<span id="L474"><span class="lineNum">     474</span>              :         TransactionId xidVacLimit;</span>
+<span id="L475"><span class="lineNum">     475</span>              :         TransactionId oldestXid;</span>
+<span id="L476"><span class="lineNum">     476</span>              :         Oid                     oldestXidDB;</span>
+<span id="L477"><span class="lineNum">     477</span>              : </span>
+<span id="L478"><span class="lineNum">     478</span>              :         /* Locking is probably not really necessary, but let's be careful */</span>
+<span id="L479"><span class="lineNum">     479</span> <span class="tlaGNC">          23 :         LWLockAcquire(XidGenLock, LW_SHARED);</span></span>
+<span id="L480"><span class="lineNum">     480</span> <span class="tlaGNC">          23 :         nextXid = XidFromFullTransactionId(ShmemVariableCache-&gt;nextFullXid);</span></span>
+<span id="L481"><span class="lineNum">     481</span> <span class="tlaGNC">          23 :         xidVacLimit = ShmemVariableCache-&gt;xidVacLimit;</span></span>
+<span id="L482"><span class="lineNum">     482</span> <span class="tlaGNC">          23 :         oldestXid = ShmemVariableCache-&gt;oldestXid;</span></span>
+<span id="L483"><span class="lineNum">     483</span> <span class="tlaGNC">          23 :         oldestXidDB = ShmemVariableCache-&gt;oldestXidDB;</span></span>
+<span id="L484"><span class="lineNum">     484</span> <span class="tlaGNC">          23 :         LWLockRelease(XidGenLock);</span></span>
+<span id="L485"><span class="lineNum">     485</span>              : </span>
+<span id="L486"><span class="lineNum">     486</span> <span class="tlaGNC">          23 :         if (!TransactionIdIsNormal(oldestXid))</span></span>
+<span id="L487"><span class="lineNum">     487</span> <span class="tlaUNC tlaBgUNC">           0 :                 return true;                    /* shouldn't happen, but just in case */</span></span>
+<span id="L488"><span class="lineNum">     488</span> <span class="tlaGNC tlaBgGNC">          23 :         if (!TransactionIdIsValid(xidVacLimit))</span></span>
+<span id="L489"><span class="lineNum">     489</span> <span class="tlaUNC tlaBgUNC">           0 :                 return true;                    /* this shouldn't happen anymore either */</span></span>
+<span id="L490"><span class="lineNum">     490</span> <span class="tlaGNC tlaBgGNC">          23 :         if (TransactionIdFollowsOrEquals(nextXid, xidVacLimit))</span></span>
+<span id="L491"><span class="lineNum">     491</span> <span class="tlaUNC tlaBgUNC">           0 :                 return true;                    /* past xidVacLimit, don't delay updating */</span></span>
+<span id="L492"><span class="lineNum">     492</span> <span class="tlaGNC tlaBgGNC">          23 :         if (!SearchSysCacheExists1(DATABASEOID, ObjectIdGetDatum(oldestXidDB)))</span></span>
+<span id="L493"><span class="lineNum">     493</span> <span class="tlaUNC tlaBgUNC">           0 :                 return true;                    /* could happen, per comments above */</span></span>
+<span id="L494"><span class="lineNum">     494</span> <span class="tlaGNC tlaBgGNC">          23 :         return false;</span></span>
+<span id="L495"><span class="lineNum">     495</span>              : }</span>
+<span id="L496"><span class="lineNum">     496</span>              : </span>
+<span id="L497"><span class="lineNum">     497</span>              : </span>
+<span id="L498"><span class="lineNum">     498</span>              : /*</span>
+<span id="L499"><span class="lineNum">     499</span>              :  * GetNewObjectId -- allocate a new OID</span>
+<span id="L500"><span class="lineNum">     500</span>              :  *</span>
+<span id="L501"><span class="lineNum">     501</span>              :  * OIDs are generated by a cluster-wide counter.  Since they are only 32 bits</span>
+<span id="L502"><span class="lineNum">     502</span>              :  * wide, counter wraparound will occur eventually, and therefore it is unwise</span>
+<span id="L503"><span class="lineNum">     503</span>              :  * to assume they are unique unless precautions are taken to make them so.</span>
+<span id="L504"><span class="lineNum">     504</span>              :  * Hence, this routine should generally not be used directly.  The only direct</span>
+<span id="L505"><span class="lineNum">     505</span>              :  * callers should be GetNewOidWithIndex() and GetNewRelFileNode() in</span>
+<span id="L506"><span class="lineNum">     506</span>              :  * catalog/catalog.c.</span>
+<span id="L507"><span class="lineNum">     507</span>              :  */</span>
+<span id="L508"><span class="lineNum">     508</span>              : Oid</span>
+<span id="L509"><span class="lineNum">     509</span> <span class="tlaGNC">        1874 : GetNewObjectId(void)</span></span>
+<span id="L510"><span class="lineNum">     510</span>              : {</span>
+<span id="L511"><span class="lineNum">     511</span>              :         Oid                     result;</span>
+<span id="L512"><span class="lineNum">     512</span>              : </span>
+<span id="L513"><span class="lineNum">     513</span>              :         /* safety check, we should never get this far in a HS standby */</span>
+<span id="L514"><span class="lineNum">     514</span> <span class="tlaGNC">        1874 :         if (RecoveryInProgress())</span></span>
+<span id="L515"><span class="lineNum">     515</span> <span class="tlaUNC tlaBgUNC">           0 :                 elog(ERROR, &quot;cannot assign OIDs during recovery&quot;);</span></span>
+<span id="L516"><span class="lineNum">     516</span>              : </span>
+<span id="L517"><span class="lineNum">     517</span> <span class="tlaGNC tlaBgGNC">        1874 :         LWLockAcquire(OidGenLock, LW_EXCLUSIVE);</span></span>
+<span id="L518"><span class="lineNum">     518</span>              : </span>
+<span id="L519"><span class="lineNum">     519</span>              :         /*</span>
+<span id="L520"><span class="lineNum">     520</span>              :          * Check for wraparound of the OID counter.  We *must* not return 0</span>
+<span id="L521"><span class="lineNum">     521</span>              :          * (InvalidOid), and in normal operation we mustn't return anything below</span>
+<span id="L522"><span class="lineNum">     522</span>              :          * FirstNormalObjectId since that range is reserved for initdb (see</span>
+<span id="L523"><span class="lineNum">     523</span>              :          * IsCatalogRelationOid()).  Note we are relying on unsigned comparison.</span>
+<span id="L524"><span class="lineNum">     524</span>              :          *</span>
+<span id="L525"><span class="lineNum">     525</span>              :          * During initdb, we start the OID generator at FirstBootstrapObjectId, so</span>
+<span id="L526"><span class="lineNum">     526</span>              :          * we only wrap if before that point when in bootstrap or standalone mode.</span>
+<span id="L527"><span class="lineNum">     527</span>              :          * The first time through this routine after normal postmaster start, the</span>
+<span id="L528"><span class="lineNum">     528</span>              :          * counter will be forced up to FirstNormalObjectId.  This mechanism</span>
+<span id="L529"><span class="lineNum">     529</span>              :          * leaves the OIDs between FirstBootstrapObjectId and FirstNormalObjectId</span>
+<span id="L530"><span class="lineNum">     530</span>              :          * available for automatic assignment during initdb, while ensuring they</span>
+<span id="L531"><span class="lineNum">     531</span>              :          * will never conflict with user-assigned OIDs.</span>
+<span id="L532"><span class="lineNum">     532</span>              :          */</span>
+<span id="L533"><span class="lineNum">     533</span> <span class="tlaGNC">        1874 :         if (ShmemVariableCache-&gt;nextOid &lt; ((Oid) FirstNormalObjectId))</span></span>
+<span id="L534"><span class="lineNum">     534</span>              :         {</span>
+<span id="L535"><span class="lineNum">     535</span> <span class="tlaGNC">         664 :                 if (IsPostmasterEnvironment)</span></span>
+<span id="L536"><span class="lineNum">     536</span>              :                 {</span>
+<span id="L537"><span class="lineNum">     537</span>              :                         /* wraparound, or first post-initdb assignment, in normal mode */</span>
+<span id="L538"><span class="lineNum">     538</span> <span class="tlaGNC">           1 :                         ShmemVariableCache-&gt;nextOid = FirstNormalObjectId;</span></span>
+<span id="L539"><span class="lineNum">     539</span> <span class="tlaGNC">           1 :                         ShmemVariableCache-&gt;oidCount = 0;</span></span>
+<span id="L540"><span class="lineNum">     540</span>              :                 }</span>
+<span id="L541"><span class="lineNum">     541</span>              :                 else</span>
+<span id="L542"><span class="lineNum">     542</span>              :                 {</span>
+<span id="L543"><span class="lineNum">     543</span>              :                         /* we may be bootstrapping, so don't enforce the full range */</span>
+<span id="L544"><span class="lineNum">     544</span> <span class="tlaGNC">         663 :                         if (ShmemVariableCache-&gt;nextOid &lt; ((Oid) FirstBootstrapObjectId))</span></span>
+<span id="L545"><span class="lineNum">     545</span>              :                         {</span>
+<span id="L546"><span class="lineNum">     546</span>              :                                 /* wraparound in standalone mode (unlikely but possible) */</span>
+<span id="L547"><span class="lineNum">     547</span> <span class="tlaUNC tlaBgUNC">           0 :                                 ShmemVariableCache-&gt;nextOid = FirstNormalObjectId;</span></span>
+<span id="L548"><span class="lineNum">     548</span> <span class="tlaUNC">           0 :                                 ShmemVariableCache-&gt;oidCount = 0;</span></span>
+<span id="L549"><span class="lineNum">     549</span>              :                         }</span>
+<span id="L550"><span class="lineNum">     550</span>              :                 }</span>
+<span id="L551"><span class="lineNum">     551</span>              :         }</span>
+<span id="L552"><span class="lineNum">     552</span>              : </span>
+<span id="L553"><span class="lineNum">     553</span>              :         /* If we run out of logged for use oids then we must log more */</span>
+<span id="L554"><span class="lineNum">     554</span> <span class="tlaGNC tlaBgGNC">        1874 :         if (ShmemVariableCache-&gt;oidCount == 0)</span></span>
+<span id="L555"><span class="lineNum">     555</span>              :         {</span>
+<span id="L556"><span class="lineNum">     556</span> <span class="tlaGNC">           3 :                 XLogPutNextOid(ShmemVariableCache-&gt;nextOid + VAR_OID_PREFETCH);</span></span>
+<span id="L557"><span class="lineNum">     557</span> <span class="tlaGNC">           3 :                 ShmemVariableCache-&gt;oidCount = VAR_OID_PREFETCH;</span></span>
+<span id="L558"><span class="lineNum">     558</span>              :         }</span>
+<span id="L559"><span class="lineNum">     559</span>              : </span>
+<span id="L560"><span class="lineNum">     560</span> <span class="tlaGNC">        1874 :         result = ShmemVariableCache-&gt;nextOid;</span></span>
+<span id="L561"><span class="lineNum">     561</span>              : </span>
+<span id="L562"><span class="lineNum">     562</span> <span class="tlaGNC">        1874 :         (ShmemVariableCache-&gt;nextOid)++;</span></span>
+<span id="L563"><span class="lineNum">     563</span> <span class="tlaGNC">        1874 :         (ShmemVariableCache-&gt;oidCount)--;</span></span>
+<span id="L564"><span class="lineNum">     564</span>              : </span>
+<span id="L565"><span class="lineNum">     565</span> <span class="tlaGNC">        1874 :         LWLockRelease(OidGenLock);</span></span>
+<span id="L566"><span class="lineNum">     566</span>              : </span>
+<span id="L567"><span class="lineNum">     567</span> <span class="tlaGNC">        1874 :         return result;</span></span>
+<span id="L568"><span class="lineNum">     568</span>              : }</span>
+        </pre>
+              </td>
+            </tr>
+          </table>
+          <br>
+
+          <table width="100%" border=0 cellspacing=0 cellpadding=0>
+            <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+            <tr><td class="versionInfo">Generated by: <a href="https://github.com//linux-test-project/lcov" target="_parent">LCOV version 2.0-1</a></td></tr>
+          </table>
+          <br>
+
+</body>
+</html>

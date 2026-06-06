@@ -1,0 +1,592 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - coverage_filtered.info - backend/access/gin/ginscan.c</title>
+  <link rel="stylesheet" type="text/css" href="../../../gcov.css">
+</head>
+
+<body>
+
+          <table width="100%" border=0 cellspacing=0 cellpadding=0>
+            <tr><td class="title">LCOV - code coverage report</td></tr>
+            <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+
+            <tr>
+              <td width="100%">
+                <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="10%" class="headerValue"><a href="../../../index.html">top level</a> - <a href="index.html">backend/access/gin</a> - ginscan.c<span style="font-size: 80%;"> (source / <a href="ginscan.c.func-c.html">functions</a>)</span></td>
+            <td width="5%"></td>
+            <td width="5%"></td>
+            <td width="5%" class="headerCovTableHead">Coverage</td>
+            <td width="5%" class="headerCovTableHead" title="Covered + Uncovered code">Total</td>
+            <td width="5%" class="headerCovTableHead" title="Exercised code only">Hit</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">coverage_filtered.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntryLo">0.0&nbsp;%</td>
+            <td class="headerCovTableEntry">201</td>
+            <td class="headerCovTableEntry">0</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test Date:</td>
+            <td class="headerValue">2026-06-06 02:50:27</td>
+            <td></td>
+            <td class="headerItem">Functions:</td>
+            <td class="headerCovTableEntryLo">0.0&nbsp;%</td>
+            <td class="headerCovTableEntry">8</td>
+            <td class="headerCovTableEntry">0</td>
+          </tr>
+                  <tr><td><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+                </table>
+              </td>
+            </tr>
+
+            <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+          </table>
+
+          <table cellpadding=0 cellspacing=0 border=0>
+            <tr>
+              <td><br></td>
+            </tr>
+            <tr>
+              <td>
+<pre class="sourceHeading">            Line data    Source code</pre>
+<pre class="source">
+<span id="L1"><span class="lineNum">       1</span>              : /*-------------------------------------------------------------------------</span>
+<span id="L2"><span class="lineNum">       2</span>              :  *</span>
+<span id="L3"><span class="lineNum">       3</span>              :  * ginscan.c</span>
+<span id="L4"><span class="lineNum">       4</span>              :  *        routines to manage scans of inverted index relations</span>
+<span id="L5"><span class="lineNum">       5</span>              :  *</span>
+<span id="L6"><span class="lineNum">       6</span>              :  *</span>
+<span id="L7"><span class="lineNum">       7</span>              :  * Portions Copyright (c) 1996-2020, PostgreSQL Global Development Group</span>
+<span id="L8"><span class="lineNum">       8</span>              :  * Portions Copyright (c) 1994, Regents of the University of California</span>
+<span id="L9"><span class="lineNum">       9</span>              :  *</span>
+<span id="L10"><span class="lineNum">      10</span>              :  * IDENTIFICATION</span>
+<span id="L11"><span class="lineNum">      11</span>              :  *                      src/backend/access/gin/ginscan.c</span>
+<span id="L12"><span class="lineNum">      12</span>              :  *-------------------------------------------------------------------------</span>
+<span id="L13"><span class="lineNum">      13</span>              :  */</span>
+<span id="L14"><span class="lineNum">      14</span>              : </span>
+<span id="L15"><span class="lineNum">      15</span>              : #include &quot;postgres.h&quot;</span>
+<span id="L16"><span class="lineNum">      16</span>              : </span>
+<span id="L17"><span class="lineNum">      17</span>              : #include &quot;access/gin_private.h&quot;</span>
+<span id="L18"><span class="lineNum">      18</span>              : #include &quot;access/relscan.h&quot;</span>
+<span id="L19"><span class="lineNum">      19</span>              : #include &quot;pgstat.h&quot;</span>
+<span id="L20"><span class="lineNum">      20</span>              : #include &quot;utils/memutils.h&quot;</span>
+<span id="L21"><span class="lineNum">      21</span>              : #include &quot;utils/rel.h&quot;</span>
+<span id="L22"><span class="lineNum">      22</span>              : </span>
+<span id="L23"><span class="lineNum">      23</span>              : </span>
+<span id="L24"><span class="lineNum">      24</span>              : IndexScanDesc</span>
+<span id="L25"><span class="lineNum">      25</span> <span class="tlaUNC tlaBgUNC">           0 : ginbeginscan(Relation rel, int nkeys, int norderbys)</span></span>
+<span id="L26"><span class="lineNum">      26</span>              : {</span>
+<span id="L27"><span class="lineNum">      27</span>              :         IndexScanDesc scan;</span>
+<span id="L28"><span class="lineNum">      28</span>              :         GinScanOpaque so;</span>
+<span id="L29"><span class="lineNum">      29</span>              : </span>
+<span id="L30"><span class="lineNum">      30</span>              :         /* no order by operators allowed */</span>
+<span id="L31"><span class="lineNum">      31</span>              :         Assert(norderbys == 0);</span>
+<span id="L32"><span class="lineNum">      32</span>              : </span>
+<span id="L33"><span class="lineNum">      33</span> <span class="tlaUNC">           0 :         scan = RelationGetIndexScan(rel, nkeys, norderbys);</span></span>
+<span id="L34"><span class="lineNum">      34</span>              : </span>
+<span id="L35"><span class="lineNum">      35</span>              :         /* allocate private workspace */</span>
+<span id="L36"><span class="lineNum">      36</span> <span class="tlaUNC">           0 :         so = (GinScanOpaque) palloc(sizeof(GinScanOpaqueData));</span></span>
+<span id="L37"><span class="lineNum">      37</span> <span class="tlaUNC">           0 :         so-&gt;keys = NULL;</span></span>
+<span id="L38"><span class="lineNum">      38</span> <span class="tlaUNC">           0 :         so-&gt;nkeys = 0;</span></span>
+<span id="L39"><span class="lineNum">      39</span> <span class="tlaUNC">           0 :         so-&gt;tempCtx = AllocSetContextCreate(CurrentMemoryContext,</span></span>
+<span id="L40"><span class="lineNum">      40</span>              :                                                                                 &quot;Gin scan temporary context&quot;,</span>
+<span id="L41"><span class="lineNum">      41</span>              :                                                                                 ALLOCSET_DEFAULT_SIZES);</span>
+<span id="L42"><span class="lineNum">      42</span> <span class="tlaUNC">           0 :         so-&gt;keyCtx = AllocSetContextCreate(CurrentMemoryContext,</span></span>
+<span id="L43"><span class="lineNum">      43</span>              :                                                                            &quot;Gin scan key context&quot;,</span>
+<span id="L44"><span class="lineNum">      44</span>              :                                                                            ALLOCSET_DEFAULT_SIZES);</span>
+<span id="L45"><span class="lineNum">      45</span> <span class="tlaUNC">           0 :         initGinState(&amp;so-&gt;ginstate, scan-&gt;indexRelation);</span></span>
+<span id="L46"><span class="lineNum">      46</span>              : </span>
+<span id="L47"><span class="lineNum">      47</span> <span class="tlaUNC">           0 :         scan-&gt;opaque = so;</span></span>
+<span id="L48"><span class="lineNum">      48</span>              : </span>
+<span id="L49"><span class="lineNum">      49</span> <span class="tlaUNC">           0 :         return scan;</span></span>
+<span id="L50"><span class="lineNum">      50</span>              : }</span>
+<span id="L51"><span class="lineNum">      51</span>              : </span>
+<span id="L52"><span class="lineNum">      52</span>              : /*</span>
+<span id="L53"><span class="lineNum">      53</span>              :  * Create a new GinScanEntry, unless an equivalent one already exists,</span>
+<span id="L54"><span class="lineNum">      54</span>              :  * in which case just return it</span>
+<span id="L55"><span class="lineNum">      55</span>              :  */</span>
+<span id="L56"><span class="lineNum">      56</span>              : static GinScanEntry</span>
+<span id="L57"><span class="lineNum">      57</span> <span class="tlaUNC">           0 : ginFillScanEntry(GinScanOpaque so, OffsetNumber attnum,</span></span>
+<span id="L58"><span class="lineNum">      58</span>              :                                  StrategyNumber strategy, int32 searchMode,</span>
+<span id="L59"><span class="lineNum">      59</span>              :                                  Datum queryKey, GinNullCategory queryCategory,</span>
+<span id="L60"><span class="lineNum">      60</span>              :                                  bool isPartialMatch, Pointer extra_data)</span>
+<span id="L61"><span class="lineNum">      61</span>              : {</span>
+<span id="L62"><span class="lineNum">      62</span> <span class="tlaUNC">           0 :         GinState   *ginstate = &amp;so-&gt;ginstate;</span></span>
+<span id="L63"><span class="lineNum">      63</span>              :         GinScanEntry scanEntry;</span>
+<span id="L64"><span class="lineNum">      64</span>              :         uint32          i;</span>
+<span id="L65"><span class="lineNum">      65</span>              : </span>
+<span id="L66"><span class="lineNum">      66</span>              :         /*</span>
+<span id="L67"><span class="lineNum">      67</span>              :          * Look for an existing equivalent entry.</span>
+<span id="L68"><span class="lineNum">      68</span>              :          *</span>
+<span id="L69"><span class="lineNum">      69</span>              :          * Entries with non-null extra_data are never considered identical, since</span>
+<span id="L70"><span class="lineNum">      70</span>              :          * we can't know exactly what the opclass might be doing with that.</span>
+<span id="L71"><span class="lineNum">      71</span>              :          *</span>
+<span id="L72"><span class="lineNum">      72</span>              :          * Also, give up de-duplication once we have 100 entries.  That avoids</span>
+<span id="L73"><span class="lineNum">      73</span>              :          * spending O(N^2) time on probably-fruitless de-duplication of large</span>
+<span id="L74"><span class="lineNum">      74</span>              :          * search-key sets.  The threshold of 100 is arbitrary but matches</span>
+<span id="L75"><span class="lineNum">      75</span>              :          * predtest.c's threshold for what's a large array.</span>
+<span id="L76"><span class="lineNum">      76</span>              :          */</span>
+<span id="L77"><span class="lineNum">      77</span> <span class="tlaUNC">           0 :         if (extra_data == NULL &amp;&amp; so-&gt;totalentries &lt; 100)</span></span>
+<span id="L78"><span class="lineNum">      78</span>              :         {</span>
+<span id="L79"><span class="lineNum">      79</span> <span class="tlaUNC">           0 :                 for (i = 0; i &lt; so-&gt;totalentries; i++)</span></span>
+<span id="L80"><span class="lineNum">      80</span>              :                 {</span>
+<span id="L81"><span class="lineNum">      81</span> <span class="tlaUNC">           0 :                         GinScanEntry prevEntry = so-&gt;entries[i];</span></span>
+<span id="L82"><span class="lineNum">      82</span>              : </span>
+<span id="L83"><span class="lineNum">      83</span> <span class="tlaUNC">           0 :                         if (prevEntry-&gt;extra_data == NULL &amp;&amp;</span></span>
+<span id="L84"><span class="lineNum">      84</span> <span class="tlaUNC">           0 :                                 prevEntry-&gt;isPartialMatch == isPartialMatch &amp;&amp;</span></span>
+<span id="L85"><span class="lineNum">      85</span> <span class="tlaUNC">           0 :                                 prevEntry-&gt;strategy == strategy &amp;&amp;</span></span>
+<span id="L86"><span class="lineNum">      86</span> <span class="tlaUNC">           0 :                                 prevEntry-&gt;searchMode == searchMode &amp;&amp;</span></span>
+<span id="L87"><span class="lineNum">      87</span> <span class="tlaUNC">           0 :                                 prevEntry-&gt;attnum == attnum &amp;&amp;</span></span>
+<span id="L88"><span class="lineNum">      88</span> <span class="tlaUNC">           0 :                                 ginCompareEntries(ginstate, attnum,</span></span>
+<span id="L89"><span class="lineNum">      89</span>              :                                                                   prevEntry-&gt;queryKey,</span>
+<span id="L90"><span class="lineNum">      90</span> <span class="tlaUNC">           0 :                                                                   prevEntry-&gt;queryCategory,</span></span>
+<span id="L91"><span class="lineNum">      91</span>              :                                                                   queryKey,</span>
+<span id="L92"><span class="lineNum">      92</span>              :                                                                   queryCategory) == 0)</span>
+<span id="L93"><span class="lineNum">      93</span>              :                         {</span>
+<span id="L94"><span class="lineNum">      94</span>              :                                 /* Successful match */</span>
+<span id="L95"><span class="lineNum">      95</span> <span class="tlaUNC">           0 :                                 return prevEntry;</span></span>
+<span id="L96"><span class="lineNum">      96</span>              :                         }</span>
+<span id="L97"><span class="lineNum">      97</span>              :                 }</span>
+<span id="L98"><span class="lineNum">      98</span>              :         }</span>
+<span id="L99"><span class="lineNum">      99</span>              : </span>
+<span id="L100"><span class="lineNum">     100</span>              :         /* Nope, create a new entry */</span>
+<span id="L101"><span class="lineNum">     101</span> <span class="tlaUNC">           0 :         scanEntry = (GinScanEntry) palloc(sizeof(GinScanEntryData));</span></span>
+<span id="L102"><span class="lineNum">     102</span> <span class="tlaUNC">           0 :         scanEntry-&gt;queryKey = queryKey;</span></span>
+<span id="L103"><span class="lineNum">     103</span> <span class="tlaUNC">           0 :         scanEntry-&gt;queryCategory = queryCategory;</span></span>
+<span id="L104"><span class="lineNum">     104</span> <span class="tlaUNC">           0 :         scanEntry-&gt;isPartialMatch = isPartialMatch;</span></span>
+<span id="L105"><span class="lineNum">     105</span> <span class="tlaUNC">           0 :         scanEntry-&gt;extra_data = extra_data;</span></span>
+<span id="L106"><span class="lineNum">     106</span> <span class="tlaUNC">           0 :         scanEntry-&gt;strategy = strategy;</span></span>
+<span id="L107"><span class="lineNum">     107</span> <span class="tlaUNC">           0 :         scanEntry-&gt;searchMode = searchMode;</span></span>
+<span id="L108"><span class="lineNum">     108</span> <span class="tlaUNC">           0 :         scanEntry-&gt;attnum = attnum;</span></span>
+<span id="L109"><span class="lineNum">     109</span>              : </span>
+<span id="L110"><span class="lineNum">     110</span> <span class="tlaUNC">           0 :         scanEntry-&gt;buffer = InvalidBuffer;</span></span>
+<span id="L111"><span class="lineNum">     111</span> <span class="tlaUNC">           0 :         ItemPointerSetMin(&amp;scanEntry-&gt;curItem);</span></span>
+<span id="L112"><span class="lineNum">     112</span> <span class="tlaUNC">           0 :         scanEntry-&gt;matchBitmap = NULL;</span></span>
+<span id="L113"><span class="lineNum">     113</span> <span class="tlaUNC">           0 :         scanEntry-&gt;matchIterator = NULL;</span></span>
+<span id="L114"><span class="lineNum">     114</span> <span class="tlaUNC">           0 :         scanEntry-&gt;matchResult = NULL;</span></span>
+<span id="L115"><span class="lineNum">     115</span> <span class="tlaUNC">           0 :         scanEntry-&gt;list = NULL;</span></span>
+<span id="L116"><span class="lineNum">     116</span> <span class="tlaUNC">           0 :         scanEntry-&gt;nlist = 0;</span></span>
+<span id="L117"><span class="lineNum">     117</span> <span class="tlaUNC">           0 :         scanEntry-&gt;offset = InvalidOffsetNumber;</span></span>
+<span id="L118"><span class="lineNum">     118</span> <span class="tlaUNC">           0 :         scanEntry-&gt;isFinished = false;</span></span>
+<span id="L119"><span class="lineNum">     119</span> <span class="tlaUNC">           0 :         scanEntry-&gt;reduceResult = false;</span></span>
+<span id="L120"><span class="lineNum">     120</span>              : </span>
+<span id="L121"><span class="lineNum">     121</span>              :         /* Add it to so's array */</span>
+<span id="L122"><span class="lineNum">     122</span> <span class="tlaUNC">           0 :         if (so-&gt;totalentries &gt;= so-&gt;allocentries)</span></span>
+<span id="L123"><span class="lineNum">     123</span>              :         {</span>
+<span id="L124"><span class="lineNum">     124</span> <span class="tlaUNC">           0 :                 so-&gt;allocentries *= 2;</span></span>
+<span id="L125"><span class="lineNum">     125</span> <span class="tlaUNC">           0 :                 so-&gt;entries = (GinScanEntry *)</span></span>
+<span id="L126"><span class="lineNum">     126</span> <span class="tlaUNC">           0 :                         repalloc(so-&gt;entries, so-&gt;allocentries * sizeof(GinScanEntry));</span></span>
+<span id="L127"><span class="lineNum">     127</span>              :         }</span>
+<span id="L128"><span class="lineNum">     128</span> <span class="tlaUNC">           0 :         so-&gt;entries[so-&gt;totalentries++] = scanEntry;</span></span>
+<span id="L129"><span class="lineNum">     129</span>              : </span>
+<span id="L130"><span class="lineNum">     130</span> <span class="tlaUNC">           0 :         return scanEntry;</span></span>
+<span id="L131"><span class="lineNum">     131</span>              : }</span>
+<span id="L132"><span class="lineNum">     132</span>              : </span>
+<span id="L133"><span class="lineNum">     133</span>              : /*</span>
+<span id="L134"><span class="lineNum">     134</span>              :  * Append hidden scan entry of given category to the scan key.</span>
+<span id="L135"><span class="lineNum">     135</span>              :  *</span>
+<span id="L136"><span class="lineNum">     136</span>              :  * NB: this had better be called at most once per scan key, since</span>
+<span id="L137"><span class="lineNum">     137</span>              :  * ginFillScanKey leaves room for only one hidden entry.  Currently,</span>
+<span id="L138"><span class="lineNum">     138</span>              :  * it seems sufficiently clear that this is true that we don't bother</span>
+<span id="L139"><span class="lineNum">     139</span>              :  * with any cross-check logic.</span>
+<span id="L140"><span class="lineNum">     140</span>              :  */</span>
+<span id="L141"><span class="lineNum">     141</span>              : static void</span>
+<span id="L142"><span class="lineNum">     142</span> <span class="tlaUNC">           0 : ginScanKeyAddHiddenEntry(GinScanOpaque so, GinScanKey key,</span></span>
+<span id="L143"><span class="lineNum">     143</span>              :                                                  GinNullCategory queryCategory)</span>
+<span id="L144"><span class="lineNum">     144</span>              : {</span>
+<span id="L145"><span class="lineNum">     145</span> <span class="tlaUNC">           0 :         int                     i = key-&gt;nentries++;</span></span>
+<span id="L146"><span class="lineNum">     146</span>              : </span>
+<span id="L147"><span class="lineNum">     147</span>              :         /* strategy is of no interest because this is not a partial-match item */</span>
+<span id="L148"><span class="lineNum">     148</span> <span class="tlaUNC">           0 :         key-&gt;scanEntry[i] = ginFillScanEntry(so, key-&gt;attnum,</span></span>
+<span id="L149"><span class="lineNum">     149</span>              :                                                                                  InvalidStrategy, key-&gt;searchMode,</span>
+<span id="L150"><span class="lineNum">     150</span>              :                                                                                  (Datum) 0, queryCategory,</span>
+<span id="L151"><span class="lineNum">     151</span>              :                                                                                  false, NULL);</span>
+<span id="L152"><span class="lineNum">     152</span> <span class="tlaUNC">           0 : }</span></span>
+<span id="L153"><span class="lineNum">     153</span>              : </span>
+<span id="L154"><span class="lineNum">     154</span>              : /*</span>
+<span id="L155"><span class="lineNum">     155</span>              :  * Initialize the next GinScanKey using the output from the extractQueryFn</span>
+<span id="L156"><span class="lineNum">     156</span>              :  */</span>
+<span id="L157"><span class="lineNum">     157</span>              : static void</span>
+<span id="L158"><span class="lineNum">     158</span> <span class="tlaUNC">           0 : ginFillScanKey(GinScanOpaque so, OffsetNumber attnum,</span></span>
+<span id="L159"><span class="lineNum">     159</span>              :                            StrategyNumber strategy, int32 searchMode,</span>
+<span id="L160"><span class="lineNum">     160</span>              :                            Datum query, uint32 nQueryValues,</span>
+<span id="L161"><span class="lineNum">     161</span>              :                            Datum *queryValues, GinNullCategory *queryCategories,</span>
+<span id="L162"><span class="lineNum">     162</span>              :                            bool *partial_matches, Pointer *extra_data)</span>
+<span id="L163"><span class="lineNum">     163</span>              : {</span>
+<span id="L164"><span class="lineNum">     164</span> <span class="tlaUNC">           0 :         GinScanKey      key = &amp;(so-&gt;keys[so-&gt;nkeys++]);</span></span>
+<span id="L165"><span class="lineNum">     165</span> <span class="tlaUNC">           0 :         GinState   *ginstate = &amp;so-&gt;ginstate;</span></span>
+<span id="L166"><span class="lineNum">     166</span>              :         uint32          i;</span>
+<span id="L167"><span class="lineNum">     167</span>              : </span>
+<span id="L168"><span class="lineNum">     168</span> <span class="tlaUNC">           0 :         key-&gt;nentries = nQueryValues;</span></span>
+<span id="L169"><span class="lineNum">     169</span> <span class="tlaUNC">           0 :         key-&gt;nuserentries = nQueryValues;</span></span>
+<span id="L170"><span class="lineNum">     170</span>              : </span>
+<span id="L171"><span class="lineNum">     171</span>              :         /* Allocate one extra array slot for possible &quot;hidden&quot; entry */</span>
+<span id="L172"><span class="lineNum">     172</span> <span class="tlaUNC">           0 :         key-&gt;scanEntry = (GinScanEntry *) palloc(sizeof(GinScanEntry) *</span></span>
+<span id="L173"><span class="lineNum">     173</span> <span class="tlaUNC">           0 :                                                                                          (nQueryValues + 1));</span></span>
+<span id="L174"><span class="lineNum">     174</span> <span class="tlaUNC">           0 :         key-&gt;entryRes = (GinTernaryValue *) palloc0(sizeof(GinTernaryValue) *</span></span>
+<span id="L175"><span class="lineNum">     175</span> <span class="tlaUNC">           0 :                                                                                                 (nQueryValues + 1));</span></span>
+<span id="L176"><span class="lineNum">     176</span>              : </span>
+<span id="L177"><span class="lineNum">     177</span> <span class="tlaUNC">           0 :         key-&gt;query = query;</span></span>
+<span id="L178"><span class="lineNum">     178</span> <span class="tlaUNC">           0 :         key-&gt;queryValues = queryValues;</span></span>
+<span id="L179"><span class="lineNum">     179</span> <span class="tlaUNC">           0 :         key-&gt;queryCategories = queryCategories;</span></span>
+<span id="L180"><span class="lineNum">     180</span> <span class="tlaUNC">           0 :         key-&gt;extra_data = extra_data;</span></span>
+<span id="L181"><span class="lineNum">     181</span> <span class="tlaUNC">           0 :         key-&gt;strategy = strategy;</span></span>
+<span id="L182"><span class="lineNum">     182</span> <span class="tlaUNC">           0 :         key-&gt;searchMode = searchMode;</span></span>
+<span id="L183"><span class="lineNum">     183</span> <span class="tlaUNC">           0 :         key-&gt;attnum = attnum;</span></span>
+<span id="L184"><span class="lineNum">     184</span>              : </span>
+<span id="L185"><span class="lineNum">     185</span>              :         /*</span>
+<span id="L186"><span class="lineNum">     186</span>              :          * Initially, scan keys of GIN_SEARCH_MODE_ALL mode are marked</span>
+<span id="L187"><span class="lineNum">     187</span>              :          * excludeOnly.  This might get changed later.</span>
+<span id="L188"><span class="lineNum">     188</span>              :          */</span>
+<span id="L189"><span class="lineNum">     189</span> <span class="tlaUNC">           0 :         key-&gt;excludeOnly = (searchMode == GIN_SEARCH_MODE_ALL);</span></span>
+<span id="L190"><span class="lineNum">     190</span>              : </span>
+<span id="L191"><span class="lineNum">     191</span> <span class="tlaUNC">           0 :         ItemPointerSetMin(&amp;key-&gt;curItem);</span></span>
+<span id="L192"><span class="lineNum">     192</span> <span class="tlaUNC">           0 :         key-&gt;curItemMatches = false;</span></span>
+<span id="L193"><span class="lineNum">     193</span> <span class="tlaUNC">           0 :         key-&gt;recheckCurItem = false;</span></span>
+<span id="L194"><span class="lineNum">     194</span> <span class="tlaUNC">           0 :         key-&gt;isFinished = false;</span></span>
+<span id="L195"><span class="lineNum">     195</span> <span class="tlaUNC">           0 :         key-&gt;nrequired = 0;</span></span>
+<span id="L196"><span class="lineNum">     196</span> <span class="tlaUNC">           0 :         key-&gt;nadditional = 0;</span></span>
+<span id="L197"><span class="lineNum">     197</span> <span class="tlaUNC">           0 :         key-&gt;requiredEntries = NULL;</span></span>
+<span id="L198"><span class="lineNum">     198</span> <span class="tlaUNC">           0 :         key-&gt;additionalEntries = NULL;</span></span>
+<span id="L199"><span class="lineNum">     199</span>              : </span>
+<span id="L200"><span class="lineNum">     200</span> <span class="tlaUNC">           0 :         ginInitConsistentFunction(ginstate, key);</span></span>
+<span id="L201"><span class="lineNum">     201</span>              : </span>
+<span id="L202"><span class="lineNum">     202</span>              :         /* Set up normal scan entries using extractQueryFn's outputs */</span>
+<span id="L203"><span class="lineNum">     203</span> <span class="tlaUNC">           0 :         for (i = 0; i &lt; nQueryValues; i++)</span></span>
+<span id="L204"><span class="lineNum">     204</span>              :         {</span>
+<span id="L205"><span class="lineNum">     205</span>              :                 Datum           queryKey;</span>
+<span id="L206"><span class="lineNum">     206</span>              :                 GinNullCategory queryCategory;</span>
+<span id="L207"><span class="lineNum">     207</span>              :                 bool            isPartialMatch;</span>
+<span id="L208"><span class="lineNum">     208</span>              :                 Pointer         this_extra;</span>
+<span id="L209"><span class="lineNum">     209</span>              : </span>
+<span id="L210"><span class="lineNum">     210</span> <span class="tlaUNC">           0 :                 queryKey = queryValues[i];</span></span>
+<span id="L211"><span class="lineNum">     211</span> <span class="tlaUNC">           0 :                 queryCategory = queryCategories[i];</span></span>
+<span id="L212"><span class="lineNum">     212</span> <span class="tlaUNC">           0 :                 isPartialMatch =</span></span>
+<span id="L213"><span class="lineNum">     213</span> <span class="tlaUNC">           0 :                         (ginstate-&gt;canPartialMatch[attnum - 1] &amp;&amp; partial_matches)</span></span>
+<span id="L214"><span class="lineNum">     214</span> <span class="tlaUNC">           0 :                         ? partial_matches[i] : false;</span></span>
+<span id="L215"><span class="lineNum">     215</span> <span class="tlaUNC">           0 :                 this_extra = (extra_data) ? extra_data[i] : NULL;</span></span>
+<span id="L216"><span class="lineNum">     216</span>              : </span>
+<span id="L217"><span class="lineNum">     217</span> <span class="tlaUNC">           0 :                 key-&gt;scanEntry[i] = ginFillScanEntry(so, attnum,</span></span>
+<span id="L218"><span class="lineNum">     218</span>              :                                                                                          strategy, searchMode,</span>
+<span id="L219"><span class="lineNum">     219</span>              :                                                                                          queryKey, queryCategory,</span>
+<span id="L220"><span class="lineNum">     220</span>              :                                                                                          isPartialMatch, this_extra);</span>
+<span id="L221"><span class="lineNum">     221</span>              :         }</span>
+<span id="L222"><span class="lineNum">     222</span>              : </span>
+<span id="L223"><span class="lineNum">     223</span>              :         /*</span>
+<span id="L224"><span class="lineNum">     224</span>              :          * For GIN_SEARCH_MODE_INCLUDE_EMPTY and GIN_SEARCH_MODE_EVERYTHING search</span>
+<span id="L225"><span class="lineNum">     225</span>              :          * modes, we add the &quot;hidden&quot; entry immediately.  GIN_SEARCH_MODE_ALL is</span>
+<span id="L226"><span class="lineNum">     226</span>              :          * handled later, since we might be able to omit the hidden entry for it.</span>
+<span id="L227"><span class="lineNum">     227</span>              :          */</span>
+<span id="L228"><span class="lineNum">     228</span> <span class="tlaUNC">           0 :         if (searchMode == GIN_SEARCH_MODE_INCLUDE_EMPTY)</span></span>
+<span id="L229"><span class="lineNum">     229</span> <span class="tlaUNC">           0 :                 ginScanKeyAddHiddenEntry(so, key, GIN_CAT_EMPTY_ITEM);</span></span>
+<span id="L230"><span class="lineNum">     230</span> <span class="tlaUNC">           0 :         else if (searchMode == GIN_SEARCH_MODE_EVERYTHING)</span></span>
+<span id="L231"><span class="lineNum">     231</span> <span class="tlaUNC">           0 :                 ginScanKeyAddHiddenEntry(so, key, GIN_CAT_EMPTY_QUERY);</span></span>
+<span id="L232"><span class="lineNum">     232</span> <span class="tlaUNC">           0 : }</span></span>
+<span id="L233"><span class="lineNum">     233</span>              : </span>
+<span id="L234"><span class="lineNum">     234</span>              : /*</span>
+<span id="L235"><span class="lineNum">     235</span>              :  * Release current scan keys, if any.</span>
+<span id="L236"><span class="lineNum">     236</span>              :  */</span>
+<span id="L237"><span class="lineNum">     237</span>              : void</span>
+<span id="L238"><span class="lineNum">     238</span> <span class="tlaUNC">           0 : ginFreeScanKeys(GinScanOpaque so)</span></span>
+<span id="L239"><span class="lineNum">     239</span>              : {</span>
+<span id="L240"><span class="lineNum">     240</span>              :         uint32          i;</span>
+<span id="L241"><span class="lineNum">     241</span>              : </span>
+<span id="L242"><span class="lineNum">     242</span> <span class="tlaUNC">           0 :         if (so-&gt;keys == NULL)</span></span>
+<span id="L243"><span class="lineNum">     243</span> <span class="tlaUNC">           0 :                 return;</span></span>
+<span id="L244"><span class="lineNum">     244</span>              : </span>
+<span id="L245"><span class="lineNum">     245</span> <span class="tlaUNC">           0 :         for (i = 0; i &lt; so-&gt;totalentries; i++)</span></span>
+<span id="L246"><span class="lineNum">     246</span>              :         {</span>
+<span id="L247"><span class="lineNum">     247</span> <span class="tlaUNC">           0 :                 GinScanEntry entry = so-&gt;entries[i];</span></span>
+<span id="L248"><span class="lineNum">     248</span>              : </span>
+<span id="L249"><span class="lineNum">     249</span> <span class="tlaUNC">           0 :                 if (entry-&gt;buffer != InvalidBuffer)</span></span>
+<span id="L250"><span class="lineNum">     250</span> <span class="tlaUNC">           0 :                         ReleaseBuffer(entry-&gt;buffer);</span></span>
+<span id="L251"><span class="lineNum">     251</span> <span class="tlaUNC">           0 :                 if (entry-&gt;list)</span></span>
+<span id="L252"><span class="lineNum">     252</span> <span class="tlaUNC">           0 :                         pfree(entry-&gt;list);</span></span>
+<span id="L253"><span class="lineNum">     253</span> <span class="tlaUNC">           0 :                 if (entry-&gt;matchIterator)</span></span>
+<span id="L254"><span class="lineNum">     254</span> <span class="tlaUNC">           0 :                         tbm_end_iterate(entry-&gt;matchIterator);</span></span>
+<span id="L255"><span class="lineNum">     255</span> <span class="tlaUNC">           0 :                 if (entry-&gt;matchBitmap)</span></span>
+<span id="L256"><span class="lineNum">     256</span> <span class="tlaUNC">           0 :                         tbm_free(entry-&gt;matchBitmap);</span></span>
+<span id="L257"><span class="lineNum">     257</span>              :         }</span>
+<span id="L258"><span class="lineNum">     258</span>              : </span>
+<span id="L259"><span class="lineNum">     259</span> <span class="tlaUNC">           0 :         MemoryContextResetAndDeleteChildren(so-&gt;keyCtx);</span></span>
+<span id="L260"><span class="lineNum">     260</span>              : </span>
+<span id="L261"><span class="lineNum">     261</span> <span class="tlaUNC">           0 :         so-&gt;keys = NULL;</span></span>
+<span id="L262"><span class="lineNum">     262</span> <span class="tlaUNC">           0 :         so-&gt;nkeys = 0;</span></span>
+<span id="L263"><span class="lineNum">     263</span> <span class="tlaUNC">           0 :         so-&gt;entries = NULL;</span></span>
+<span id="L264"><span class="lineNum">     264</span> <span class="tlaUNC">           0 :         so-&gt;totalentries = 0;</span></span>
+<span id="L265"><span class="lineNum">     265</span>              : }</span>
+<span id="L266"><span class="lineNum">     266</span>              : </span>
+<span id="L267"><span class="lineNum">     267</span>              : void</span>
+<span id="L268"><span class="lineNum">     268</span> <span class="tlaUNC">           0 : ginNewScanKey(IndexScanDesc scan)</span></span>
+<span id="L269"><span class="lineNum">     269</span>              : {</span>
+<span id="L270"><span class="lineNum">     270</span> <span class="tlaUNC">           0 :         ScanKey         scankey = scan-&gt;keyData;</span></span>
+<span id="L271"><span class="lineNum">     271</span> <span class="tlaUNC">           0 :         GinScanOpaque so = (GinScanOpaque) scan-&gt;opaque;</span></span>
+<span id="L272"><span class="lineNum">     272</span>              :         int                     i;</span>
+<span id="L273"><span class="lineNum">     273</span>              :         int                     numExcludeOnly;</span>
+<span id="L274"><span class="lineNum">     274</span> <span class="tlaUNC">           0 :         bool            hasNullQuery = false;</span></span>
+<span id="L275"><span class="lineNum">     275</span> <span class="tlaUNC">           0 :         bool            attrHasNormalScan[INDEX_MAX_KEYS] = {false};</span></span>
+<span id="L276"><span class="lineNum">     276</span>              :         MemoryContext oldCtx;</span>
+<span id="L277"><span class="lineNum">     277</span>              : </span>
+<span id="L278"><span class="lineNum">     278</span>              :         /*</span>
+<span id="L279"><span class="lineNum">     279</span>              :          * Allocate all the scan key information in the key context. (If</span>
+<span id="L280"><span class="lineNum">     280</span>              :          * extractQuery leaks anything there, it won't be reset until the end of</span>
+<span id="L281"><span class="lineNum">     281</span>              :          * scan or rescan, but that's OK.)</span>
+<span id="L282"><span class="lineNum">     282</span>              :          */</span>
+<span id="L283"><span class="lineNum">     283</span> <span class="tlaUNC">           0 :         oldCtx = MemoryContextSwitchTo(so-&gt;keyCtx);</span></span>
+<span id="L284"><span class="lineNum">     284</span>              : </span>
+<span id="L285"><span class="lineNum">     285</span>              :         /* if no scan keys provided, allocate extra EVERYTHING GinScanKey */</span>
+<span id="L286"><span class="lineNum">     286</span> <span class="tlaUNC">           0 :         so-&gt;keys = (GinScanKey)</span></span>
+<span id="L287"><span class="lineNum">     287</span> <span class="tlaUNC">           0 :                 palloc(Max(scan-&gt;numberOfKeys, 1) * sizeof(GinScanKeyData));</span></span>
+<span id="L288"><span class="lineNum">     288</span> <span class="tlaUNC">           0 :         so-&gt;nkeys = 0;</span></span>
+<span id="L289"><span class="lineNum">     289</span>              : </span>
+<span id="L290"><span class="lineNum">     290</span>              :         /* initialize expansible array of GinScanEntry pointers */</span>
+<span id="L291"><span class="lineNum">     291</span> <span class="tlaUNC">           0 :         so-&gt;totalentries = 0;</span></span>
+<span id="L292"><span class="lineNum">     292</span> <span class="tlaUNC">           0 :         so-&gt;allocentries = 32;</span></span>
+<span id="L293"><span class="lineNum">     293</span> <span class="tlaUNC">           0 :         so-&gt;entries = (GinScanEntry *)</span></span>
+<span id="L294"><span class="lineNum">     294</span> <span class="tlaUNC">           0 :                 palloc(so-&gt;allocentries * sizeof(GinScanEntry));</span></span>
+<span id="L295"><span class="lineNum">     295</span>              : </span>
+<span id="L296"><span class="lineNum">     296</span> <span class="tlaUNC">           0 :         so-&gt;isVoidRes = false;</span></span>
+<span id="L297"><span class="lineNum">     297</span>              : </span>
+<span id="L298"><span class="lineNum">     298</span> <span class="tlaUNC">           0 :         for (i = 0; i &lt; scan-&gt;numberOfKeys; i++)</span></span>
+<span id="L299"><span class="lineNum">     299</span>              :         {</span>
+<span id="L300"><span class="lineNum">     300</span> <span class="tlaUNC">           0 :                 ScanKey         skey = &amp;scankey[i];</span></span>
+<span id="L301"><span class="lineNum">     301</span>              :                 Datum      *queryValues;</span>
+<span id="L302"><span class="lineNum">     302</span> <span class="tlaUNC">           0 :                 int32           nQueryValues = 0;</span></span>
+<span id="L303"><span class="lineNum">     303</span> <span class="tlaUNC">           0 :                 bool       *partial_matches = NULL;</span></span>
+<span id="L304"><span class="lineNum">     304</span> <span class="tlaUNC">           0 :                 Pointer    *extra_data = NULL;</span></span>
+<span id="L305"><span class="lineNum">     305</span> <span class="tlaUNC">           0 :                 bool       *nullFlags = NULL;</span></span>
+<span id="L306"><span class="lineNum">     306</span>              :                 GinNullCategory *categories;</span>
+<span id="L307"><span class="lineNum">     307</span> <span class="tlaUNC">           0 :                 int32           searchMode = GIN_SEARCH_MODE_DEFAULT;</span></span>
+<span id="L308"><span class="lineNum">     308</span>              : </span>
+<span id="L309"><span class="lineNum">     309</span>              :                 /*</span>
+<span id="L310"><span class="lineNum">     310</span>              :                  * We assume that GIN-indexable operators are strict, so a null query</span>
+<span id="L311"><span class="lineNum">     311</span>              :                  * argument means an unsatisfiable query.</span>
+<span id="L312"><span class="lineNum">     312</span>              :                  */</span>
+<span id="L313"><span class="lineNum">     313</span> <span class="tlaUNC">           0 :                 if (skey-&gt;sk_flags &amp; SK_ISNULL)</span></span>
+<span id="L314"><span class="lineNum">     314</span>              :                 {</span>
+<span id="L315"><span class="lineNum">     315</span> <span class="tlaUNC">           0 :                         so-&gt;isVoidRes = true;</span></span>
+<span id="L316"><span class="lineNum">     316</span> <span class="tlaUNC">           0 :                         break;</span></span>
+<span id="L317"><span class="lineNum">     317</span>              :                 }</span>
+<span id="L318"><span class="lineNum">     318</span>              : </span>
+<span id="L319"><span class="lineNum">     319</span>              :                 /* OK to call the extractQueryFn */</span>
+<span id="L320"><span class="lineNum">     320</span> <span class="tlaUNC">           0 :                 queryValues = (Datum *)</span></span>
+<span id="L321"><span class="lineNum">     321</span> <span class="tlaUNC">           0 :                         DatumGetPointer(FunctionCall7Coll(&amp;so-&gt;ginstate.extractQueryFn[skey-&gt;sk_attno - 1],</span></span>
+<span id="L322"><span class="lineNum">     322</span>              :                                                                                           so-&gt;ginstate.supportCollation[skey-&gt;sk_attno - 1],</span>
+<span id="L323"><span class="lineNum">     323</span>              :                                                                                           skey-&gt;sk_argument,</span>
+<span id="L324"><span class="lineNum">     324</span>              :                                                                                           PointerGetDatum(&amp;nQueryValues),</span>
+<span id="L325"><span class="lineNum">     325</span>              :                                                                                           UInt16GetDatum(skey-&gt;sk_strategy),</span>
+<span id="L326"><span class="lineNum">     326</span>              :                                                                                           PointerGetDatum(&amp;partial_matches),</span>
+<span id="L327"><span class="lineNum">     327</span>              :                                                                                           PointerGetDatum(&amp;extra_data),</span>
+<span id="L328"><span class="lineNum">     328</span>              :                                                                                           PointerGetDatum(&amp;nullFlags),</span>
+<span id="L329"><span class="lineNum">     329</span>              :                                                                                           PointerGetDatum(&amp;searchMode)));</span>
+<span id="L330"><span class="lineNum">     330</span>              : </span>
+<span id="L331"><span class="lineNum">     331</span>              :                 /*</span>
+<span id="L332"><span class="lineNum">     332</span>              :                  * If bogus searchMode is returned, treat as GIN_SEARCH_MODE_ALL; note</span>
+<span id="L333"><span class="lineNum">     333</span>              :                  * in particular we don't allow extractQueryFn to select</span>
+<span id="L334"><span class="lineNum">     334</span>              :                  * GIN_SEARCH_MODE_EVERYTHING.</span>
+<span id="L335"><span class="lineNum">     335</span>              :                  */</span>
+<span id="L336"><span class="lineNum">     336</span> <span class="tlaUNC">           0 :                 if (searchMode &lt; GIN_SEARCH_MODE_DEFAULT ||</span></span>
+<span id="L337"><span class="lineNum">     337</span> <span class="tlaUNC">           0 :                         searchMode &gt; GIN_SEARCH_MODE_ALL)</span></span>
+<span id="L338"><span class="lineNum">     338</span> <span class="tlaUNC">           0 :                         searchMode = GIN_SEARCH_MODE_ALL;</span></span>
+<span id="L339"><span class="lineNum">     339</span>              : </span>
+<span id="L340"><span class="lineNum">     340</span>              :                 /* Non-default modes require the index to have placeholders */</span>
+<span id="L341"><span class="lineNum">     341</span> <span class="tlaUNC">           0 :                 if (searchMode != GIN_SEARCH_MODE_DEFAULT)</span></span>
+<span id="L342"><span class="lineNum">     342</span> <span class="tlaUNC">           0 :                         hasNullQuery = true;</span></span>
+<span id="L343"><span class="lineNum">     343</span>              : </span>
+<span id="L344"><span class="lineNum">     344</span>              :                 /*</span>
+<span id="L345"><span class="lineNum">     345</span>              :                  * In default mode, no keys means an unsatisfiable query.</span>
+<span id="L346"><span class="lineNum">     346</span>              :                  */</span>
+<span id="L347"><span class="lineNum">     347</span> <span class="tlaUNC">           0 :                 if (queryValues == NULL || nQueryValues &lt;= 0)</span></span>
+<span id="L348"><span class="lineNum">     348</span>              :                 {</span>
+<span id="L349"><span class="lineNum">     349</span> <span class="tlaUNC">           0 :                         if (searchMode == GIN_SEARCH_MODE_DEFAULT)</span></span>
+<span id="L350"><span class="lineNum">     350</span>              :                         {</span>
+<span id="L351"><span class="lineNum">     351</span> <span class="tlaUNC">           0 :                                 so-&gt;isVoidRes = true;</span></span>
+<span id="L352"><span class="lineNum">     352</span> <span class="tlaUNC">           0 :                                 break;</span></span>
+<span id="L353"><span class="lineNum">     353</span>              :                         }</span>
+<span id="L354"><span class="lineNum">     354</span> <span class="tlaUNC">           0 :                         nQueryValues = 0;       /* ensure sane value */</span></span>
+<span id="L355"><span class="lineNum">     355</span>              :                 }</span>
+<span id="L356"><span class="lineNum">     356</span>              : </span>
+<span id="L357"><span class="lineNum">     357</span>              :                 /*</span>
+<span id="L358"><span class="lineNum">     358</span>              :                  * Create GinNullCategory representation.  If the extractQueryFn</span>
+<span id="L359"><span class="lineNum">     359</span>              :                  * didn't create a nullFlags array, we assume everything is non-null.</span>
+<span id="L360"><span class="lineNum">     360</span>              :                  * While at it, detect whether any null keys are present.</span>
+<span id="L361"><span class="lineNum">     361</span>              :                  */</span>
+<span id="L362"><span class="lineNum">     362</span> <span class="tlaUNC">           0 :                 categories = (GinNullCategory *) palloc0(nQueryValues * sizeof(GinNullCategory));</span></span>
+<span id="L363"><span class="lineNum">     363</span> <span class="tlaUNC">           0 :                 if (nullFlags)</span></span>
+<span id="L364"><span class="lineNum">     364</span>              :                 {</span>
+<span id="L365"><span class="lineNum">     365</span>              :                         int32           j;</span>
+<span id="L366"><span class="lineNum">     366</span>              : </span>
+<span id="L367"><span class="lineNum">     367</span> <span class="tlaUNC">           0 :                         for (j = 0; j &lt; nQueryValues; j++)</span></span>
+<span id="L368"><span class="lineNum">     368</span>              :                         {</span>
+<span id="L369"><span class="lineNum">     369</span> <span class="tlaUNC">           0 :                                 if (nullFlags[j])</span></span>
+<span id="L370"><span class="lineNum">     370</span>              :                                 {</span>
+<span id="L371"><span class="lineNum">     371</span> <span class="tlaUNC">           0 :                                         categories[j] = GIN_CAT_NULL_KEY;</span></span>
+<span id="L372"><span class="lineNum">     372</span> <span class="tlaUNC">           0 :                                         hasNullQuery = true;</span></span>
+<span id="L373"><span class="lineNum">     373</span>              :                                 }</span>
+<span id="L374"><span class="lineNum">     374</span>              :                         }</span>
+<span id="L375"><span class="lineNum">     375</span>              :                 }</span>
+<span id="L376"><span class="lineNum">     376</span>              : </span>
+<span id="L377"><span class="lineNum">     377</span> <span class="tlaUNC">           0 :                 ginFillScanKey(so, skey-&gt;sk_attno,</span></span>
+<span id="L378"><span class="lineNum">     378</span> <span class="tlaUNC">           0 :                                            skey-&gt;sk_strategy, searchMode,</span></span>
+<span id="L379"><span class="lineNum">     379</span>              :                                            skey-&gt;sk_argument, nQueryValues,</span>
+<span id="L380"><span class="lineNum">     380</span>              :                                            queryValues, categories,</span>
+<span id="L381"><span class="lineNum">     381</span>              :                                            partial_matches, extra_data);</span>
+<span id="L382"><span class="lineNum">     382</span>              : </span>
+<span id="L383"><span class="lineNum">     383</span>              :                 /* Remember if we had any non-excludeOnly keys */</span>
+<span id="L384"><span class="lineNum">     384</span> <span class="tlaUNC">           0 :                 if (searchMode != GIN_SEARCH_MODE_ALL)</span></span>
+<span id="L385"><span class="lineNum">     385</span> <span class="tlaUNC">           0 :                         attrHasNormalScan[skey-&gt;sk_attno - 1] = true;</span></span>
+<span id="L386"><span class="lineNum">     386</span>              :         }</span>
+<span id="L387"><span class="lineNum">     387</span>              : </span>
+<span id="L388"><span class="lineNum">     388</span>              :         /*</span>
+<span id="L389"><span class="lineNum">     389</span>              :          * Processing GIN_SEARCH_MODE_ALL scan keys requires us to make a second</span>
+<span id="L390"><span class="lineNum">     390</span>              :          * pass over the scan keys.  Above we marked each such scan key as</span>
+<span id="L391"><span class="lineNum">     391</span>              :          * excludeOnly.  If the involved column has any normal (not excludeOnly)</span>
+<span id="L392"><span class="lineNum">     392</span>              :          * scan key as well, then we can leave it like that.  Otherwise, one</span>
+<span id="L393"><span class="lineNum">     393</span>              :          * excludeOnly scan key must receive a GIN_CAT_EMPTY_QUERY hidden entry</span>
+<span id="L394"><span class="lineNum">     394</span>              :          * and be set to normal (excludeOnly = false).</span>
+<span id="L395"><span class="lineNum">     395</span>              :          */</span>
+<span id="L396"><span class="lineNum">     396</span> <span class="tlaUNC">           0 :         numExcludeOnly = 0;</span></span>
+<span id="L397"><span class="lineNum">     397</span> <span class="tlaUNC">           0 :         for (i = 0; i &lt; so-&gt;nkeys; i++)</span></span>
+<span id="L398"><span class="lineNum">     398</span>              :         {</span>
+<span id="L399"><span class="lineNum">     399</span> <span class="tlaUNC">           0 :                 GinScanKey      key = &amp;so-&gt;keys[i];</span></span>
+<span id="L400"><span class="lineNum">     400</span>              : </span>
+<span id="L401"><span class="lineNum">     401</span> <span class="tlaUNC">           0 :                 if (key-&gt;searchMode != GIN_SEARCH_MODE_ALL)</span></span>
+<span id="L402"><span class="lineNum">     402</span> <span class="tlaUNC">           0 :                         continue;</span></span>
+<span id="L403"><span class="lineNum">     403</span>              : </span>
+<span id="L404"><span class="lineNum">     404</span> <span class="tlaUNC">           0 :                 if (!attrHasNormalScan[key-&gt;attnum - 1])</span></span>
+<span id="L405"><span class="lineNum">     405</span>              :                 {</span>
+<span id="L406"><span class="lineNum">     406</span> <span class="tlaUNC">           0 :                         key-&gt;excludeOnly = false;</span></span>
+<span id="L407"><span class="lineNum">     407</span> <span class="tlaUNC">           0 :                         ginScanKeyAddHiddenEntry(so, key, GIN_CAT_EMPTY_QUERY);</span></span>
+<span id="L408"><span class="lineNum">     408</span> <span class="tlaUNC">           0 :                         attrHasNormalScan[key-&gt;attnum - 1] = true;</span></span>
+<span id="L409"><span class="lineNum">     409</span>              :                 }</span>
+<span id="L410"><span class="lineNum">     410</span>              :                 else</span>
+<span id="L411"><span class="lineNum">     411</span> <span class="tlaUNC">           0 :                         numExcludeOnly++;</span></span>
+<span id="L412"><span class="lineNum">     412</span>              :         }</span>
+<span id="L413"><span class="lineNum">     413</span>              : </span>
+<span id="L414"><span class="lineNum">     414</span>              :         /*</span>
+<span id="L415"><span class="lineNum">     415</span>              :          * If we left any excludeOnly scan keys as-is, move them to the end of the</span>
+<span id="L416"><span class="lineNum">     416</span>              :          * scan key array: they must appear after normal key(s).</span>
+<span id="L417"><span class="lineNum">     417</span>              :          */</span>
+<span id="L418"><span class="lineNum">     418</span> <span class="tlaUNC">           0 :         if (numExcludeOnly &gt; 0)</span></span>
+<span id="L419"><span class="lineNum">     419</span>              :         {</span>
+<span id="L420"><span class="lineNum">     420</span>              :                 GinScanKey      tmpkeys;</span>
+<span id="L421"><span class="lineNum">     421</span>              :                 int                     iNormalKey;</span>
+<span id="L422"><span class="lineNum">     422</span>              :                 int                     iExcludeOnly;</span>
+<span id="L423"><span class="lineNum">     423</span>              : </span>
+<span id="L424"><span class="lineNum">     424</span>              :                 /* We'd better have made at least one normal key */</span>
+<span id="L425"><span class="lineNum">     425</span>              :                 Assert(numExcludeOnly &lt; so-&gt;nkeys);</span>
+<span id="L426"><span class="lineNum">     426</span>              :                 /* Make a temporary array to hold the re-ordered scan keys */</span>
+<span id="L427"><span class="lineNum">     427</span> <span class="tlaUNC">           0 :                 tmpkeys = (GinScanKey) palloc(so-&gt;nkeys * sizeof(GinScanKeyData));</span></span>
+<span id="L428"><span class="lineNum">     428</span>              :                 /* Re-order the keys ... */</span>
+<span id="L429"><span class="lineNum">     429</span> <span class="tlaUNC">           0 :                 iNormalKey = 0;</span></span>
+<span id="L430"><span class="lineNum">     430</span> <span class="tlaUNC">           0 :                 iExcludeOnly = so-&gt;nkeys - numExcludeOnly;</span></span>
+<span id="L431"><span class="lineNum">     431</span> <span class="tlaUNC">           0 :                 for (i = 0; i &lt; so-&gt;nkeys; i++)</span></span>
+<span id="L432"><span class="lineNum">     432</span>              :                 {</span>
+<span id="L433"><span class="lineNum">     433</span> <span class="tlaUNC">           0 :                         GinScanKey      key = &amp;so-&gt;keys[i];</span></span>
+<span id="L434"><span class="lineNum">     434</span>              : </span>
+<span id="L435"><span class="lineNum">     435</span> <span class="tlaUNC">           0 :                         if (key-&gt;excludeOnly)</span></span>
+<span id="L436"><span class="lineNum">     436</span>              :                         {</span>
+<span id="L437"><span class="lineNum">     437</span> <span class="tlaUNC">           0 :                                 memcpy(tmpkeys + iExcludeOnly, key, sizeof(GinScanKeyData));</span></span>
+<span id="L438"><span class="lineNum">     438</span> <span class="tlaUNC">           0 :                                 iExcludeOnly++;</span></span>
+<span id="L439"><span class="lineNum">     439</span>              :                         }</span>
+<span id="L440"><span class="lineNum">     440</span>              :                         else</span>
+<span id="L441"><span class="lineNum">     441</span>              :                         {</span>
+<span id="L442"><span class="lineNum">     442</span> <span class="tlaUNC">           0 :                                 memcpy(tmpkeys + iNormalKey, key, sizeof(GinScanKeyData));</span></span>
+<span id="L443"><span class="lineNum">     443</span> <span class="tlaUNC">           0 :                                 iNormalKey++;</span></span>
+<span id="L444"><span class="lineNum">     444</span>              :                         }</span>
+<span id="L445"><span class="lineNum">     445</span>              :                 }</span>
+<span id="L446"><span class="lineNum">     446</span>              :                 Assert(iNormalKey == so-&gt;nkeys - numExcludeOnly);</span>
+<span id="L447"><span class="lineNum">     447</span>              :                 Assert(iExcludeOnly == so-&gt;nkeys);</span>
+<span id="L448"><span class="lineNum">     448</span>              :                 /* ... and copy them back to so-&gt;keys[] */</span>
+<span id="L449"><span class="lineNum">     449</span> <span class="tlaUNC">           0 :                 memcpy(so-&gt;keys, tmpkeys, so-&gt;nkeys * sizeof(GinScanKeyData));</span></span>
+<span id="L450"><span class="lineNum">     450</span> <span class="tlaUNC">           0 :                 pfree(tmpkeys);</span></span>
+<span id="L451"><span class="lineNum">     451</span>              :         }</span>
+<span id="L452"><span class="lineNum">     452</span>              : </span>
+<span id="L453"><span class="lineNum">     453</span>              :         /*</span>
+<span id="L454"><span class="lineNum">     454</span>              :          * If there are no regular scan keys, generate an EVERYTHING scankey to</span>
+<span id="L455"><span class="lineNum">     455</span>              :          * drive a full-index scan.</span>
+<span id="L456"><span class="lineNum">     456</span>              :          */</span>
+<span id="L457"><span class="lineNum">     457</span> <span class="tlaUNC">           0 :         if (so-&gt;nkeys == 0 &amp;&amp; !so-&gt;isVoidRes)</span></span>
+<span id="L458"><span class="lineNum">     458</span>              :         {</span>
+<span id="L459"><span class="lineNum">     459</span> <span class="tlaUNC">           0 :                 hasNullQuery = true;</span></span>
+<span id="L460"><span class="lineNum">     460</span> <span class="tlaUNC">           0 :                 ginFillScanKey(so, FirstOffsetNumber,</span></span>
+<span id="L461"><span class="lineNum">     461</span>              :                                            InvalidStrategy, GIN_SEARCH_MODE_EVERYTHING,</span>
+<span id="L462"><span class="lineNum">     462</span>              :                                            (Datum) 0, 0,</span>
+<span id="L463"><span class="lineNum">     463</span>              :                                            NULL, NULL, NULL, NULL);</span>
+<span id="L464"><span class="lineNum">     464</span>              :         }</span>
+<span id="L465"><span class="lineNum">     465</span>              : </span>
+<span id="L466"><span class="lineNum">     466</span>              :         /*</span>
+<span id="L467"><span class="lineNum">     467</span>              :          * If the index is version 0, it may be missing null and placeholder</span>
+<span id="L468"><span class="lineNum">     468</span>              :          * entries, which would render searches for nulls and full-index scans</span>
+<span id="L469"><span class="lineNum">     469</span>              :          * unreliable.  Throw an error if so.</span>
+<span id="L470"><span class="lineNum">     470</span>              :          */</span>
+<span id="L471"><span class="lineNum">     471</span> <span class="tlaUNC">           0 :         if (hasNullQuery &amp;&amp; !so-&gt;isVoidRes)</span></span>
+<span id="L472"><span class="lineNum">     472</span>              :         {</span>
+<span id="L473"><span class="lineNum">     473</span>              :                 GinStatsData ginStats;</span>
+<span id="L474"><span class="lineNum">     474</span>              : </span>
+<span id="L475"><span class="lineNum">     475</span> <span class="tlaUNC">           0 :                 ginGetStats(scan-&gt;indexRelation, &amp;ginStats);</span></span>
+<span id="L476"><span class="lineNum">     476</span> <span class="tlaUNC">           0 :                 if (ginStats.ginVersion &lt; 1)</span></span>
+<span id="L477"><span class="lineNum">     477</span> <span class="tlaUNC">           0 :                         ereport(ERROR,</span></span>
+<span id="L478"><span class="lineNum">     478</span>              :                                         (errcode(ERRCODE_FEATURE_NOT_SUPPORTED),</span>
+<span id="L479"><span class="lineNum">     479</span>              :                                          errmsg(&quot;old GIN indexes do not support whole-index scans nor searches for nulls&quot;),</span>
+<span id="L480"><span class="lineNum">     480</span>              :                                          errhint(&quot;To fix this, do REINDEX INDEX \&quot;%s\&quot;.&quot;,</span>
+<span id="L481"><span class="lineNum">     481</span>              :                                                          RelationGetRelationName(scan-&gt;indexRelation))));</span>
+<span id="L482"><span class="lineNum">     482</span>              :         }</span>
+<span id="L483"><span class="lineNum">     483</span>              : </span>
+<span id="L484"><span class="lineNum">     484</span> <span class="tlaUNC">           0 :         MemoryContextSwitchTo(oldCtx);</span></span>
+<span id="L485"><span class="lineNum">     485</span>              : </span>
+<span id="L486"><span class="lineNum">     486</span> <span class="tlaUNC">           0 :         pgstat_count_index_scan(scan-&gt;indexRelation);</span></span>
+<span id="L487"><span class="lineNum">     487</span> <span class="tlaUNC">           0 : }</span></span>
+<span id="L488"><span class="lineNum">     488</span>              : </span>
+<span id="L489"><span class="lineNum">     489</span>              : void</span>
+<span id="L490"><span class="lineNum">     490</span> <span class="tlaUNC">           0 : ginrescan(IndexScanDesc scan, ScanKey scankey, int nscankeys,</span></span>
+<span id="L491"><span class="lineNum">     491</span>              :                   ScanKey orderbys, int norderbys)</span>
+<span id="L492"><span class="lineNum">     492</span>              : {</span>
+<span id="L493"><span class="lineNum">     493</span> <span class="tlaUNC">           0 :         GinScanOpaque so = (GinScanOpaque) scan-&gt;opaque;</span></span>
+<span id="L494"><span class="lineNum">     494</span>              : </span>
+<span id="L495"><span class="lineNum">     495</span> <span class="tlaUNC">           0 :         ginFreeScanKeys(so);</span></span>
+<span id="L496"><span class="lineNum">     496</span>              : </span>
+<span id="L497"><span class="lineNum">     497</span> <span class="tlaUNC">           0 :         if (scankey &amp;&amp; scan-&gt;numberOfKeys &gt; 0)</span></span>
+<span id="L498"><span class="lineNum">     498</span>              :         {</span>
+<span id="L499"><span class="lineNum">     499</span> <span class="tlaUNC">           0 :                 memmove(scan-&gt;keyData, scankey,</span></span>
+<span id="L500"><span class="lineNum">     500</span> <span class="tlaUNC">           0 :                                 scan-&gt;numberOfKeys * sizeof(ScanKeyData));</span></span>
+<span id="L501"><span class="lineNum">     501</span>              :         }</span>
+<span id="L502"><span class="lineNum">     502</span> <span class="tlaUNC">           0 : }</span></span>
+<span id="L503"><span class="lineNum">     503</span>              : </span>
+<span id="L504"><span class="lineNum">     504</span>              : </span>
+<span id="L505"><span class="lineNum">     505</span>              : void</span>
+<span id="L506"><span class="lineNum">     506</span> <span class="tlaUNC">           0 : ginendscan(IndexScanDesc scan)</span></span>
+<span id="L507"><span class="lineNum">     507</span>              : {</span>
+<span id="L508"><span class="lineNum">     508</span> <span class="tlaUNC">           0 :         GinScanOpaque so = (GinScanOpaque) scan-&gt;opaque;</span></span>
+<span id="L509"><span class="lineNum">     509</span>              : </span>
+<span id="L510"><span class="lineNum">     510</span> <span class="tlaUNC">           0 :         ginFreeScanKeys(so);</span></span>
+<span id="L511"><span class="lineNum">     511</span>              : </span>
+<span id="L512"><span class="lineNum">     512</span> <span class="tlaUNC">           0 :         MemoryContextDelete(so-&gt;tempCtx);</span></span>
+<span id="L513"><span class="lineNum">     513</span> <span class="tlaUNC">           0 :         MemoryContextDelete(so-&gt;keyCtx);</span></span>
+<span id="L514"><span class="lineNum">     514</span>              : </span>
+<span id="L515"><span class="lineNum">     515</span> <span class="tlaUNC">           0 :         pfree(so);</span></span>
+<span id="L516"><span class="lineNum">     516</span> <span class="tlaUNC">           0 : }</span></span>
+        </pre>
+              </td>
+            </tr>
+          </table>
+          <br>
+
+          <table width="100%" border=0 cellspacing=0 cellpadding=0>
+            <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+            <tr><td class="versionInfo">Generated by: <a href="https://github.com//linux-test-project/lcov" target="_parent">LCOV version 2.0-1</a></td></tr>
+          </table>
+          <br>
+
+</body>
+</html>

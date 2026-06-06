@@ -1,0 +1,352 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - coverage_filtered.info - include/common/int128.h</title>
+  <link rel="stylesheet" type="text/css" href="../../gcov.css">
+</head>
+
+<body>
+
+          <table width="100%" border=0 cellspacing=0 cellpadding=0>
+            <tr><td class="title">LCOV - code coverage report</td></tr>
+            <tr><td class="ruler"><img src="../../glass.png" width=3 height=3 alt=""></td></tr>
+
+            <tr>
+              <td width="100%">
+                <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="10%" class="headerValue"><a href="../../index.html">top level</a> - <a href="index.html">include/common</a> - int128.h<span style="font-size: 80%;"> (source / <a href="int128.h.func-c.html">functions</a>)</span></td>
+            <td width="5%"></td>
+            <td width="5%"></td>
+            <td width="5%" class="headerCovTableHead">Coverage</td>
+            <td width="5%" class="headerCovTableHead" title="Covered + Uncovered code">Total</td>
+            <td width="5%" class="headerCovTableHead" title="Exercised code only">Hit</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">coverage_filtered.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntryLo">0.0&nbsp;%</td>
+            <td class="headerCovTableEntry">13</td>
+            <td class="headerCovTableEntry">0</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test Date:</td>
+            <td class="headerValue">2026-06-06 04:44:07</td>
+            <td></td>
+            <td class="headerItem">Functions:</td>
+            <td class="headerCovTableEntryLo">0.0&nbsp;%</td>
+            <td class="headerCovTableEntry">4</td>
+            <td class="headerCovTableEntry">0</td>
+          </tr>
+                  <tr><td><img src="../../glass.png" width=3 height=3 alt=""></td></tr>
+                </table>
+              </td>
+            </tr>
+
+            <tr><td class="ruler"><img src="../../glass.png" width=3 height=3 alt=""></td></tr>
+          </table>
+
+          <table cellpadding=0 cellspacing=0 border=0>
+            <tr>
+              <td><br></td>
+            </tr>
+            <tr>
+              <td>
+<pre class="sourceHeading">            Line data    Source code</pre>
+<pre class="source">
+<span id="L1"><span class="lineNum">       1</span>              : /*-------------------------------------------------------------------------</span>
+<span id="L2"><span class="lineNum">       2</span>              :  *</span>
+<span id="L3"><span class="lineNum">       3</span>              :  * int128.h</span>
+<span id="L4"><span class="lineNum">       4</span>              :  *        Roll-our-own 128-bit integer arithmetic.</span>
+<span id="L5"><span class="lineNum">       5</span>              :  *</span>
+<span id="L6"><span class="lineNum">       6</span>              :  * We make use of the native int128 type if there is one, otherwise</span>
+<span id="L7"><span class="lineNum">       7</span>              :  * implement things the hard way based on two int64 halves.</span>
+<span id="L8"><span class="lineNum">       8</span>              :  *</span>
+<span id="L9"><span class="lineNum">       9</span>              :  * See src/tools/testint128.c for a simple test harness for this file.</span>
+<span id="L10"><span class="lineNum">      10</span>              :  *</span>
+<span id="L11"><span class="lineNum">      11</span>              :  * Copyright (c) 2017-2020, PostgreSQL Global Development Group</span>
+<span id="L12"><span class="lineNum">      12</span>              :  *</span>
+<span id="L13"><span class="lineNum">      13</span>              :  * src/include/common/int128.h</span>
+<span id="L14"><span class="lineNum">      14</span>              :  *</span>
+<span id="L15"><span class="lineNum">      15</span>              :  *-------------------------------------------------------------------------</span>
+<span id="L16"><span class="lineNum">      16</span>              :  */</span>
+<span id="L17"><span class="lineNum">      17</span>              : #ifndef INT128_H</span>
+<span id="L18"><span class="lineNum">      18</span>              : #define INT128_H</span>
+<span id="L19"><span class="lineNum">      19</span>              : </span>
+<span id="L20"><span class="lineNum">      20</span>              : /*</span>
+<span id="L21"><span class="lineNum">      21</span>              :  * For testing purposes, use of native int128 can be switched on/off by</span>
+<span id="L22"><span class="lineNum">      22</span>              :  * predefining USE_NATIVE_INT128.</span>
+<span id="L23"><span class="lineNum">      23</span>              :  */</span>
+<span id="L24"><span class="lineNum">      24</span>              : #ifndef USE_NATIVE_INT128</span>
+<span id="L25"><span class="lineNum">      25</span>              : #ifdef HAVE_INT128</span>
+<span id="L26"><span class="lineNum">      26</span>              : #define USE_NATIVE_INT128 1</span>
+<span id="L27"><span class="lineNum">      27</span>              : #else</span>
+<span id="L28"><span class="lineNum">      28</span>              : #define USE_NATIVE_INT128 0</span>
+<span id="L29"><span class="lineNum">      29</span>              : #endif</span>
+<span id="L30"><span class="lineNum">      30</span>              : #endif</span>
+<span id="L31"><span class="lineNum">      31</span>              : </span>
+<span id="L32"><span class="lineNum">      32</span>              : </span>
+<span id="L33"><span class="lineNum">      33</span>              : #if USE_NATIVE_INT128</span>
+<span id="L34"><span class="lineNum">      34</span>              : </span>
+<span id="L35"><span class="lineNum">      35</span>              : typedef int128 INT128;</span>
+<span id="L36"><span class="lineNum">      36</span>              : </span>
+<span id="L37"><span class="lineNum">      37</span>              : /*</span>
+<span id="L38"><span class="lineNum">      38</span>              :  * Add an unsigned int64 value into an INT128 variable.</span>
+<span id="L39"><span class="lineNum">      39</span>              :  */</span>
+<span id="L40"><span class="lineNum">      40</span>              : static inline void</span>
+<span id="L41"><span class="lineNum">      41</span>              : int128_add_uint64(INT128 *i128, uint64 v)</span>
+<span id="L42"><span class="lineNum">      42</span>              : {</span>
+<span id="L43"><span class="lineNum">      43</span>              :         *i128 += v;</span>
+<span id="L44"><span class="lineNum">      44</span>              : }</span>
+<span id="L45"><span class="lineNum">      45</span>              : </span>
+<span id="L46"><span class="lineNum">      46</span>              : /*</span>
+<span id="L47"><span class="lineNum">      47</span>              :  * Add a signed int64 value into an INT128 variable.</span>
+<span id="L48"><span class="lineNum">      48</span>              :  */</span>
+<span id="L49"><span class="lineNum">      49</span>              : static inline void</span>
+<span id="L50"><span class="lineNum">      50</span>              : int128_add_int64(INT128 *i128, int64 v)</span>
+<span id="L51"><span class="lineNum">      51</span>              : {</span>
+<span id="L52"><span class="lineNum">      52</span>              :         *i128 += v;</span>
+<span id="L53"><span class="lineNum">      53</span>              : }</span>
+<span id="L54"><span class="lineNum">      54</span>              : </span>
+<span id="L55"><span class="lineNum">      55</span>              : /*</span>
+<span id="L56"><span class="lineNum">      56</span>              :  * Add the 128-bit product of two int64 values into an INT128 variable.</span>
+<span id="L57"><span class="lineNum">      57</span>              :  *</span>
+<span id="L58"><span class="lineNum">      58</span>              :  * XXX with a stupid compiler, this could actually be less efficient than</span>
+<span id="L59"><span class="lineNum">      59</span>              :  * the other implementation; maybe we should do it by hand always?</span>
+<span id="L60"><span class="lineNum">      60</span>              :  */</span>
+<span id="L61"><span class="lineNum">      61</span>              : static inline void</span>
+<span id="L62"><span class="lineNum">      62</span> <span class="tlaUNC tlaBgUNC">           0 : int128_add_int64_mul_int64(INT128 *i128, int64 x, int64 y)</span></span>
+<span id="L63"><span class="lineNum">      63</span>              : {</span>
+<span id="L64"><span class="lineNum">      64</span> <span class="tlaUNC">           0 :         *i128 += (int128) x * (int128) y;</span></span>
+<span id="L65"><span class="lineNum">      65</span> <span class="tlaUNC">           0 : }</span></span>
+<span id="L66"><span class="lineNum">      66</span>              : </span>
+<span id="L67"><span class="lineNum">      67</span>              : /*</span>
+<span id="L68"><span class="lineNum">      68</span>              :  * Compare two INT128 values, return -1, 0, or +1.</span>
+<span id="L69"><span class="lineNum">      69</span>              :  */</span>
+<span id="L70"><span class="lineNum">      70</span>              : static inline int</span>
+<span id="L71"><span class="lineNum">      71</span> <span class="tlaUNC">           0 : int128_compare(INT128 x, INT128 y)</span></span>
+<span id="L72"><span class="lineNum">      72</span>              : {</span>
+<span id="L73"><span class="lineNum">      73</span> <span class="tlaUNC">           0 :         if (x &lt; y)</span></span>
+<span id="L74"><span class="lineNum">      74</span> <span class="tlaUNC">           0 :                 return -1;</span></span>
+<span id="L75"><span class="lineNum">      75</span> <span class="tlaUNC">           0 :         if (x &gt; y)</span></span>
+<span id="L76"><span class="lineNum">      76</span> <span class="tlaUNC">           0 :                 return 1;</span></span>
+<span id="L77"><span class="lineNum">      77</span> <span class="tlaUNC">           0 :         return 0;</span></span>
+<span id="L78"><span class="lineNum">      78</span>              : }</span>
+<span id="L79"><span class="lineNum">      79</span>              : </span>
+<span id="L80"><span class="lineNum">      80</span>              : /*</span>
+<span id="L81"><span class="lineNum">      81</span>              :  * Widen int64 to INT128.</span>
+<span id="L82"><span class="lineNum">      82</span>              :  */</span>
+<span id="L83"><span class="lineNum">      83</span>              : static inline INT128</span>
+<span id="L84"><span class="lineNum">      84</span> <span class="tlaUNC">           0 : int64_to_int128(int64 v)</span></span>
+<span id="L85"><span class="lineNum">      85</span>              : {</span>
+<span id="L86"><span class="lineNum">      86</span> <span class="tlaUNC">           0 :         return (INT128) v;</span></span>
+<span id="L87"><span class="lineNum">      87</span>              : }</span>
+<span id="L88"><span class="lineNum">      88</span>              : </span>
+<span id="L89"><span class="lineNum">      89</span>              : /*</span>
+<span id="L90"><span class="lineNum">      90</span>              :  * Convert INT128 to int64 (losing any high-order bits).</span>
+<span id="L91"><span class="lineNum">      91</span>              :  * This also works fine for casting down to uint64.</span>
+<span id="L92"><span class="lineNum">      92</span>              :  */</span>
+<span id="L93"><span class="lineNum">      93</span>              : static inline int64</span>
+<span id="L94"><span class="lineNum">      94</span> <span class="tlaUNC">           0 : int128_to_int64(INT128 val)</span></span>
+<span id="L95"><span class="lineNum">      95</span>              : {</span>
+<span id="L96"><span class="lineNum">      96</span> <span class="tlaUNC">           0 :         return (int64) val;</span></span>
+<span id="L97"><span class="lineNum">      97</span>              : }</span>
+<span id="L98"><span class="lineNum">      98</span>              : </span>
+<span id="L99"><span class="lineNum">      99</span>              : #else                                                   /* !USE_NATIVE_INT128 */</span>
+<span id="L100"><span class="lineNum">     100</span>              : </span>
+<span id="L101"><span class="lineNum">     101</span>              : /*</span>
+<span id="L102"><span class="lineNum">     102</span>              :  * We lay out the INT128 structure with the same content and byte ordering</span>
+<span id="L103"><span class="lineNum">     103</span>              :  * that a native int128 type would (probably) have.  This makes no difference</span>
+<span id="L104"><span class="lineNum">     104</span>              :  * for ordinary use of INT128, but allows union'ing INT128 with int128 for</span>
+<span id="L105"><span class="lineNum">     105</span>              :  * testing purposes.</span>
+<span id="L106"><span class="lineNum">     106</span>              :  */</span>
+<span id="L107"><span class="lineNum">     107</span>              : typedef struct</span>
+<span id="L108"><span class="lineNum">     108</span>              : {</span>
+<span id="L109"><span class="lineNum">     109</span>              : #ifdef WORDS_BIGENDIAN</span>
+<span id="L110"><span class="lineNum">     110</span>              :         int64           hi;                             /* most significant 64 bits, including sign */</span>
+<span id="L111"><span class="lineNum">     111</span>              :         uint64          lo;                             /* least significant 64 bits, without sign */</span>
+<span id="L112"><span class="lineNum">     112</span>              : #else</span>
+<span id="L113"><span class="lineNum">     113</span>              :         uint64          lo;                             /* least significant 64 bits, without sign */</span>
+<span id="L114"><span class="lineNum">     114</span>              :         int64           hi;                             /* most significant 64 bits, including sign */</span>
+<span id="L115"><span class="lineNum">     115</span>              : #endif</span>
+<span id="L116"><span class="lineNum">     116</span>              : } INT128;</span>
+<span id="L117"><span class="lineNum">     117</span>              : </span>
+<span id="L118"><span class="lineNum">     118</span>              : /*</span>
+<span id="L119"><span class="lineNum">     119</span>              :  * Add an unsigned int64 value into an INT128 variable.</span>
+<span id="L120"><span class="lineNum">     120</span>              :  */</span>
+<span id="L121"><span class="lineNum">     121</span>              : static inline void</span>
+<span id="L122"><span class="lineNum">     122</span>              : int128_add_uint64(INT128 *i128, uint64 v)</span>
+<span id="L123"><span class="lineNum">     123</span>              : {</span>
+<span id="L124"><span class="lineNum">     124</span>              :         /*</span>
+<span id="L125"><span class="lineNum">     125</span>              :          * First add the value to the .lo part, then check to see if a carry needs</span>
+<span id="L126"><span class="lineNum">     126</span>              :          * to be propagated into the .hi part.  A carry is needed if both inputs</span>
+<span id="L127"><span class="lineNum">     127</span>              :          * have high bits set, or if just one input has high bit set while the new</span>
+<span id="L128"><span class="lineNum">     128</span>              :          * .lo part doesn't.  Remember that .lo part is unsigned; we cast to</span>
+<span id="L129"><span class="lineNum">     129</span>              :          * signed here just as a cheap way to check the high bit.</span>
+<span id="L130"><span class="lineNum">     130</span>              :          */</span>
+<span id="L131"><span class="lineNum">     131</span>              :         uint64          oldlo = i128-&gt;lo;</span>
+<span id="L132"><span class="lineNum">     132</span>              : </span>
+<span id="L133"><span class="lineNum">     133</span>              :         i128-&gt;lo += v;</span>
+<span id="L134"><span class="lineNum">     134</span>              :         if (((int64) v &lt; 0 &amp;&amp; (int64) oldlo &lt; 0) ||</span>
+<span id="L135"><span class="lineNum">     135</span>              :                 (((int64) v &lt; 0 || (int64) oldlo &lt; 0) &amp;&amp; (int64) i128-&gt;lo &gt;= 0))</span>
+<span id="L136"><span class="lineNum">     136</span>              :                 i128-&gt;hi++;</span>
+<span id="L137"><span class="lineNum">     137</span>              : }</span>
+<span id="L138"><span class="lineNum">     138</span>              : </span>
+<span id="L139"><span class="lineNum">     139</span>              : /*</span>
+<span id="L140"><span class="lineNum">     140</span>              :  * Add a signed int64 value into an INT128 variable.</span>
+<span id="L141"><span class="lineNum">     141</span>              :  */</span>
+<span id="L142"><span class="lineNum">     142</span>              : static inline void</span>
+<span id="L143"><span class="lineNum">     143</span>              : int128_add_int64(INT128 *i128, int64 v)</span>
+<span id="L144"><span class="lineNum">     144</span>              : {</span>
+<span id="L145"><span class="lineNum">     145</span>              :         /*</span>
+<span id="L146"><span class="lineNum">     146</span>              :          * This is much like the above except that the carry logic differs for</span>
+<span id="L147"><span class="lineNum">     147</span>              :          * negative v.  Ordinarily we'd need to subtract 1 from the .hi part</span>
+<span id="L148"><span class="lineNum">     148</span>              :          * (corresponding to adding the sign-extended bits of v to it); but if</span>
+<span id="L149"><span class="lineNum">     149</span>              :          * there is a carry out of the .lo part, that cancels and we do nothing.</span>
+<span id="L150"><span class="lineNum">     150</span>              :          */</span>
+<span id="L151"><span class="lineNum">     151</span>              :         uint64          oldlo = i128-&gt;lo;</span>
+<span id="L152"><span class="lineNum">     152</span>              : </span>
+<span id="L153"><span class="lineNum">     153</span>              :         i128-&gt;lo += v;</span>
+<span id="L154"><span class="lineNum">     154</span>              :         if (v &gt;= 0)</span>
+<span id="L155"><span class="lineNum">     155</span>              :         {</span>
+<span id="L156"><span class="lineNum">     156</span>              :                 if ((int64) oldlo &lt; 0 &amp;&amp; (int64) i128-&gt;lo &gt;= 0)</span>
+<span id="L157"><span class="lineNum">     157</span>              :                         i128-&gt;hi++;</span>
+<span id="L158"><span class="lineNum">     158</span>              :         }</span>
+<span id="L159"><span class="lineNum">     159</span>              :         else</span>
+<span id="L160"><span class="lineNum">     160</span>              :         {</span>
+<span id="L161"><span class="lineNum">     161</span>              :                 if (!((int64) oldlo &lt; 0 || (int64) i128-&gt;lo &gt;= 0))</span>
+<span id="L162"><span class="lineNum">     162</span>              :                         i128-&gt;hi--;</span>
+<span id="L163"><span class="lineNum">     163</span>              :         }</span>
+<span id="L164"><span class="lineNum">     164</span>              : }</span>
+<span id="L165"><span class="lineNum">     165</span>              : </span>
+<span id="L166"><span class="lineNum">     166</span>              : /*</span>
+<span id="L167"><span class="lineNum">     167</span>              :  * INT64_AU32 extracts the most significant 32 bits of int64 as int64, while</span>
+<span id="L168"><span class="lineNum">     168</span>              :  * INT64_AL32 extracts the least significant 32 bits as uint64.</span>
+<span id="L169"><span class="lineNum">     169</span>              :  */</span>
+<span id="L170"><span class="lineNum">     170</span>              : #define INT64_AU32(i64) ((i64) &gt;&gt; 32)</span>
+<span id="L171"><span class="lineNum">     171</span>              : #define INT64_AL32(i64) ((i64) &amp; UINT64CONST(0xFFFFFFFF))</span>
+<span id="L172"><span class="lineNum">     172</span>              : </span>
+<span id="L173"><span class="lineNum">     173</span>              : /*</span>
+<span id="L174"><span class="lineNum">     174</span>              :  * Add the 128-bit product of two int64 values into an INT128 variable.</span>
+<span id="L175"><span class="lineNum">     175</span>              :  */</span>
+<span id="L176"><span class="lineNum">     176</span>              : static inline void</span>
+<span id="L177"><span class="lineNum">     177</span>              : int128_add_int64_mul_int64(INT128 *i128, int64 x, int64 y)</span>
+<span id="L178"><span class="lineNum">     178</span>              : {</span>
+<span id="L179"><span class="lineNum">     179</span>              :         /* INT64_AU32 must use arithmetic right shift */</span>
+<span id="L180"><span class="lineNum">     180</span>              :         StaticAssertStmt(((int64) -1 &gt;&gt; 1) == (int64) -1,</span>
+<span id="L181"><span class="lineNum">     181</span>              :                                          &quot;arithmetic right shift is needed&quot;);</span>
+<span id="L182"><span class="lineNum">     182</span>              : </span>
+<span id="L183"><span class="lineNum">     183</span>              :         /*----------</span>
+<span id="L184"><span class="lineNum">     184</span>              :          * Form the 128-bit product x * y using 64-bit arithmetic.</span>
+<span id="L185"><span class="lineNum">     185</span>              :          * Considering each 64-bit input as having 32-bit high and low parts,</span>
+<span id="L186"><span class="lineNum">     186</span>              :          * we can compute</span>
+<span id="L187"><span class="lineNum">     187</span>              :          *</span>
+<span id="L188"><span class="lineNum">     188</span>              :          *       x * y = ((x.hi &lt;&lt; 32) + x.lo) * (((y.hi &lt;&lt; 32) + y.lo)</span>
+<span id="L189"><span class="lineNum">     189</span>              :          *                 = (x.hi * y.hi) &lt;&lt; 64 +</span>
+<span id="L190"><span class="lineNum">     190</span>              :          *                       (x.hi * y.lo) &lt;&lt; 32 +</span>
+<span id="L191"><span class="lineNum">     191</span>              :          *                       (x.lo * y.hi) &lt;&lt; 32 +</span>
+<span id="L192"><span class="lineNum">     192</span>              :          *                       x.lo * y.lo</span>
+<span id="L193"><span class="lineNum">     193</span>              :          *</span>
+<span id="L194"><span class="lineNum">     194</span>              :          * Each individual product is of 32-bit terms so it won't overflow when</span>
+<span id="L195"><span class="lineNum">     195</span>              :          * computed in 64-bit arithmetic.  Then we just have to shift it to the</span>
+<span id="L196"><span class="lineNum">     196</span>              :          * correct position while adding into the 128-bit result.  We must also</span>
+<span id="L197"><span class="lineNum">     197</span>              :          * keep in mind that the &quot;lo&quot; parts must be treated as unsigned.</span>
+<span id="L198"><span class="lineNum">     198</span>              :          *----------</span>
+<span id="L199"><span class="lineNum">     199</span>              :          */</span>
+<span id="L200"><span class="lineNum">     200</span>              : </span>
+<span id="L201"><span class="lineNum">     201</span>              :         /* No need to work hard if product must be zero */</span>
+<span id="L202"><span class="lineNum">     202</span>              :         if (x != 0 &amp;&amp; y != 0)</span>
+<span id="L203"><span class="lineNum">     203</span>              :         {</span>
+<span id="L204"><span class="lineNum">     204</span>              :                 int64           x_u32 = INT64_AU32(x);</span>
+<span id="L205"><span class="lineNum">     205</span>              :                 uint64          x_l32 = INT64_AL32(x);</span>
+<span id="L206"><span class="lineNum">     206</span>              :                 int64           y_u32 = INT64_AU32(y);</span>
+<span id="L207"><span class="lineNum">     207</span>              :                 uint64          y_l32 = INT64_AL32(y);</span>
+<span id="L208"><span class="lineNum">     208</span>              :                 int64           tmp;</span>
+<span id="L209"><span class="lineNum">     209</span>              : </span>
+<span id="L210"><span class="lineNum">     210</span>              :                 /* the first term */</span>
+<span id="L211"><span class="lineNum">     211</span>              :                 i128-&gt;hi += x_u32 * y_u32;</span>
+<span id="L212"><span class="lineNum">     212</span>              : </span>
+<span id="L213"><span class="lineNum">     213</span>              :                 /* the second term: sign-extend it only if x is negative */</span>
+<span id="L214"><span class="lineNum">     214</span>              :                 tmp = x_u32 * y_l32;</span>
+<span id="L215"><span class="lineNum">     215</span>              :                 if (x &lt; 0)</span>
+<span id="L216"><span class="lineNum">     216</span>              :                         i128-&gt;hi += INT64_AU32(tmp);</span>
+<span id="L217"><span class="lineNum">     217</span>              :                 else</span>
+<span id="L218"><span class="lineNum">     218</span>              :                         i128-&gt;hi += ((uint64) tmp) &gt;&gt; 32;</span>
+<span id="L219"><span class="lineNum">     219</span>              :                 int128_add_uint64(i128, ((uint64) INT64_AL32(tmp)) &lt;&lt; 32);</span>
+<span id="L220"><span class="lineNum">     220</span>              : </span>
+<span id="L221"><span class="lineNum">     221</span>              :                 /* the third term: sign-extend it only if y is negative */</span>
+<span id="L222"><span class="lineNum">     222</span>              :                 tmp = x_l32 * y_u32;</span>
+<span id="L223"><span class="lineNum">     223</span>              :                 if (y &lt; 0)</span>
+<span id="L224"><span class="lineNum">     224</span>              :                         i128-&gt;hi += INT64_AU32(tmp);</span>
+<span id="L225"><span class="lineNum">     225</span>              :                 else</span>
+<span id="L226"><span class="lineNum">     226</span>              :                         i128-&gt;hi += ((uint64) tmp) &gt;&gt; 32;</span>
+<span id="L227"><span class="lineNum">     227</span>              :                 int128_add_uint64(i128, ((uint64) INT64_AL32(tmp)) &lt;&lt; 32);</span>
+<span id="L228"><span class="lineNum">     228</span>              : </span>
+<span id="L229"><span class="lineNum">     229</span>              :                 /* the fourth term: always unsigned */</span>
+<span id="L230"><span class="lineNum">     230</span>              :                 int128_add_uint64(i128, x_l32 * y_l32);</span>
+<span id="L231"><span class="lineNum">     231</span>              :         }</span>
+<span id="L232"><span class="lineNum">     232</span>              : }</span>
+<span id="L233"><span class="lineNum">     233</span>              : </span>
+<span id="L234"><span class="lineNum">     234</span>              : /*</span>
+<span id="L235"><span class="lineNum">     235</span>              :  * Compare two INT128 values, return -1, 0, or +1.</span>
+<span id="L236"><span class="lineNum">     236</span>              :  */</span>
+<span id="L237"><span class="lineNum">     237</span>              : static inline int</span>
+<span id="L238"><span class="lineNum">     238</span>              : int128_compare(INT128 x, INT128 y)</span>
+<span id="L239"><span class="lineNum">     239</span>              : {</span>
+<span id="L240"><span class="lineNum">     240</span>              :         if (x.hi &lt; y.hi)</span>
+<span id="L241"><span class="lineNum">     241</span>              :                 return -1;</span>
+<span id="L242"><span class="lineNum">     242</span>              :         if (x.hi &gt; y.hi)</span>
+<span id="L243"><span class="lineNum">     243</span>              :                 return 1;</span>
+<span id="L244"><span class="lineNum">     244</span>              :         if (x.lo &lt; y.lo)</span>
+<span id="L245"><span class="lineNum">     245</span>              :                 return -1;</span>
+<span id="L246"><span class="lineNum">     246</span>              :         if (x.lo &gt; y.lo)</span>
+<span id="L247"><span class="lineNum">     247</span>              :                 return 1;</span>
+<span id="L248"><span class="lineNum">     248</span>              :         return 0;</span>
+<span id="L249"><span class="lineNum">     249</span>              : }</span>
+<span id="L250"><span class="lineNum">     250</span>              : </span>
+<span id="L251"><span class="lineNum">     251</span>              : /*</span>
+<span id="L252"><span class="lineNum">     252</span>              :  * Widen int64 to INT128.</span>
+<span id="L253"><span class="lineNum">     253</span>              :  */</span>
+<span id="L254"><span class="lineNum">     254</span>              : static inline INT128</span>
+<span id="L255"><span class="lineNum">     255</span>              : int64_to_int128(int64 v)</span>
+<span id="L256"><span class="lineNum">     256</span>              : {</span>
+<span id="L257"><span class="lineNum">     257</span>              :         INT128          val;</span>
+<span id="L258"><span class="lineNum">     258</span>              : </span>
+<span id="L259"><span class="lineNum">     259</span>              :         val.lo = (uint64) v;</span>
+<span id="L260"><span class="lineNum">     260</span>              :         val.hi = (v &lt; 0) ? -INT64CONST(1) : INT64CONST(0);</span>
+<span id="L261"><span class="lineNum">     261</span>              :         return val;</span>
+<span id="L262"><span class="lineNum">     262</span>              : }</span>
+<span id="L263"><span class="lineNum">     263</span>              : </span>
+<span id="L264"><span class="lineNum">     264</span>              : /*</span>
+<span id="L265"><span class="lineNum">     265</span>              :  * Convert INT128 to int64 (losing any high-order bits).</span>
+<span id="L266"><span class="lineNum">     266</span>              :  * This also works fine for casting down to uint64.</span>
+<span id="L267"><span class="lineNum">     267</span>              :  */</span>
+<span id="L268"><span class="lineNum">     268</span>              : static inline int64</span>
+<span id="L269"><span class="lineNum">     269</span>              : int128_to_int64(INT128 val)</span>
+<span id="L270"><span class="lineNum">     270</span>              : {</span>
+<span id="L271"><span class="lineNum">     271</span>              :         return (int64) val.lo;</span>
+<span id="L272"><span class="lineNum">     272</span>              : }</span>
+<span id="L273"><span class="lineNum">     273</span>              : </span>
+<span id="L274"><span class="lineNum">     274</span>              : #endif                                                  /* USE_NATIVE_INT128 */</span>
+<span id="L275"><span class="lineNum">     275</span>              : </span>
+<span id="L276"><span class="lineNum">     276</span>              : #endif                                                  /* INT128_H */</span>
+        </pre>
+              </td>
+            </tr>
+          </table>
+          <br>
+
+          <table width="100%" border=0 cellspacing=0 cellpadding=0>
+            <tr><td class="ruler"><img src="../../glass.png" width=3 height=3 alt=""></td></tr>
+            <tr><td class="versionInfo">Generated by: <a href="https://github.com//linux-test-project/lcov" target="_parent">LCOV version 2.0-1</a></td></tr>
+          </table>
+          <br>
+
+</body>
+</html>

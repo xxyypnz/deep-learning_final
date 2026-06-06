@@ -1,0 +1,222 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - coverage_filtered.info - backend/bootstrap/bootscanner.l</title>
+  <link rel="stylesheet" type="text/css" href="../../gcov.css">
+</head>
+
+<body>
+
+          <table width="100%" border=0 cellspacing=0 cellpadding=0>
+            <tr><td class="title">LCOV - code coverage report</td></tr>
+            <tr><td class="ruler"><img src="../../glass.png" width=3 height=3 alt=""></td></tr>
+
+            <tr>
+              <td width="100%">
+                <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="10%" class="headerValue"><a href="../../index.html">top level</a> - <a href="index.html">backend/bootstrap</a> - bootscanner.l<span style="font-size: 80%;"> (source / <a href="bootscanner.l.func-c.html">functions</a>)</span></td>
+            <td width="5%"></td>
+            <td width="5%"></td>
+            <td width="5%" class="headerCovTableHead">Coverage</td>
+            <td width="5%" class="headerCovTableHead" title="Covered + Uncovered code">Total</td>
+            <td width="5%" class="headerCovTableHead" title="Exercised code only">Hit</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">coverage_filtered.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntryMed">82.7&nbsp;%</td>
+            <td class="headerCovTableEntry">52</td>
+            <td class="headerCovTableEntry">43</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test Date:</td>
+            <td class="headerValue">2026-06-06 02:50:27</td>
+            <td></td>
+            <td class="headerItem">Functions:</td>
+            <td class="headerCovTableEntryLo">0.0&nbsp;%</td>
+            <td class="headerCovTableEntry">2</td>
+            <td class="headerCovTableEntry">0</td>
+          </tr>
+                  <tr><td><img src="../../glass.png" width=3 height=3 alt=""></td></tr>
+                </table>
+              </td>
+            </tr>
+
+            <tr><td class="ruler"><img src="../../glass.png" width=3 height=3 alt=""></td></tr>
+          </table>
+
+          <table cellpadding=0 cellspacing=0 border=0>
+            <tr>
+              <td><br></td>
+            </tr>
+            <tr>
+              <td>
+<pre class="sourceHeading">            Line data    Source code</pre>
+<pre class="source">
+<span id="L1"><span class="lineNum">       1</span>              : %{</span>
+<span id="L2"><span class="lineNum">       2</span>              : /*-------------------------------------------------------------------------</span>
+<span id="L3"><span class="lineNum">       3</span>              :  *</span>
+<span id="L4"><span class="lineNum">       4</span>              :  * bootscanner.l</span>
+<span id="L5"><span class="lineNum">       5</span>              :  *        a lexical scanner for the bootstrap parser</span>
+<span id="L6"><span class="lineNum">       6</span>              :  *</span>
+<span id="L7"><span class="lineNum">       7</span>              :  * Portions Copyright (c) 1996-2020, PostgreSQL Global Development Group</span>
+<span id="L8"><span class="lineNum">       8</span>              :  * Portions Copyright (c) 1994, Regents of the University of California</span>
+<span id="L9"><span class="lineNum">       9</span>              :  *</span>
+<span id="L10"><span class="lineNum">      10</span>              :  *</span>
+<span id="L11"><span class="lineNum">      11</span>              :  * IDENTIFICATION</span>
+<span id="L12"><span class="lineNum">      12</span>              :  *        src/backend/bootstrap/bootscanner.l</span>
+<span id="L13"><span class="lineNum">      13</span>              :  *</span>
+<span id="L14"><span class="lineNum">      14</span>              :  *-------------------------------------------------------------------------</span>
+<span id="L15"><span class="lineNum">      15</span>              :  */</span>
+<span id="L16"><span class="lineNum">      16</span>              : #include &quot;postgres.h&quot;</span>
+<span id="L17"><span class="lineNum">      17</span>              : </span>
+<span id="L18"><span class="lineNum">      18</span>              : #include &quot;access/attnum.h&quot;</span>
+<span id="L19"><span class="lineNum">      19</span>              : #include &quot;access/htup.h&quot;</span>
+<span id="L20"><span class="lineNum">      20</span>              : #include &quot;access/itup.h&quot;</span>
+<span id="L21"><span class="lineNum">      21</span>              : #include &quot;access/tupdesc.h&quot;</span>
+<span id="L22"><span class="lineNum">      22</span>              : #include &quot;bootstrap/bootstrap.h&quot;</span>
+<span id="L23"><span class="lineNum">      23</span>              : #include &quot;catalog/pg_am.h&quot;</span>
+<span id="L24"><span class="lineNum">      24</span>              : #include &quot;catalog/pg_attribute.h&quot;</span>
+<span id="L25"><span class="lineNum">      25</span>              : #include &quot;catalog/pg_class.h&quot;</span>
+<span id="L26"><span class="lineNum">      26</span>              : #include &quot;nodes/nodes.h&quot;</span>
+<span id="L27"><span class="lineNum">      27</span>              : #include &quot;nodes/parsenodes.h&quot;</span>
+<span id="L28"><span class="lineNum">      28</span>              : #include &quot;nodes/pg_list.h&quot;</span>
+<span id="L29"><span class="lineNum">      29</span>              : #include &quot;nodes/primnodes.h&quot;</span>
+<span id="L30"><span class="lineNum">      30</span>              : #include &quot;parser/scansup.h&quot;</span>
+<span id="L31"><span class="lineNum">      31</span>              : #include &quot;rewrite/prs2lock.h&quot;</span>
+<span id="L32"><span class="lineNum">      32</span>              : #include &quot;storage/block.h&quot;</span>
+<span id="L33"><span class="lineNum">      33</span>              : #include &quot;storage/fd.h&quot;</span>
+<span id="L34"><span class="lineNum">      34</span>              : #include &quot;storage/itemptr.h&quot;</span>
+<span id="L35"><span class="lineNum">      35</span>              : #include &quot;storage/off.h&quot;</span>
+<span id="L36"><span class="lineNum">      36</span>              : #include &quot;utils/rel.h&quot;</span>
+<span id="L37"><span class="lineNum">      37</span>              : </span>
+<span id="L38"><span class="lineNum">      38</span>              : /* Not needed now that this file is compiled as part of bootparse. */</span>
+<span id="L39"><span class="lineNum">      39</span>              : /* #include &quot;bootparse.h&quot; */</span>
+<span id="L40"><span class="lineNum">      40</span>              : </span>
+<span id="L41"><span class="lineNum">      41</span>              : /* LCOV_EXCL_START */</span>
+<span id="L42"><span class="lineNum">      42</span>              : </span>
+<span id="L43"><span class="lineNum">      43</span>              : /* Avoid exit() on fatal scanner errors (a bit ugly -- see yy_fatal_error) */</span>
+<span id="L44"><span class="lineNum">      44</span>              : #undef fprintf</span>
+<span id="L45"><span class="lineNum">      45</span>              : #define fprintf(file, fmt, msg)  fprintf_to_ereport(fmt, msg)</span>
+<span id="L46"><span class="lineNum">      46</span>              : </span>
+<span id="L47"><span class="lineNum">      47</span>              : static void</span>
+<span id="L48"><span class="lineNum">      48</span> <span class="tlaUNC tlaBgUNC">           0 : fprintf_to_ereport(const char *fmt, const char *msg)</span></span>
+<span id="L49"><span class="lineNum">      49</span>              : {</span>
+<span id="L50"><span class="lineNum">      50</span> <span class="tlaUNC">           0 :         ereport(ERROR, (errmsg_internal(&quot;%s&quot;, msg)));</span></span>
+<span id="L51"><span class="lineNum">      51</span>              : }</span>
+<span id="L52"><span class="lineNum">      52</span>              : </span>
+<span id="L53"><span class="lineNum">      53</span>              : </span>
+<span id="L54"><span class="lineNum">      54</span>              : static int      yyline = 1;                     /* line number for error reporting */</span>
+<span id="L55"><span class="lineNum">      55</span>              : </span>
+<span id="L56"><span class="lineNum">      56</span>              : %}</span>
+<span id="L57"><span class="lineNum">      57</span>              : </span>
+<span id="L58"><span class="lineNum">      58</span>              : %option 8bit</span>
+<span id="L59"><span class="lineNum">      59</span>              : %option never-interactive</span>
+<span id="L60"><span class="lineNum">      60</span>              : %option nodefault</span>
+<span id="L61"><span class="lineNum">      61</span>              : %option noinput</span>
+<span id="L62"><span class="lineNum">      62</span>              : %option nounput</span>
+<span id="L63"><span class="lineNum">      63</span>              : %option noyywrap</span>
+<span id="L64"><span class="lineNum">      64</span>              : %option warn</span>
+<span id="L65"><span class="lineNum">      65</span>              : %option prefix=&quot;boot_yy&quot;</span>
+<span id="L66"><span class="lineNum">      66</span>              : </span>
+<span id="L67"><span class="lineNum">      67</span>              : </span>
+<span id="L68"><span class="lineNum">      68</span>              : id              [-A-Za-z0-9_]+</span>
+<span id="L69"><span class="lineNum">      69</span>              : sid             \&quot;([^\&quot;])*\&quot;</span>
+<span id="L70"><span class="lineNum">      70</span>              : </span>
+<span id="L71"><span class="lineNum">      71</span>              : /*</span>
+<span id="L72"><span class="lineNum">      72</span>              :  * Keyword tokens return the keyword text (as a constant string) in yylval.kw,</span>
+<span id="L73"><span class="lineNum">      73</span>              :  * just in case that's needed because we want to treat the keyword as an</span>
+<span id="L74"><span class="lineNum">      74</span>              :  * unreserved identifier.  Note that _null_ is not treated as a keyword</span>
+<span id="L75"><span class="lineNum">      75</span>              :  * for this purpose; it's the one &quot;reserved word&quot; in the bootstrap syntax.</span>
+<span id="L76"><span class="lineNum">      76</span>              :  *</span>
+<span id="L77"><span class="lineNum">      77</span>              :  * Notice that all the keywords are case-sensitive, and for historical</span>
+<span id="L78"><span class="lineNum">      78</span>              :  * reasons some must be upper case.</span>
+<span id="L79"><span class="lineNum">      79</span>              :  *</span>
+<span id="L80"><span class="lineNum">      80</span>              :  * String tokens return a palloc'd string in yylval.str.</span>
+<span id="L81"><span class="lineNum">      81</span>              :  */</span>
+<span id="L82"><span class="lineNum">      82</span>              : </span>
+<span id="L83"><span class="lineNum">      83</span>              : %%</span>
+<span id="L84"><span class="lineNum">      84</span>              : </span>
+<span id="L85"><span class="lineNum">      85</span> <span class="tlaGNC tlaBgGNC">          58 : open                    { yylval.kw = &quot;open&quot;; return OPEN; }</span></span>
+<span id="L86"><span class="lineNum">      86</span>              : </span>
+<span id="L87"><span class="lineNum">      87</span> <span class="tlaGNC">          62 : close                   { yylval.kw = &quot;close&quot;; return XCLOSE; }</span></span>
+<span id="L88"><span class="lineNum">      88</span> <span class="tlaGNC">          62 : </span></span>
+<span id="L89"><span class="lineNum">      89</span> <span class="tlaGNC">          62 : create                  { yylval.kw = &quot;create&quot;; return XCREATE; }</span></span>
+<span id="L90"><span class="lineNum">      90</span> <span class="tlaGNC">          62 : </span></span>
+<span id="L91"><span class="lineNum">      91</span> <span class="tlaUNC tlaBgUNC">           0 : OID                             { yylval.kw = &quot;OID&quot;; return OBJ_ID; }</span></span>
+<span id="L92"><span class="lineNum">      92</span> <span class="tlaGNC tlaBgGNC">           4 : bootstrap               { yylval.kw = &quot;bootstrap&quot;; return XBOOTSTRAP; }</span></span>
+<span id="L93"><span class="lineNum">      93</span> <span class="tlaGNC">          10 : shared_relation { yylval.kw = &quot;shared_relation&quot;; return XSHARED_RELATION; }</span></span>
+<span id="L94"><span class="lineNum">      94</span> <span class="tlaGNC">          13 : rowtype_oid             { yylval.kw = &quot;rowtype_oid&quot;; return XROWTYPE_OID; }</span></span>
+<span id="L95"><span class="lineNum">      95</span> <span class="tlaGNC">          10 : </span></span>
+<span id="L96"><span class="lineNum">      96</span> <span class="tlaGNC">        9420 : insert                  { yylval.kw = &quot;insert&quot;; return INSERT_TUPLE; }</span></span>
+<span id="L97"><span class="lineNum">      97</span> <span class="tlaGNC">        9411 : </span></span>
+<span id="L98"><span class="lineNum">      98</span> <span class="tlaGNC">       25095 : _null_                  { return NULLVAL; }</span></span>
+<span id="L99"><span class="lineNum">      99</span> <span class="tlaGNC">       25095 : </span></span>
+<span id="L100"><span class="lineNum">     100</span> <span class="tlaGNC">         577 : &quot;,&quot;                           { return COMMA; }</span></span>
+<span id="L101"><span class="lineNum">     101</span> <span class="tlaGNC">        1139 : &quot;=&quot;                           { return EQUALS; }</span></span>
+<span id="L102"><span class="lineNum">     102</span> <span class="tlaGNC">        9589 : &quot;(&quot;                           { return LPAREN; }</span></span>
+<span id="L103"><span class="lineNum">     103</span> <span class="tlaGNC">       10151 : &quot;)&quot;                           { return RPAREN; }</span></span>
+<span id="L104"><span class="lineNum">     104</span> <span class="tlaGNC">        9589 : </span></span>
+<span id="L105"><span class="lineNum">     105</span> <span class="tlaGNC">        9589 : [\n]                    { yyline++; }</span></span>
+<span id="L106"><span class="lineNum">     106</span> <span class="tlaGNC">       10431 : [\r\t ]                 ;</span></span>
+<span id="L107"><span class="lineNum">     107</span> <span class="tlaGNC">      171621 : </span></span>
+<span id="L108"><span class="lineNum">     108</span> <span class="tlaGNC">      161190 : ^\#[^\n]*               ;               /* drop everything after &quot;#&quot; for comments */</span></span>
+<span id="L109"><span class="lineNum">     109</span> <span class="tlaGNC">           1 : </span></span>
+<span id="L110"><span class="lineNum">     110</span> <span class="tlaGNC">         150 : declare                 { yylval.kw = &quot;declare&quot;; return XDECLARE; }</span></span>
+<span id="L111"><span class="lineNum">     111</span> <span class="tlaGNC">         151 : build                   { yylval.kw = &quot;build&quot;; return XBUILD; }</span></span>
+<span id="L112"><span class="lineNum">     112</span> <span class="tlaGNC">           1 : indices                 { yylval.kw = &quot;indices&quot;; return INDICES; }</span></span>
+<span id="L113"><span class="lineNum">     113</span> <span class="tlaGNC">         105 : unique                  { yylval.kw = &quot;unique&quot;; return UNIQUE; }</span></span>
+<span id="L114"><span class="lineNum">     114</span> <span class="tlaGNC">         117 : index                   { yylval.kw = &quot;index&quot;; return INDEX; }</span></span>
+<span id="L115"><span class="lineNum">     115</span> <span class="tlaGNC">         254 : on                              { yylval.kw = &quot;on&quot;; return ON; }</span></span>
+<span id="L116"><span class="lineNum">     116</span> <span class="tlaGNC">         232 : using                   { yylval.kw = &quot;using&quot;; return USING; }</span></span>
+<span id="L117"><span class="lineNum">     117</span> <span class="tlaGNC">         184 : toast                   { yylval.kw = &quot;toast&quot;; return XTOAST; }</span></span>
+<span id="L118"><span class="lineNum">     118</span> <span class="tlaGNC">         139 : FORCE                   { yylval.kw = &quot;FORCE&quot;; return XFORCE; }</span></span>
+<span id="L119"><span class="lineNum">     119</span> <span class="tlaGNC">          55 : NOT                             { yylval.kw = &quot;NOT&quot;; return XNOT; }</span></span>
+<span id="L120"><span class="lineNum">     120</span> <span class="tlaGNC">          46 : NULL                    { yylval.kw = &quot;NULL&quot;; return XNULL; }</span></span>
+<span id="L121"><span class="lineNum">     121</span> <span class="tlaGNC">          21 : </span></span>
+<span id="L122"><span class="lineNum">     122</span> <span class="tlaGNC">          23 : {id}                    {</span></span>
+<span id="L123"><span class="lineNum">     123</span> <span class="tlaGNC">      109148 :                                         yylval.str = scanstr(yytext);</span></span>
+<span id="L124"><span class="lineNum">     124</span> <span class="tlaGNC">      109148 :                                         return ID;</span></span>
+<span id="L125"><span class="lineNum">     125</span>              :                                 }</span>
+<span id="L126"><span class="lineNum">     126</span>              : {sid}                   {</span>
+<span id="L127"><span class="lineNum">     127</span> <span class="tlaGNC">        6444 :                                         /* leading and trailing quotes are not passed to scanstr */</span></span>
+<span id="L128"><span class="lineNum">     128</span> <span class="tlaGNC">        6444 :                                         yytext[strlen(yytext) - 1] = '\0';</span></span>
+<span id="L129"><span class="lineNum">     129</span> <span class="tlaGNC">        6444 :                                         yylval.str = scanstr(yytext+1);</span></span>
+<span id="L130"><span class="lineNum">     130</span> <span class="tlaGNC">        6444 :                                         yytext[strlen(yytext)] = '&quot;';      /* restore yytext */</span></span>
+<span id="L131"><span class="lineNum">     131</span> <span class="tlaGNC">        6444 :                                         return ID;</span></span>
+<span id="L132"><span class="lineNum">     132</span>              :                                 }</span>
+<span id="L133"><span class="lineNum">     133</span>              : </span>
+<span id="L134"><span class="lineNum">     134</span> <span class="tlaUNC tlaBgUNC">           0 : .                               {</span></span>
+<span id="L135"><span class="lineNum">     135</span> <span class="tlaUNC">           0 :                                         elog(ERROR, &quot;syntax error at line %d: unexpected character \&quot;%s\&quot;&quot;, yyline, yytext);</span></span>
+<span id="L136"><span class="lineNum">     136</span>              :                                 }</span>
+<span id="L137"><span class="lineNum">     137</span>              : </span>
+<span id="L138"><span class="lineNum">     138</span> <span class="tlaUNC">           0 : %%</span></span>
+<span id="L139"><span class="lineNum">     139</span> <span class="tlaUNC">           0 : </span></span>
+<span id="L140"><span class="lineNum">     140</span>              : /* LCOV_EXCL_STOP */</span>
+<span id="L141"><span class="lineNum">     141</span>              : </span>
+<span id="L142"><span class="lineNum">     142</span>              : void</span>
+<span id="L143"><span class="lineNum">     143</span> <span class="tlaUNC">           0 : yyerror(const char *message)</span></span>
+<span id="L144"><span class="lineNum">     144</span>              : {</span>
+<span id="L145"><span class="lineNum">     145</span> <span class="tlaUNC">           0 :         elog(ERROR, &quot;%s at line %d&quot;, message, yyline);</span></span>
+<span id="L146"><span class="lineNum">     146</span>              : }</span>
+        </pre>
+              </td>
+            </tr>
+          </table>
+          <br>
+
+          <table width="100%" border=0 cellspacing=0 cellpadding=0>
+            <tr><td class="ruler"><img src="../../glass.png" width=3 height=3 alt=""></td></tr>
+            <tr><td class="versionInfo">Generated by: <a href="https://github.com//linux-test-project/lcov" target="_parent">LCOV version 2.0-1</a></td></tr>
+          </table>
+          <br>
+
+</body>
+</html>

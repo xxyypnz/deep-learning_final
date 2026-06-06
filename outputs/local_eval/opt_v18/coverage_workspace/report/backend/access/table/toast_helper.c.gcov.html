@@ -1,0 +1,410 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - coverage_filtered.info - backend/access/table/toast_helper.c</title>
+  <link rel="stylesheet" type="text/css" href="../../../gcov.css">
+</head>
+
+<body>
+
+          <table width="100%" border=0 cellspacing=0 cellpadding=0>
+            <tr><td class="title">LCOV - code coverage report</td></tr>
+            <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+
+            <tr>
+              <td width="100%">
+                <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="10%" class="headerValue"><a href="../../../index.html">top level</a> - <a href="index.html">backend/access/table</a> - toast_helper.c<span style="font-size: 80%;"> (source / <a href="toast_helper.c.func-c.html">functions</a>)</span></td>
+            <td width="5%"></td>
+            <td width="5%"></td>
+            <td width="5%" class="headerCovTableHead">Coverage</td>
+            <td width="5%" class="headerCovTableHead" title="Covered + Uncovered code">Total</td>
+            <td width="5%" class="headerCovTableHead" title="Exercised code only">Hit</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">coverage_filtered.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntryLo">69.2&nbsp;%</td>
+            <td class="headerCovTableEntry">117</td>
+            <td class="headerCovTableEntry">81</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test Date:</td>
+            <td class="headerValue">2026-06-06 04:03:43</td>
+            <td></td>
+            <td class="headerItem">Functions:</td>
+            <td class="headerCovTableEntryMed">83.3&nbsp;%</td>
+            <td class="headerCovTableEntry">6</td>
+            <td class="headerCovTableEntry">5</td>
+          </tr>
+                  <tr><td><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+                </table>
+              </td>
+            </tr>
+
+            <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+          </table>
+
+          <table cellpadding=0 cellspacing=0 border=0>
+            <tr>
+              <td><br></td>
+            </tr>
+            <tr>
+              <td>
+<pre class="sourceHeading">            Line data    Source code</pre>
+<pre class="source">
+<span id="L1"><span class="lineNum">       1</span>              : /*-------------------------------------------------------------------------</span>
+<span id="L2"><span class="lineNum">       2</span>              :  *</span>
+<span id="L3"><span class="lineNum">       3</span>              :  * toast_helper.c</span>
+<span id="L4"><span class="lineNum">       4</span>              :  *        Helper functions for table AMs implementing compressed or</span>
+<span id="L5"><span class="lineNum">       5</span>              :  *    out-of-line storage of varlena attributes.</span>
+<span id="L6"><span class="lineNum">       6</span>              :  *</span>
+<span id="L7"><span class="lineNum">       7</span>              :  * Copyright (c) 2000-2020, PostgreSQL Global Development Group</span>
+<span id="L8"><span class="lineNum">       8</span>              :  *</span>
+<span id="L9"><span class="lineNum">       9</span>              :  * IDENTIFICATION</span>
+<span id="L10"><span class="lineNum">      10</span>              :  *        src/backend/access/table/toast_helper.c</span>
+<span id="L11"><span class="lineNum">      11</span>              :  *</span>
+<span id="L12"><span class="lineNum">      12</span>              :  *-------------------------------------------------------------------------</span>
+<span id="L13"><span class="lineNum">      13</span>              :  */</span>
+<span id="L14"><span class="lineNum">      14</span>              : </span>
+<span id="L15"><span class="lineNum">      15</span>              : #include &quot;postgres.h&quot;</span>
+<span id="L16"><span class="lineNum">      16</span>              : </span>
+<span id="L17"><span class="lineNum">      17</span>              : #include &quot;access/detoast.h&quot;</span>
+<span id="L18"><span class="lineNum">      18</span>              : #include &quot;access/table.h&quot;</span>
+<span id="L19"><span class="lineNum">      19</span>              : #include &quot;access/toast_helper.h&quot;</span>
+<span id="L20"><span class="lineNum">      20</span>              : #include &quot;access/toast_internals.h&quot;</span>
+<span id="L21"><span class="lineNum">      21</span>              : #include &quot;catalog/pg_type_d.h&quot;</span>
+<span id="L22"><span class="lineNum">      22</span>              : </span>
+<span id="L23"><span class="lineNum">      23</span>              : </span>
+<span id="L24"><span class="lineNum">      24</span>              : /*</span>
+<span id="L25"><span class="lineNum">      25</span>              :  * Prepare to TOAST a tuple.</span>
+<span id="L26"><span class="lineNum">      26</span>              :  *</span>
+<span id="L27"><span class="lineNum">      27</span>              :  * tupleDesc, toast_values, and toast_isnull are required parameters; they</span>
+<span id="L28"><span class="lineNum">      28</span>              :  * provide the necessary details about the tuple to be toasted.</span>
+<span id="L29"><span class="lineNum">      29</span>              :  *</span>
+<span id="L30"><span class="lineNum">      30</span>              :  * toast_oldvalues and toast_oldisnull should be NULL for a newly-inserted</span>
+<span id="L31"><span class="lineNum">      31</span>              :  * tuple; for an update, they should describe the existing tuple.</span>
+<span id="L32"><span class="lineNum">      32</span>              :  *</span>
+<span id="L33"><span class="lineNum">      33</span>              :  * All of these arrays should have a length equal to tupleDesc-&gt;natts.</span>
+<span id="L34"><span class="lineNum">      34</span>              :  *</span>
+<span id="L35"><span class="lineNum">      35</span>              :  * On return, toast_flags and toast_attr will have been initialized.</span>
+<span id="L36"><span class="lineNum">      36</span>              :  * toast_flags is just a single uint8, but toast_attr is an caller-provided</span>
+<span id="L37"><span class="lineNum">      37</span>              :  * array with a length equal to tupleDesc-&gt;natts.  The caller need not</span>
+<span id="L38"><span class="lineNum">      38</span>              :  * perform any initialization of the array before calling this function.</span>
+<span id="L39"><span class="lineNum">      39</span>              :  */</span>
+<span id="L40"><span class="lineNum">      40</span>              : void</span>
+<span id="L41"><span class="lineNum">      41</span> <span class="tlaGNC tlaBgGNC">         512 : toast_tuple_init(ToastTupleContext *ttc)</span></span>
+<span id="L42"><span class="lineNum">      42</span>              : {</span>
+<span id="L43"><span class="lineNum">      43</span> <span class="tlaGNC">         512 :         TupleDesc       tupleDesc = ttc-&gt;ttc_rel-&gt;rd_att;</span></span>
+<span id="L44"><span class="lineNum">      44</span> <span class="tlaGNC">         512 :         int                     numAttrs = tupleDesc-&gt;natts;</span></span>
+<span id="L45"><span class="lineNum">      45</span>              :         int                     i;</span>
+<span id="L46"><span class="lineNum">      46</span>              : </span>
+<span id="L47"><span class="lineNum">      47</span> <span class="tlaGNC">         512 :         ttc-&gt;ttc_flags = 0;</span></span>
+<span id="L48"><span class="lineNum">      48</span>              : </span>
+<span id="L49"><span class="lineNum">      49</span> <span class="tlaGNC">        2978 :         for (i = 0; i &lt; numAttrs; i++)</span></span>
+<span id="L50"><span class="lineNum">      50</span>              :         {</span>
+<span id="L51"><span class="lineNum">      51</span> <span class="tlaGNC">        2466 :                 Form_pg_attribute att = TupleDescAttr(tupleDesc, i);</span></span>
+<span id="L52"><span class="lineNum">      52</span>              :                 struct varlena *old_value;</span>
+<span id="L53"><span class="lineNum">      53</span>              :                 struct varlena *new_value;</span>
+<span id="L54"><span class="lineNum">      54</span>              : </span>
+<span id="L55"><span class="lineNum">      55</span> <span class="tlaGNC">        2466 :                 ttc-&gt;ttc_attr[i].tai_colflags = 0;</span></span>
+<span id="L56"><span class="lineNum">      56</span> <span class="tlaGNC">        2466 :                 ttc-&gt;ttc_attr[i].tai_oldexternal = NULL;</span></span>
+<span id="L57"><span class="lineNum">      57</span>              : </span>
+<span id="L58"><span class="lineNum">      58</span> <span class="tlaGNC">        2466 :                 if (ttc-&gt;ttc_oldvalues != NULL)</span></span>
+<span id="L59"><span class="lineNum">      59</span>              :                 {</span>
+<span id="L60"><span class="lineNum">      60</span>              :                         /*</span>
+<span id="L61"><span class="lineNum">      61</span>              :                          * For UPDATE get the old and new values of this attribute</span>
+<span id="L62"><span class="lineNum">      62</span>              :                          */</span>
+<span id="L63"><span class="lineNum">      63</span> <span class="tlaGNC">           4 :                         old_value =</span></span>
+<span id="L64"><span class="lineNum">      64</span> <span class="tlaGNC">           4 :                                 (struct varlena *) DatumGetPointer(ttc-&gt;ttc_oldvalues[i]);</span></span>
+<span id="L65"><span class="lineNum">      65</span> <span class="tlaGNC">           4 :                         new_value =</span></span>
+<span id="L66"><span class="lineNum">      66</span> <span class="tlaGNC">           4 :                                 (struct varlena *) DatumGetPointer(ttc-&gt;ttc_values[i]);</span></span>
+<span id="L67"><span class="lineNum">      67</span>              : </span>
+<span id="L68"><span class="lineNum">      68</span>              :                         /*</span>
+<span id="L69"><span class="lineNum">      69</span>              :                          * If the old value is stored on disk, check if it has changed so</span>
+<span id="L70"><span class="lineNum">      70</span>              :                          * we have to delete it later.</span>
+<span id="L71"><span class="lineNum">      71</span>              :                          */</span>
+<span id="L72"><span class="lineNum">      72</span> <span class="tlaGNC">           4 :                         if (att-&gt;attlen == -1 &amp;&amp; !ttc-&gt;ttc_oldisnull[i] &amp;&amp;</span></span>
+<span id="L73"><span class="lineNum">      73</span> <span class="tlaGNC">           2 :                                 VARATT_IS_EXTERNAL_ONDISK(old_value))</span></span>
+<span id="L74"><span class="lineNum">      74</span>              :                         {</span>
+<span id="L75"><span class="lineNum">      75</span> <span class="tlaUNC tlaBgUNC">           0 :                                 if (ttc-&gt;ttc_isnull[i] ||</span></span>
+<span id="L76"><span class="lineNum">      76</span> <span class="tlaUNC">           0 :                                         !VARATT_IS_EXTERNAL_ONDISK(new_value) ||</span></span>
+<span id="L77"><span class="lineNum">      77</span> <span class="tlaUNC">           0 :                                         memcmp((char *) old_value, (char *) new_value,</span></span>
+<span id="L78"><span class="lineNum">      78</span> <span class="tlaUNC">           0 :                                                    VARSIZE_EXTERNAL(old_value)) != 0)</span></span>
+<span id="L79"><span class="lineNum">      79</span>              :                                 {</span>
+<span id="L80"><span class="lineNum">      80</span>              :                                         /*</span>
+<span id="L81"><span class="lineNum">      81</span>              :                                          * The old external stored value isn't needed any more</span>
+<span id="L82"><span class="lineNum">      82</span>              :                                          * after the update</span>
+<span id="L83"><span class="lineNum">      83</span>              :                                          */</span>
+<span id="L84"><span class="lineNum">      84</span> <span class="tlaUNC">           0 :                                         ttc-&gt;ttc_attr[i].tai_colflags |= TOASTCOL_NEEDS_DELETE_OLD;</span></span>
+<span id="L85"><span class="lineNum">      85</span> <span class="tlaUNC">           0 :                                         ttc-&gt;ttc_flags |= TOAST_NEEDS_DELETE_OLD;</span></span>
+<span id="L86"><span class="lineNum">      86</span>              :                                 }</span>
+<span id="L87"><span class="lineNum">      87</span>              :                                 else</span>
+<span id="L88"><span class="lineNum">      88</span>              :                                 {</span>
+<span id="L89"><span class="lineNum">      89</span>              :                                         /*</span>
+<span id="L90"><span class="lineNum">      90</span>              :                                          * This attribute isn't changed by this update so we reuse</span>
+<span id="L91"><span class="lineNum">      91</span>              :                                          * the original reference to the old value in the new</span>
+<span id="L92"><span class="lineNum">      92</span>              :                                          * tuple.</span>
+<span id="L93"><span class="lineNum">      93</span>              :                                          */</span>
+<span id="L94"><span class="lineNum">      94</span> <span class="tlaUNC">           0 :                                         ttc-&gt;ttc_attr[i].tai_colflags |= TOASTCOL_IGNORE;</span></span>
+<span id="L95"><span class="lineNum">      95</span> <span class="tlaUNC">           0 :                                         continue;</span></span>
+<span id="L96"><span class="lineNum">      96</span>              :                                 }</span>
+<span id="L97"><span class="lineNum">      97</span>              :                         }</span>
+<span id="L98"><span class="lineNum">      98</span>              :                 }</span>
+<span id="L99"><span class="lineNum">      99</span>              :                 else</span>
+<span id="L100"><span class="lineNum">     100</span>              :                 {</span>
+<span id="L101"><span class="lineNum">     101</span>              :                         /*</span>
+<span id="L102"><span class="lineNum">     102</span>              :                          * For INSERT simply get the new value</span>
+<span id="L103"><span class="lineNum">     103</span>              :                          */</span>
+<span id="L104"><span class="lineNum">     104</span> <span class="tlaGNC tlaBgGNC">        2462 :                         new_value = (struct varlena *) DatumGetPointer(ttc-&gt;ttc_values[i]);</span></span>
+<span id="L105"><span class="lineNum">     105</span>              :                 }</span>
+<span id="L106"><span class="lineNum">     106</span>              : </span>
+<span id="L107"><span class="lineNum">     107</span>              :                 /*</span>
+<span id="L108"><span class="lineNum">     108</span>              :                  * Handle NULL attributes</span>
+<span id="L109"><span class="lineNum">     109</span>              :                  */</span>
+<span id="L110"><span class="lineNum">     110</span> <span class="tlaGNC">        2466 :                 if (ttc-&gt;ttc_isnull[i])</span></span>
+<span id="L111"><span class="lineNum">     111</span>              :                 {</span>
+<span id="L112"><span class="lineNum">     112</span> <span class="tlaGNC">          96 :                         ttc-&gt;ttc_attr[i].tai_colflags |= TOASTCOL_IGNORE;</span></span>
+<span id="L113"><span class="lineNum">     113</span> <span class="tlaGNC">          96 :                         ttc-&gt;ttc_flags |= TOAST_HAS_NULLS;</span></span>
+<span id="L114"><span class="lineNum">     114</span> <span class="tlaGNC">          96 :                         continue;</span></span>
+<span id="L115"><span class="lineNum">     115</span>              :                 }</span>
+<span id="L116"><span class="lineNum">     116</span>              : </span>
+<span id="L117"><span class="lineNum">     117</span>              :                 /*</span>
+<span id="L118"><span class="lineNum">     118</span>              :                  * Now look at varlena attributes</span>
+<span id="L119"><span class="lineNum">     119</span>              :                  */</span>
+<span id="L120"><span class="lineNum">     120</span> <span class="tlaGNC">        2370 :                 if (att-&gt;attlen == -1)</span></span>
+<span id="L121"><span class="lineNum">     121</span>              :                 {</span>
+<span id="L122"><span class="lineNum">     122</span>              :                         /*</span>
+<span id="L123"><span class="lineNum">     123</span>              :                          * If the table's attribute says PLAIN always, force it so.</span>
+<span id="L124"><span class="lineNum">     124</span>              :                          */</span>
+<span id="L125"><span class="lineNum">     125</span> <span class="tlaGNC">         723 :                         if (att-&gt;attstorage == TYPSTORAGE_PLAIN)</span></span>
+<span id="L126"><span class="lineNum">     126</span> <span class="tlaUNC tlaBgUNC">           0 :                                 ttc-&gt;ttc_attr[i].tai_colflags |= TOASTCOL_IGNORE;</span></span>
+<span id="L127"><span class="lineNum">     127</span>              : </span>
+<span id="L128"><span class="lineNum">     128</span>              :                         /*</span>
+<span id="L129"><span class="lineNum">     129</span>              :                          * We took care of UPDATE above, so any external value we find</span>
+<span id="L130"><span class="lineNum">     130</span>              :                          * still in the tuple must be someone else's that we cannot reuse</span>
+<span id="L131"><span class="lineNum">     131</span>              :                          * (this includes the case of an out-of-line in-memory datum).</span>
+<span id="L132"><span class="lineNum">     132</span>              :                          * Fetch it back (without decompression, unless we are forcing</span>
+<span id="L133"><span class="lineNum">     133</span>              :                          * PLAIN storage).  If necessary, we'll push it out as a new</span>
+<span id="L134"><span class="lineNum">     134</span>              :                          * external value below.</span>
+<span id="L135"><span class="lineNum">     135</span>              :                          */</span>
+<span id="L136"><span class="lineNum">     136</span> <span class="tlaGNC tlaBgGNC">         723 :                         if (VARATT_IS_EXTERNAL(new_value))</span></span>
+<span id="L137"><span class="lineNum">     137</span>              :                         {</span>
+<span id="L138"><span class="lineNum">     138</span> <span class="tlaUNC tlaBgUNC">           0 :                                 ttc-&gt;ttc_attr[i].tai_oldexternal = new_value;</span></span>
+<span id="L139"><span class="lineNum">     139</span> <span class="tlaUNC">           0 :                                 if (att-&gt;attstorage == TYPSTORAGE_PLAIN)</span></span>
+<span id="L140"><span class="lineNum">     140</span> <span class="tlaUNC">           0 :                                         new_value = detoast_attr(new_value);</span></span>
+<span id="L141"><span class="lineNum">     141</span>              :                                 else</span>
+<span id="L142"><span class="lineNum">     142</span> <span class="tlaUNC">           0 :                                         new_value = detoast_external_attr(new_value);</span></span>
+<span id="L143"><span class="lineNum">     143</span> <span class="tlaUNC">           0 :                                 ttc-&gt;ttc_values[i] = PointerGetDatum(new_value);</span></span>
+<span id="L144"><span class="lineNum">     144</span> <span class="tlaUNC">           0 :                                 ttc-&gt;ttc_attr[i].tai_colflags |= TOASTCOL_NEEDS_FREE;</span></span>
+<span id="L145"><span class="lineNum">     145</span> <span class="tlaUNC">           0 :                                 ttc-&gt;ttc_flags |= (TOAST_NEEDS_CHANGE | TOAST_NEEDS_FREE);</span></span>
+<span id="L146"><span class="lineNum">     146</span>              :                         }</span>
+<span id="L147"><span class="lineNum">     147</span>              : </span>
+<span id="L148"><span class="lineNum">     148</span>              :                         /*</span>
+<span id="L149"><span class="lineNum">     149</span>              :                          * Remember the size of this attribute</span>
+<span id="L150"><span class="lineNum">     150</span>              :                          */</span>
+<span id="L151"><span class="lineNum">     151</span> <span class="tlaGNC tlaBgGNC">         723 :                         ttc-&gt;ttc_attr[i].tai_size = VARSIZE_ANY(new_value);</span></span>
+<span id="L152"><span class="lineNum">     152</span>              :                 }</span>
+<span id="L153"><span class="lineNum">     153</span>              :                 else</span>
+<span id="L154"><span class="lineNum">     154</span>              :                 {</span>
+<span id="L155"><span class="lineNum">     155</span>              :                         /*</span>
+<span id="L156"><span class="lineNum">     156</span>              :                          * Not a varlena attribute, plain storage always</span>
+<span id="L157"><span class="lineNum">     157</span>              :                          */</span>
+<span id="L158"><span class="lineNum">     158</span> <span class="tlaGNC">        1647 :                         ttc-&gt;ttc_attr[i].tai_colflags |= TOASTCOL_IGNORE;</span></span>
+<span id="L159"><span class="lineNum">     159</span>              :                 }</span>
+<span id="L160"><span class="lineNum">     160</span>              :         }</span>
+<span id="L161"><span class="lineNum">     161</span> <span class="tlaGNC">         512 : }</span></span>
+<span id="L162"><span class="lineNum">     162</span>              : </span>
+<span id="L163"><span class="lineNum">     163</span>              : /*</span>
+<span id="L164"><span class="lineNum">     164</span>              :  * Find the largest varlena attribute that satisfies certain criteria.</span>
+<span id="L165"><span class="lineNum">     165</span>              :  *</span>
+<span id="L166"><span class="lineNum">     166</span>              :  * The relevant column must not be marked TOASTCOL_IGNORE, and if the</span>
+<span id="L167"><span class="lineNum">     167</span>              :  * for_compression flag is passed as true, it must also not be marked</span>
+<span id="L168"><span class="lineNum">     168</span>              :  * TOASTCOL_INCOMPRESSIBLE.</span>
+<span id="L169"><span class="lineNum">     169</span>              :  *</span>
+<span id="L170"><span class="lineNum">     170</span>              :  * The column must have attstorage EXTERNAL or EXTENDED if check_main is</span>
+<span id="L171"><span class="lineNum">     171</span>              :  * false, and must have attstorage MAIN if check_main is true.</span>
+<span id="L172"><span class="lineNum">     172</span>              :  *</span>
+<span id="L173"><span class="lineNum">     173</span>              :  * The column must have a minimum size of MAXALIGN(TOAST_POINTER_SIZE);</span>
+<span id="L174"><span class="lineNum">     174</span>              :  * if not, no benefit is to be expected by compressing it.</span>
+<span id="L175"><span class="lineNum">     175</span>              :  *</span>
+<span id="L176"><span class="lineNum">     176</span>              :  * The return value is the index of the biggest suitable column, or</span>
+<span id="L177"><span class="lineNum">     177</span>              :  * -1 if there is none.</span>
+<span id="L178"><span class="lineNum">     178</span>              :  */</span>
+<span id="L179"><span class="lineNum">     179</span>              : int</span>
+<span id="L180"><span class="lineNum">     180</span> <span class="tlaGNC">         550 : toast_tuple_find_biggest_attribute(ToastTupleContext *ttc,</span></span>
+<span id="L181"><span class="lineNum">     181</span>              :                                                                    bool for_compression, bool check_main)</span>
+<span id="L182"><span class="lineNum">     182</span>              : {</span>
+<span id="L183"><span class="lineNum">     183</span> <span class="tlaGNC">         550 :         TupleDesc       tupleDesc = ttc-&gt;ttc_rel-&gt;rd_att;</span></span>
+<span id="L184"><span class="lineNum">     184</span> <span class="tlaGNC">         550 :         int                     numAttrs = tupleDesc-&gt;natts;</span></span>
+<span id="L185"><span class="lineNum">     185</span> <span class="tlaGNC">         550 :         int                     biggest_attno = -1;</span></span>
+<span id="L186"><span class="lineNum">     186</span> <span class="tlaGNC">         550 :         int32           biggest_size = MAXALIGN(TOAST_POINTER_SIZE);</span></span>
+<span id="L187"><span class="lineNum">     187</span> <span class="tlaGNC">         550 :         int32           skip_colflags = TOASTCOL_IGNORE;</span></span>
+<span id="L188"><span class="lineNum">     188</span>              :         int                     i;</span>
+<span id="L189"><span class="lineNum">     189</span>              : </span>
+<span id="L190"><span class="lineNum">     190</span> <span class="tlaGNC">         550 :         if (for_compression)</span></span>
+<span id="L191"><span class="lineNum">     191</span> <span class="tlaGNC">         541 :                 skip_colflags |= TOASTCOL_INCOMPRESSIBLE;</span></span>
+<span id="L192"><span class="lineNum">     192</span>              : </span>
+<span id="L193"><span class="lineNum">     193</span> <span class="tlaGNC">        3964 :         for (i = 0; i &lt; numAttrs; i++)</span></span>
+<span id="L194"><span class="lineNum">     194</span>              :         {</span>
+<span id="L195"><span class="lineNum">     195</span> <span class="tlaGNC">        3414 :                 Form_pg_attribute att = TupleDescAttr(tupleDesc, i);</span></span>
+<span id="L196"><span class="lineNum">     196</span>              : </span>
+<span id="L197"><span class="lineNum">     197</span> <span class="tlaGNC">        3414 :                 if ((ttc-&gt;ttc_attr[i].tai_colflags &amp; skip_colflags) != 0)</span></span>
+<span id="L198"><span class="lineNum">     198</span> <span class="tlaGNC">        2562 :                         continue;</span></span>
+<span id="L199"><span class="lineNum">     199</span> <span class="tlaGNC">         852 :                 if (VARATT_IS_EXTERNAL(DatumGetPointer(ttc-&gt;ttc_values[i])))</span></span>
+<span id="L200"><span class="lineNum">     200</span> <span class="tlaUNC tlaBgUNC">           0 :                         continue;                       /* can't happen, toast_action would be PLAIN */</span></span>
+<span id="L201"><span class="lineNum">     201</span> <span class="tlaGNC tlaBgGNC">         852 :                 if (for_compression &amp;&amp;</span></span>
+<span id="L202"><span class="lineNum">     202</span> <span class="tlaGNC">         826 :                         VARATT_IS_COMPRESSED(DatumGetPointer(ttc-&gt;ttc_values[i])))</span></span>
+<span id="L203"><span class="lineNum">     203</span> <span class="tlaGNC">          41 :                         continue;</span></span>
+<span id="L204"><span class="lineNum">     204</span> <span class="tlaGNC">         811 :                 if (check_main &amp;&amp; att-&gt;attstorage != TYPSTORAGE_MAIN)</span></span>
+<span id="L205"><span class="lineNum">     205</span> <span class="tlaUNC tlaBgUNC">           0 :                         continue;</span></span>
+<span id="L206"><span class="lineNum">     206</span> <span class="tlaGNC tlaBgGNC">         811 :                 if (!check_main &amp;&amp; att-&gt;attstorage != TYPSTORAGE_EXTENDED &amp;&amp;</span></span>
+<span id="L207"><span class="lineNum">     207</span> <span class="tlaUNC tlaBgUNC">           0 :                         att-&gt;attstorage != TYPSTORAGE_EXTERNAL)</span></span>
+<span id="L208"><span class="lineNum">     208</span> <span class="tlaUNC">           0 :                         continue;</span></span>
+<span id="L209"><span class="lineNum">     209</span>              : </span>
+<span id="L210"><span class="lineNum">     210</span> <span class="tlaGNC tlaBgGNC">         811 :                 if (ttc-&gt;ttc_attr[i].tai_size &gt; biggest_size)</span></span>
+<span id="L211"><span class="lineNum">     211</span>              :                 {</span>
+<span id="L212"><span class="lineNum">     212</span> <span class="tlaGNC">         594 :                         biggest_attno = i;</span></span>
+<span id="L213"><span class="lineNum">     213</span> <span class="tlaGNC">         594 :                         biggest_size = ttc-&gt;ttc_attr[i].tai_size;</span></span>
+<span id="L214"><span class="lineNum">     214</span>              :                 }</span>
+<span id="L215"><span class="lineNum">     215</span>              :         }</span>
+<span id="L216"><span class="lineNum">     216</span>              : </span>
+<span id="L217"><span class="lineNum">     217</span> <span class="tlaGNC">         550 :         return biggest_attno;</span></span>
+<span id="L218"><span class="lineNum">     218</span>              : }</span>
+<span id="L219"><span class="lineNum">     219</span>              : </span>
+<span id="L220"><span class="lineNum">     220</span>              : /*</span>
+<span id="L221"><span class="lineNum">     221</span>              :  * Try compression for an attribute.</span>
+<span id="L222"><span class="lineNum">     222</span>              :  *</span>
+<span id="L223"><span class="lineNum">     223</span>              :  * If we find that the attribute is not compressible, mark it so.</span>
+<span id="L224"><span class="lineNum">     224</span>              :  */</span>
+<span id="L225"><span class="lineNum">     225</span>              : void</span>
+<span id="L226"><span class="lineNum">     226</span> <span class="tlaGNC">         532 : toast_tuple_try_compression(ToastTupleContext *ttc, int attribute)</span></span>
+<span id="L227"><span class="lineNum">     227</span>              : {</span>
+<span id="L228"><span class="lineNum">     228</span> <span class="tlaGNC">         532 :         Datum      *value = &amp;ttc-&gt;ttc_values[attribute];</span></span>
+<span id="L229"><span class="lineNum">     229</span> <span class="tlaGNC">         532 :         Datum           new_value = toast_compress_datum(*value);</span></span>
+<span id="L230"><span class="lineNum">     230</span> <span class="tlaGNC">         532 :         ToastAttrInfo *attr = &amp;ttc-&gt;ttc_attr[attribute];</span></span>
+<span id="L231"><span class="lineNum">     231</span>              : </span>
+<span id="L232"><span class="lineNum">     232</span> <span class="tlaGNC">         532 :         if (DatumGetPointer(new_value) != NULL)</span></span>
+<span id="L233"><span class="lineNum">     233</span>              :         {</span>
+<span id="L234"><span class="lineNum">     234</span>              :                 /* successful compression */</span>
+<span id="L235"><span class="lineNum">     235</span> <span class="tlaGNC">         526 :                 if ((attr-&gt;tai_colflags &amp; TOASTCOL_NEEDS_FREE) != 0)</span></span>
+<span id="L236"><span class="lineNum">     236</span> <span class="tlaUNC tlaBgUNC">           0 :                         pfree(DatumGetPointer(*value));</span></span>
+<span id="L237"><span class="lineNum">     237</span> <span class="tlaGNC tlaBgGNC">         526 :                 *value = new_value;</span></span>
+<span id="L238"><span class="lineNum">     238</span> <span class="tlaGNC">         526 :                 attr-&gt;tai_colflags |= TOASTCOL_NEEDS_FREE;</span></span>
+<span id="L239"><span class="lineNum">     239</span> <span class="tlaGNC">         526 :                 attr-&gt;tai_size = VARSIZE(DatumGetPointer(*value));</span></span>
+<span id="L240"><span class="lineNum">     240</span> <span class="tlaGNC">         526 :                 ttc-&gt;ttc_flags |= (TOAST_NEEDS_CHANGE | TOAST_NEEDS_FREE);</span></span>
+<span id="L241"><span class="lineNum">     241</span>              :         }</span>
+<span id="L242"><span class="lineNum">     242</span>              :         else</span>
+<span id="L243"><span class="lineNum">     243</span>              :         {</span>
+<span id="L244"><span class="lineNum">     244</span>              :                 /* incompressible, ignore on subsequent compression passes */</span>
+<span id="L245"><span class="lineNum">     245</span> <span class="tlaGNC">           6 :                 attr-&gt;tai_colflags |= TOASTCOL_INCOMPRESSIBLE;</span></span>
+<span id="L246"><span class="lineNum">     246</span>              :         }</span>
+<span id="L247"><span class="lineNum">     247</span> <span class="tlaGNC">         532 : }</span></span>
+<span id="L248"><span class="lineNum">     248</span>              : </span>
+<span id="L249"><span class="lineNum">     249</span>              : /*</span>
+<span id="L250"><span class="lineNum">     250</span>              :  * Move an attribute to external storage.</span>
+<span id="L251"><span class="lineNum">     251</span>              :  */</span>
+<span id="L252"><span class="lineNum">     252</span>              : void</span>
+<span id="L253"><span class="lineNum">     253</span> <span class="tlaGNC">          86 : toast_tuple_externalize(ToastTupleContext *ttc, int attribute, int options)</span></span>
+<span id="L254"><span class="lineNum">     254</span>              : {</span>
+<span id="L255"><span class="lineNum">     255</span> <span class="tlaGNC">          86 :         Datum      *value = &amp;ttc-&gt;ttc_values[attribute];</span></span>
+<span id="L256"><span class="lineNum">     256</span> <span class="tlaGNC">          86 :         Datum           old_value = *value;</span></span>
+<span id="L257"><span class="lineNum">     257</span> <span class="tlaGNC">          86 :         ToastAttrInfo *attr = &amp;ttc-&gt;ttc_attr[attribute];</span></span>
+<span id="L258"><span class="lineNum">     258</span>              : </span>
+<span id="L259"><span class="lineNum">     259</span> <span class="tlaGNC">          86 :         attr-&gt;tai_colflags |= TOASTCOL_IGNORE;</span></span>
+<span id="L260"><span class="lineNum">     260</span> <span class="tlaGNC">          86 :         *value = toast_save_datum(ttc-&gt;ttc_rel, old_value, attr-&gt;tai_oldexternal,</span></span>
+<span id="L261"><span class="lineNum">     261</span>              :                                                           options);</span>
+<span id="L262"><span class="lineNum">     262</span> <span class="tlaGNC">          86 :         if ((attr-&gt;tai_colflags &amp; TOASTCOL_NEEDS_FREE) != 0)</span></span>
+<span id="L263"><span class="lineNum">     263</span> <span class="tlaGNC">          86 :                 pfree(DatumGetPointer(old_value));</span></span>
+<span id="L264"><span class="lineNum">     264</span> <span class="tlaGNC">          86 :         attr-&gt;tai_colflags |= TOASTCOL_NEEDS_FREE;</span></span>
+<span id="L265"><span class="lineNum">     265</span> <span class="tlaGNC">          86 :         ttc-&gt;ttc_flags |= (TOAST_NEEDS_CHANGE | TOAST_NEEDS_FREE);</span></span>
+<span id="L266"><span class="lineNum">     266</span> <span class="tlaGNC">          86 : }</span></span>
+<span id="L267"><span class="lineNum">     267</span>              : </span>
+<span id="L268"><span class="lineNum">     268</span>              : /*</span>
+<span id="L269"><span class="lineNum">     269</span>              :  * Perform appropriate cleanup after one tuple has been subjected to TOAST.</span>
+<span id="L270"><span class="lineNum">     270</span>              :  */</span>
+<span id="L271"><span class="lineNum">     271</span>              : void</span>
+<span id="L272"><span class="lineNum">     272</span> <span class="tlaGNC">         512 : toast_tuple_cleanup(ToastTupleContext *ttc)</span></span>
+<span id="L273"><span class="lineNum">     273</span>              : {</span>
+<span id="L274"><span class="lineNum">     274</span> <span class="tlaGNC">         512 :         TupleDesc       tupleDesc = ttc-&gt;ttc_rel-&gt;rd_att;</span></span>
+<span id="L275"><span class="lineNum">     275</span> <span class="tlaGNC">         512 :         int                     numAttrs = tupleDesc-&gt;natts;</span></span>
+<span id="L276"><span class="lineNum">     276</span>              : </span>
+<span id="L277"><span class="lineNum">     277</span>              :         /*</span>
+<span id="L278"><span class="lineNum">     278</span>              :          * Free allocated temp values</span>
+<span id="L279"><span class="lineNum">     279</span>              :          */</span>
+<span id="L280"><span class="lineNum">     280</span> <span class="tlaGNC">         512 :         if ((ttc-&gt;ttc_flags &amp; TOAST_NEEDS_FREE) != 0)</span></span>
+<span id="L281"><span class="lineNum">     281</span>              :         {</span>
+<span id="L282"><span class="lineNum">     282</span>              :                 int                     i;</span>
+<span id="L283"><span class="lineNum">     283</span>              : </span>
+<span id="L284"><span class="lineNum">     284</span> <span class="tlaGNC">        2978 :                 for (i = 0; i &lt; numAttrs; i++)</span></span>
+<span id="L285"><span class="lineNum">     285</span>              :                 {</span>
+<span id="L286"><span class="lineNum">     286</span> <span class="tlaGNC">        2466 :                         ToastAttrInfo *attr = &amp;ttc-&gt;ttc_attr[i];</span></span>
+<span id="L287"><span class="lineNum">     287</span>              : </span>
+<span id="L288"><span class="lineNum">     288</span> <span class="tlaGNC">        2466 :                         if ((attr-&gt;tai_colflags &amp; TOASTCOL_NEEDS_FREE) != 0)</span></span>
+<span id="L289"><span class="lineNum">     289</span> <span class="tlaGNC">         526 :                                 pfree(DatumGetPointer(ttc-&gt;ttc_values[i]));</span></span>
+<span id="L290"><span class="lineNum">     290</span>              :                 }</span>
+<span id="L291"><span class="lineNum">     291</span>              :         }</span>
+<span id="L292"><span class="lineNum">     292</span>              : </span>
+<span id="L293"><span class="lineNum">     293</span>              :         /*</span>
+<span id="L294"><span class="lineNum">     294</span>              :          * Delete external values from the old tuple</span>
+<span id="L295"><span class="lineNum">     295</span>              :          */</span>
+<span id="L296"><span class="lineNum">     296</span> <span class="tlaGNC">         512 :         if ((ttc-&gt;ttc_flags &amp; TOAST_NEEDS_DELETE_OLD) != 0)</span></span>
+<span id="L297"><span class="lineNum">     297</span>              :         {</span>
+<span id="L298"><span class="lineNum">     298</span>              :                 int                     i;</span>
+<span id="L299"><span class="lineNum">     299</span>              : </span>
+<span id="L300"><span class="lineNum">     300</span> <span class="tlaUNC tlaBgUNC">           0 :                 for (i = 0; i &lt; numAttrs; i++)</span></span>
+<span id="L301"><span class="lineNum">     301</span>              :                 {</span>
+<span id="L302"><span class="lineNum">     302</span> <span class="tlaUNC">           0 :                         ToastAttrInfo *attr = &amp;ttc-&gt;ttc_attr[i];</span></span>
+<span id="L303"><span class="lineNum">     303</span>              : </span>
+<span id="L304"><span class="lineNum">     304</span> <span class="tlaUNC">           0 :                         if ((attr-&gt;tai_colflags &amp; TOASTCOL_NEEDS_DELETE_OLD) != 0)</span></span>
+<span id="L305"><span class="lineNum">     305</span> <span class="tlaUNC">           0 :                                 toast_delete_datum(ttc-&gt;ttc_rel, ttc-&gt;ttc_oldvalues[i], false);</span></span>
+<span id="L306"><span class="lineNum">     306</span>              :                 }</span>
+<span id="L307"><span class="lineNum">     307</span>              :         }</span>
+<span id="L308"><span class="lineNum">     308</span> <span class="tlaGNC tlaBgGNC">         512 : }</span></span>
+<span id="L309"><span class="lineNum">     309</span>              : </span>
+<span id="L310"><span class="lineNum">     310</span>              : /*</span>
+<span id="L311"><span class="lineNum">     311</span>              :  * Check for external stored attributes and delete them from the secondary</span>
+<span id="L312"><span class="lineNum">     312</span>              :  * relation.</span>
+<span id="L313"><span class="lineNum">     313</span>              :  */</span>
+<span id="L314"><span class="lineNum">     314</span>              : void</span>
+<span id="L315"><span class="lineNum">     315</span> <span class="tlaUNC tlaBgUNC">           0 : toast_delete_external(Relation rel, Datum *values, bool *isnull,</span></span>
+<span id="L316"><span class="lineNum">     316</span>              :                                           bool is_speculative)</span>
+<span id="L317"><span class="lineNum">     317</span>              : {</span>
+<span id="L318"><span class="lineNum">     318</span> <span class="tlaUNC">           0 :         TupleDesc       tupleDesc = rel-&gt;rd_att;</span></span>
+<span id="L319"><span class="lineNum">     319</span> <span class="tlaUNC">           0 :         int                     numAttrs = tupleDesc-&gt;natts;</span></span>
+<span id="L320"><span class="lineNum">     320</span>              :         int                     i;</span>
+<span id="L321"><span class="lineNum">     321</span>              : </span>
+<span id="L322"><span class="lineNum">     322</span> <span class="tlaUNC">           0 :         for (i = 0; i &lt; numAttrs; i++)</span></span>
+<span id="L323"><span class="lineNum">     323</span>              :         {</span>
+<span id="L324"><span class="lineNum">     324</span> <span class="tlaUNC">           0 :                 if (TupleDescAttr(tupleDesc, i)-&gt;attlen == -1)</span></span>
+<span id="L325"><span class="lineNum">     325</span>              :                 {</span>
+<span id="L326"><span class="lineNum">     326</span> <span class="tlaUNC">           0 :                         Datum           value = values[i];</span></span>
+<span id="L327"><span class="lineNum">     327</span>              : </span>
+<span id="L328"><span class="lineNum">     328</span> <span class="tlaUNC">           0 :                         if (isnull[i])</span></span>
+<span id="L329"><span class="lineNum">     329</span> <span class="tlaUNC">           0 :                                 continue;</span></span>
+<span id="L330"><span class="lineNum">     330</span> <span class="tlaUNC">           0 :                         else if (VARATT_IS_EXTERNAL_ONDISK(PointerGetDatum(value)))</span></span>
+<span id="L331"><span class="lineNum">     331</span> <span class="tlaUNC">           0 :                                 toast_delete_datum(rel, value, is_speculative);</span></span>
+<span id="L332"><span class="lineNum">     332</span>              :                 }</span>
+<span id="L333"><span class="lineNum">     333</span>              :         }</span>
+<span id="L334"><span class="lineNum">     334</span> <span class="tlaUNC">           0 : }</span></span>
+        </pre>
+              </td>
+            </tr>
+          </table>
+          <br>
+
+          <table width="100%" border=0 cellspacing=0 cellpadding=0>
+            <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+            <tr><td class="versionInfo">Generated by: <a href="https://github.com//linux-test-project/lcov" target="_parent">LCOV version 2.0-1</a></td></tr>
+          </table>
+          <br>
+
+</body>
+</html>

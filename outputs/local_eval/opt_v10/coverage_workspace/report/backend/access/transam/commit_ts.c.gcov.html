@@ -1,0 +1,1118 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - coverage_filtered.info - backend/access/transam/commit_ts.c</title>
+  <link rel="stylesheet" type="text/css" href="../../../gcov.css">
+</head>
+
+<body>
+
+          <table width="100%" border=0 cellspacing=0 cellpadding=0>
+            <tr><td class="title">LCOV - code coverage report</td></tr>
+            <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+
+            <tr>
+              <td width="100%">
+                <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="10%" class="headerValue"><a href="../../../index.html">top level</a> - <a href="index.html">backend/access/transam</a> - commit_ts.c<span style="font-size: 80%;"> (source / <a href="commit_ts.c.func-c.html">functions</a>)</span></td>
+            <td width="5%"></td>
+            <td width="5%"></td>
+            <td width="5%" class="headerCovTableHead">Coverage</td>
+            <td width="5%" class="headerCovTableHead" title="Covered + Uncovered code">Total</td>
+            <td width="5%" class="headerCovTableHead" title="Exercised code only">Hit</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">coverage_filtered.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntryLo">48.4&nbsp;%</td>
+            <td class="headerCovTableEntry">285</td>
+            <td class="headerCovTableEntry">138</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test Date:</td>
+            <td class="headerValue">2026-06-06 02:38:14</td>
+            <td></td>
+            <td class="headerItem">Functions:</td>
+            <td class="headerCovTableEntryLo">62.1&nbsp;%</td>
+            <td class="headerCovTableEntry">29</td>
+            <td class="headerCovTableEntry">18</td>
+          </tr>
+                  <tr><td><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+                </table>
+              </td>
+            </tr>
+
+            <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+          </table>
+
+          <table cellpadding=0 cellspacing=0 border=0>
+            <tr>
+              <td><br></td>
+            </tr>
+            <tr>
+              <td>
+<pre class="sourceHeading">            Line data    Source code</pre>
+<pre class="source">
+<span id="L1"><span class="lineNum">       1</span>              : /*-------------------------------------------------------------------------</span>
+<span id="L2"><span class="lineNum">       2</span>              :  *</span>
+<span id="L3"><span class="lineNum">       3</span>              :  * commit_ts.c</span>
+<span id="L4"><span class="lineNum">       4</span>              :  *              PostgreSQL commit timestamp manager</span>
+<span id="L5"><span class="lineNum">       5</span>              :  *</span>
+<span id="L6"><span class="lineNum">       6</span>              :  * This module is a pg_xact-like system that stores the commit timestamp</span>
+<span id="L7"><span class="lineNum">       7</span>              :  * for each transaction.</span>
+<span id="L8"><span class="lineNum">       8</span>              :  *</span>
+<span id="L9"><span class="lineNum">       9</span>              :  * XLOG interactions: this module generates an XLOG record whenever a new</span>
+<span id="L10"><span class="lineNum">      10</span>              :  * CommitTs page is initialized to zeroes.  Also, one XLOG record is</span>
+<span id="L11"><span class="lineNum">      11</span>              :  * generated for setting of values when the caller requests it; this allows</span>
+<span id="L12"><span class="lineNum">      12</span>              :  * us to support values coming from places other than transaction commit.</span>
+<span id="L13"><span class="lineNum">      13</span>              :  * Other writes of CommitTS come from recording of transaction commit in</span>
+<span id="L14"><span class="lineNum">      14</span>              :  * xact.c, which generates its own XLOG records for these events and will</span>
+<span id="L15"><span class="lineNum">      15</span>              :  * re-perform the status update on redo; so we need make no additional XLOG</span>
+<span id="L16"><span class="lineNum">      16</span>              :  * entry here.</span>
+<span id="L17"><span class="lineNum">      17</span>              :  *</span>
+<span id="L18"><span class="lineNum">      18</span>              :  * Portions Copyright (c) 1996-2020, PostgreSQL Global Development Group</span>
+<span id="L19"><span class="lineNum">      19</span>              :  * Portions Copyright (c) 1994, Regents of the University of California</span>
+<span id="L20"><span class="lineNum">      20</span>              :  *</span>
+<span id="L21"><span class="lineNum">      21</span>              :  * src/backend/access/transam/commit_ts.c</span>
+<span id="L22"><span class="lineNum">      22</span>              :  *</span>
+<span id="L23"><span class="lineNum">      23</span>              :  *-------------------------------------------------------------------------</span>
+<span id="L24"><span class="lineNum">      24</span>              :  */</span>
+<span id="L25"><span class="lineNum">      25</span>              : #include &quot;postgres.h&quot;</span>
+<span id="L26"><span class="lineNum">      26</span>              : </span>
+<span id="L27"><span class="lineNum">      27</span>              : #include &quot;access/commit_ts.h&quot;</span>
+<span id="L28"><span class="lineNum">      28</span>              : #include &quot;access/htup_details.h&quot;</span>
+<span id="L29"><span class="lineNum">      29</span>              : #include &quot;access/slru.h&quot;</span>
+<span id="L30"><span class="lineNum">      30</span>              : #include &quot;access/transam.h&quot;</span>
+<span id="L31"><span class="lineNum">      31</span>              : #include &quot;catalog/pg_type.h&quot;</span>
+<span id="L32"><span class="lineNum">      32</span>              : #include &quot;funcapi.h&quot;</span>
+<span id="L33"><span class="lineNum">      33</span>              : #include &quot;miscadmin.h&quot;</span>
+<span id="L34"><span class="lineNum">      34</span>              : #include &quot;pg_trace.h&quot;</span>
+<span id="L35"><span class="lineNum">      35</span>              : #include &quot;storage/shmem.h&quot;</span>
+<span id="L36"><span class="lineNum">      36</span>              : #include &quot;utils/builtins.h&quot;</span>
+<span id="L37"><span class="lineNum">      37</span>              : #include &quot;utils/snapmgr.h&quot;</span>
+<span id="L38"><span class="lineNum">      38</span>              : #include &quot;utils/timestamp.h&quot;</span>
+<span id="L39"><span class="lineNum">      39</span>              : </span>
+<span id="L40"><span class="lineNum">      40</span>              : /*</span>
+<span id="L41"><span class="lineNum">      41</span>              :  * Defines for CommitTs page sizes.  A page is the same BLCKSZ as is used</span>
+<span id="L42"><span class="lineNum">      42</span>              :  * everywhere else in Postgres.</span>
+<span id="L43"><span class="lineNum">      43</span>              :  *</span>
+<span id="L44"><span class="lineNum">      44</span>              :  * Note: because TransactionIds are 32 bits and wrap around at 0xFFFFFFFF,</span>
+<span id="L45"><span class="lineNum">      45</span>              :  * CommitTs page numbering also wraps around at</span>
+<span id="L46"><span class="lineNum">      46</span>              :  * 0xFFFFFFFF/COMMIT_TS_XACTS_PER_PAGE, and CommitTs segment numbering at</span>
+<span id="L47"><span class="lineNum">      47</span>              :  * 0xFFFFFFFF/COMMIT_TS_XACTS_PER_PAGE/SLRU_PAGES_PER_SEGMENT.  We need take no</span>
+<span id="L48"><span class="lineNum">      48</span>              :  * explicit notice of that fact in this module, except when comparing segment</span>
+<span id="L49"><span class="lineNum">      49</span>              :  * and page numbers in TruncateCommitTs (see CommitTsPagePrecedes).</span>
+<span id="L50"><span class="lineNum">      50</span>              :  */</span>
+<span id="L51"><span class="lineNum">      51</span>              : </span>
+<span id="L52"><span class="lineNum">      52</span>              : /*</span>
+<span id="L53"><span class="lineNum">      53</span>              :  * We need 8+2 bytes per xact.  Note that enlarging this struct might mean</span>
+<span id="L54"><span class="lineNum">      54</span>              :  * the largest possible file name is more than 5 chars long; see</span>
+<span id="L55"><span class="lineNum">      55</span>              :  * SlruScanDirectory.</span>
+<span id="L56"><span class="lineNum">      56</span>              :  */</span>
+<span id="L57"><span class="lineNum">      57</span>              : typedef struct CommitTimestampEntry</span>
+<span id="L58"><span class="lineNum">      58</span>              : {</span>
+<span id="L59"><span class="lineNum">      59</span>              :         TimestampTz time;</span>
+<span id="L60"><span class="lineNum">      60</span>              :         RepOriginId nodeid;</span>
+<span id="L61"><span class="lineNum">      61</span>              : } CommitTimestampEntry;</span>
+<span id="L62"><span class="lineNum">      62</span>              : </span>
+<span id="L63"><span class="lineNum">      63</span>              : #define SizeOfCommitTimestampEntry (offsetof(CommitTimestampEntry, nodeid) + \</span>
+<span id="L64"><span class="lineNum">      64</span>              :                                                                         sizeof(RepOriginId))</span>
+<span id="L65"><span class="lineNum">      65</span>              : </span>
+<span id="L66"><span class="lineNum">      66</span>              : #define COMMIT_TS_XACTS_PER_PAGE \</span>
+<span id="L67"><span class="lineNum">      67</span>              :         (BLCKSZ / SizeOfCommitTimestampEntry)</span>
+<span id="L68"><span class="lineNum">      68</span>              : </span>
+<span id="L69"><span class="lineNum">      69</span>              : #define TransactionIdToCTsPage(xid) \</span>
+<span id="L70"><span class="lineNum">      70</span>              :         ((xid) / (TransactionId) COMMIT_TS_XACTS_PER_PAGE)</span>
+<span id="L71"><span class="lineNum">      71</span>              : #define TransactionIdToCTsEntry(xid)    \</span>
+<span id="L72"><span class="lineNum">      72</span>              :         ((xid) % (TransactionId) COMMIT_TS_XACTS_PER_PAGE)</span>
+<span id="L73"><span class="lineNum">      73</span>              : </span>
+<span id="L74"><span class="lineNum">      74</span>              : /*</span>
+<span id="L75"><span class="lineNum">      75</span>              :  * Link to shared-memory data structures for CommitTs control</span>
+<span id="L76"><span class="lineNum">      76</span>              :  */</span>
+<span id="L77"><span class="lineNum">      77</span>              : static SlruCtlData CommitTsCtlData;</span>
+<span id="L78"><span class="lineNum">      78</span>              : </span>
+<span id="L79"><span class="lineNum">      79</span>              : #define CommitTsCtl (&amp;CommitTsCtlData)</span>
+<span id="L80"><span class="lineNum">      80</span>              : </span>
+<span id="L81"><span class="lineNum">      81</span>              : /*</span>
+<span id="L82"><span class="lineNum">      82</span>              :  * We keep a cache of the last value set in shared memory.</span>
+<span id="L83"><span class="lineNum">      83</span>              :  *</span>
+<span id="L84"><span class="lineNum">      84</span>              :  * This is also good place to keep the activation status.  We keep this</span>
+<span id="L85"><span class="lineNum">      85</span>              :  * separate from the GUC so that the standby can activate the module if the</span>
+<span id="L86"><span class="lineNum">      86</span>              :  * primary has it active independently of the value of the GUC.</span>
+<span id="L87"><span class="lineNum">      87</span>              :  *</span>
+<span id="L88"><span class="lineNum">      88</span>              :  * This is protected by CommitTsLock.  In some places, we use commitTsActive</span>
+<span id="L89"><span class="lineNum">      89</span>              :  * without acquiring the lock; where this happens, a comment explains the</span>
+<span id="L90"><span class="lineNum">      90</span>              :  * rationale for it.</span>
+<span id="L91"><span class="lineNum">      91</span>              :  */</span>
+<span id="L92"><span class="lineNum">      92</span>              : typedef struct CommitTimestampShared</span>
+<span id="L93"><span class="lineNum">      93</span>              : {</span>
+<span id="L94"><span class="lineNum">      94</span>              :         TransactionId xidLastCommit;</span>
+<span id="L95"><span class="lineNum">      95</span>              :         CommitTimestampEntry dataLastCommit;</span>
+<span id="L96"><span class="lineNum">      96</span>              :         bool            commitTsActive;</span>
+<span id="L97"><span class="lineNum">      97</span>              : } CommitTimestampShared;</span>
+<span id="L98"><span class="lineNum">      98</span>              : </span>
+<span id="L99"><span class="lineNum">      99</span>              : CommitTimestampShared *commitTsShared;</span>
+<span id="L100"><span class="lineNum">     100</span>              : </span>
+<span id="L101"><span class="lineNum">     101</span>              : </span>
+<span id="L102"><span class="lineNum">     102</span>              : /* GUC variable */</span>
+<span id="L103"><span class="lineNum">     103</span>              : bool            track_commit_timestamp;</span>
+<span id="L104"><span class="lineNum">     104</span>              : </span>
+<span id="L105"><span class="lineNum">     105</span>              : static void SetXidCommitTsInPage(TransactionId xid, int nsubxids,</span>
+<span id="L106"><span class="lineNum">     106</span>              :                                                                  TransactionId *subxids, TimestampTz ts,</span>
+<span id="L107"><span class="lineNum">     107</span>              :                                                                  RepOriginId nodeid, int pageno);</span>
+<span id="L108"><span class="lineNum">     108</span>              : static void TransactionIdSetCommitTs(TransactionId xid, TimestampTz ts,</span>
+<span id="L109"><span class="lineNum">     109</span>              :                                                                          RepOriginId nodeid, int slotno);</span>
+<span id="L110"><span class="lineNum">     110</span>              : static void error_commit_ts_disabled(void);</span>
+<span id="L111"><span class="lineNum">     111</span>              : static int      ZeroCommitTsPage(int pageno, bool writeXlog);</span>
+<span id="L112"><span class="lineNum">     112</span>              : static bool CommitTsPagePrecedes(int page1, int page2);</span>
+<span id="L113"><span class="lineNum">     113</span>              : static void ActivateCommitTs(void);</span>
+<span id="L114"><span class="lineNum">     114</span>              : static void DeactivateCommitTs(void);</span>
+<span id="L115"><span class="lineNum">     115</span>              : static void WriteZeroPageXlogRec(int pageno);</span>
+<span id="L116"><span class="lineNum">     116</span>              : static void WriteTruncateXlogRec(int pageno, TransactionId oldestXid);</span>
+<span id="L117"><span class="lineNum">     117</span>              : static void WriteSetTimestampXlogRec(TransactionId mainxid, int nsubxids,</span>
+<span id="L118"><span class="lineNum">     118</span>              :                                                                          TransactionId *subxids, TimestampTz timestamp,</span>
+<span id="L119"><span class="lineNum">     119</span>              :                                                                          RepOriginId nodeid);</span>
+<span id="L120"><span class="lineNum">     120</span>              : </span>
+<span id="L121"><span class="lineNum">     121</span>              : /*</span>
+<span id="L122"><span class="lineNum">     122</span>              :  * TransactionTreeSetCommitTsData</span>
+<span id="L123"><span class="lineNum">     123</span>              :  *</span>
+<span id="L124"><span class="lineNum">     124</span>              :  * Record the final commit timestamp of transaction entries in the commit log</span>
+<span id="L125"><span class="lineNum">     125</span>              :  * for a transaction and its subtransaction tree, as efficiently as possible.</span>
+<span id="L126"><span class="lineNum">     126</span>              :  *</span>
+<span id="L127"><span class="lineNum">     127</span>              :  * xid is the top level transaction id.</span>
+<span id="L128"><span class="lineNum">     128</span>              :  *</span>
+<span id="L129"><span class="lineNum">     129</span>              :  * subxids is an array of xids of length nsubxids, representing subtransactions</span>
+<span id="L130"><span class="lineNum">     130</span>              :  * in the tree of xid. In various cases nsubxids may be zero.</span>
+<span id="L131"><span class="lineNum">     131</span>              :  * The reason why tracking just the parent xid commit timestamp is not enough</span>
+<span id="L132"><span class="lineNum">     132</span>              :  * is that the subtrans SLRU does not stay valid across crashes (it's not</span>
+<span id="L133"><span class="lineNum">     133</span>              :  * permanent) so we need to keep the information about them here. If the</span>
+<span id="L134"><span class="lineNum">     134</span>              :  * subtrans implementation changes in the future, we might want to revisit the</span>
+<span id="L135"><span class="lineNum">     135</span>              :  * decision of storing timestamp info for each subxid.</span>
+<span id="L136"><span class="lineNum">     136</span>              :  *</span>
+<span id="L137"><span class="lineNum">     137</span>              :  * The write_xlog parameter tells us whether to include an XLog record of this</span>
+<span id="L138"><span class="lineNum">     138</span>              :  * or not.  Normally, this is called from transaction commit routines (both</span>
+<span id="L139"><span class="lineNum">     139</span>              :  * normal and prepared) and the information will be stored in the transaction</span>
+<span id="L140"><span class="lineNum">     140</span>              :  * commit XLog record, and so they should pass &quot;false&quot; for this.  The XLog redo</span>
+<span id="L141"><span class="lineNum">     141</span>              :  * code should use &quot;false&quot; here as well.  Other callers probably want to pass</span>
+<span id="L142"><span class="lineNum">     142</span>              :  * true, so that the given values persist in case of crashes.</span>
+<span id="L143"><span class="lineNum">     143</span>              :  */</span>
+<span id="L144"><span class="lineNum">     144</span>              : void</span>
+<span id="L145"><span class="lineNum">     145</span> <span class="tlaGNC tlaBgGNC">        1155 : TransactionTreeSetCommitTsData(TransactionId xid, int nsubxids,</span></span>
+<span id="L146"><span class="lineNum">     146</span>              :                                                            TransactionId *subxids, TimestampTz timestamp,</span>
+<span id="L147"><span class="lineNum">     147</span>              :                                                            RepOriginId nodeid, bool write_xlog)</span>
+<span id="L148"><span class="lineNum">     148</span>              : {</span>
+<span id="L149"><span class="lineNum">     149</span>              :         int                     i;</span>
+<span id="L150"><span class="lineNum">     150</span>              :         TransactionId headxid;</span>
+<span id="L151"><span class="lineNum">     151</span>              :         TransactionId newestXact;</span>
+<span id="L152"><span class="lineNum">     152</span>              : </span>
+<span id="L153"><span class="lineNum">     153</span>              :         /*</span>
+<span id="L154"><span class="lineNum">     154</span>              :          * No-op if the module is not active.</span>
+<span id="L155"><span class="lineNum">     155</span>              :          *</span>
+<span id="L156"><span class="lineNum">     156</span>              :          * An unlocked read here is fine, because in a standby (the only place</span>
+<span id="L157"><span class="lineNum">     157</span>              :          * where the flag can change in flight) this routine is only called by the</span>
+<span id="L158"><span class="lineNum">     158</span>              :          * recovery process, which is also the only process which can change the</span>
+<span id="L159"><span class="lineNum">     159</span>              :          * flag.</span>
+<span id="L160"><span class="lineNum">     160</span>              :          */</span>
+<span id="L161"><span class="lineNum">     161</span> <span class="tlaGNC">        1155 :         if (!commitTsShared-&gt;commitTsActive)</span></span>
+<span id="L162"><span class="lineNum">     162</span> <span class="tlaGNC">         483 :                 return;</span></span>
+<span id="L163"><span class="lineNum">     163</span>              : </span>
+<span id="L164"><span class="lineNum">     164</span>              :         /*</span>
+<span id="L165"><span class="lineNum">     165</span>              :          * Comply with the WAL-before-data rule: if caller specified it wants this</span>
+<span id="L166"><span class="lineNum">     166</span>              :          * value to be recorded in WAL, do so before touching the data.</span>
+<span id="L167"><span class="lineNum">     167</span>              :          */</span>
+<span id="L168"><span class="lineNum">     168</span> <span class="tlaGNC">         672 :         if (write_xlog)</span></span>
+<span id="L169"><span class="lineNum">     169</span> <span class="tlaUNC tlaBgUNC">           0 :                 WriteSetTimestampXlogRec(xid, nsubxids, subxids, timestamp, nodeid);</span></span>
+<span id="L170"><span class="lineNum">     170</span>              : </span>
+<span id="L171"><span class="lineNum">     171</span>              :         /*</span>
+<span id="L172"><span class="lineNum">     172</span>              :          * Figure out the latest Xid in this batch: either the last subxid if</span>
+<span id="L173"><span class="lineNum">     173</span>              :          * there's any, otherwise the parent xid.</span>
+<span id="L174"><span class="lineNum">     174</span>              :          */</span>
+<span id="L175"><span class="lineNum">     175</span> <span class="tlaGNC tlaBgGNC">         672 :         if (nsubxids &gt; 0)</span></span>
+<span id="L176"><span class="lineNum">     176</span> <span class="tlaGNC">           2 :                 newestXact = subxids[nsubxids - 1];</span></span>
+<span id="L177"><span class="lineNum">     177</span>              :         else</span>
+<span id="L178"><span class="lineNum">     178</span> <span class="tlaGNC">         670 :                 newestXact = xid;</span></span>
+<span id="L179"><span class="lineNum">     179</span>              : </span>
+<span id="L180"><span class="lineNum">     180</span>              :         /*</span>
+<span id="L181"><span class="lineNum">     181</span>              :          * We split the xids to set the timestamp to in groups belonging to the</span>
+<span id="L182"><span class="lineNum">     182</span>              :          * same SLRU page; the first element in each such set is its head.  The</span>
+<span id="L183"><span class="lineNum">     183</span>              :          * first group has the main XID as the head; subsequent sets use the first</span>
+<span id="L184"><span class="lineNum">     184</span>              :          * subxid not on the previous page as head.  This way, we only have to</span>
+<span id="L185"><span class="lineNum">     185</span>              :          * lock/modify each SLRU page once.</span>
+<span id="L186"><span class="lineNum">     186</span>              :          */</span>
+<span id="L187"><span class="lineNum">     187</span> <span class="tlaGNC">         672 :         headxid = xid;</span></span>
+<span id="L188"><span class="lineNum">     188</span> <span class="tlaGNC">         672 :         i = 0;</span></span>
+<span id="L189"><span class="lineNum">     189</span>              :         for (;;)</span>
+<span id="L190"><span class="lineNum">     190</span> <span class="tlaUNC tlaBgUNC">           0 :         {</span></span>
+<span id="L191"><span class="lineNum">     191</span> <span class="tlaGNC tlaBgGNC">         672 :                 int                     pageno = TransactionIdToCTsPage(headxid);</span></span>
+<span id="L192"><span class="lineNum">     192</span>              :                 int                     j;</span>
+<span id="L193"><span class="lineNum">     193</span>              : </span>
+<span id="L194"><span class="lineNum">     194</span> <span class="tlaGNC">         677 :                 for (j = i; j &lt; nsubxids; j++)</span></span>
+<span id="L195"><span class="lineNum">     195</span>              :                 {</span>
+<span id="L196"><span class="lineNum">     196</span> <span class="tlaGNC">           5 :                         if (TransactionIdToCTsPage(subxids[j]) != pageno)</span></span>
+<span id="L197"><span class="lineNum">     197</span> <span class="tlaUNC tlaBgUNC">           0 :                                 break;</span></span>
+<span id="L198"><span class="lineNum">     198</span>              :                 }</span>
+<span id="L199"><span class="lineNum">     199</span>              :                 /* subxids[i..j] are on the same page as the head */</span>
+<span id="L200"><span class="lineNum">     200</span>              : </span>
+<span id="L201"><span class="lineNum">     201</span> <span class="tlaGNC tlaBgGNC">         672 :                 SetXidCommitTsInPage(headxid, j - i, subxids + i, timestamp, nodeid,</span></span>
+<span id="L202"><span class="lineNum">     202</span>              :                                                          pageno);</span>
+<span id="L203"><span class="lineNum">     203</span>              : </span>
+<span id="L204"><span class="lineNum">     204</span>              :                 /* if we wrote out all subxids, we're done. */</span>
+<span id="L205"><span class="lineNum">     205</span> <span class="tlaGNC">         672 :                 if (j &gt;= nsubxids)</span></span>
+<span id="L206"><span class="lineNum">     206</span> <span class="tlaGNC">         672 :                         break;</span></span>
+<span id="L207"><span class="lineNum">     207</span>              : </span>
+<span id="L208"><span class="lineNum">     208</span>              :                 /*</span>
+<span id="L209"><span class="lineNum">     209</span>              :                  * Set the new head and skip over it, as well as over the subxids we</span>
+<span id="L210"><span class="lineNum">     210</span>              :                  * just wrote.</span>
+<span id="L211"><span class="lineNum">     211</span>              :                  */</span>
+<span id="L212"><span class="lineNum">     212</span> <span class="tlaUNC tlaBgUNC">           0 :                 headxid = subxids[j];</span></span>
+<span id="L213"><span class="lineNum">     213</span> <span class="tlaUNC">           0 :                 i = j + 1;</span></span>
+<span id="L214"><span class="lineNum">     214</span>              :         }</span>
+<span id="L215"><span class="lineNum">     215</span>              : </span>
+<span id="L216"><span class="lineNum">     216</span>              :         /* update the cached value in shared memory */</span>
+<span id="L217"><span class="lineNum">     217</span> <span class="tlaGNC tlaBgGNC">         672 :         LWLockAcquire(CommitTsLock, LW_EXCLUSIVE);</span></span>
+<span id="L218"><span class="lineNum">     218</span> <span class="tlaGNC">         672 :         commitTsShared-&gt;xidLastCommit = xid;</span></span>
+<span id="L219"><span class="lineNum">     219</span> <span class="tlaGNC">         672 :         commitTsShared-&gt;dataLastCommit.time = timestamp;</span></span>
+<span id="L220"><span class="lineNum">     220</span> <span class="tlaGNC">         672 :         commitTsShared-&gt;dataLastCommit.nodeid = nodeid;</span></span>
+<span id="L221"><span class="lineNum">     221</span>              : </span>
+<span id="L222"><span class="lineNum">     222</span>              :         /* and move forwards our endpoint, if needed */</span>
+<span id="L223"><span class="lineNum">     223</span> <span class="tlaGNC">         672 :         if (TransactionIdPrecedes(ShmemVariableCache-&gt;newestCommitTsXid, newestXact))</span></span>
+<span id="L224"><span class="lineNum">     224</span> <span class="tlaGNC">         671 :                 ShmemVariableCache-&gt;newestCommitTsXid = newestXact;</span></span>
+<span id="L225"><span class="lineNum">     225</span> <span class="tlaGNC">         672 :         LWLockRelease(CommitTsLock);</span></span>
+<span id="L226"><span class="lineNum">     226</span>              : }</span>
+<span id="L227"><span class="lineNum">     227</span>              : </span>
+<span id="L228"><span class="lineNum">     228</span>              : /*</span>
+<span id="L229"><span class="lineNum">     229</span>              :  * Record the commit timestamp of transaction entries in the commit log for all</span>
+<span id="L230"><span class="lineNum">     230</span>              :  * entries on a single page.  Atomic only on this page.</span>
+<span id="L231"><span class="lineNum">     231</span>              :  */</span>
+<span id="L232"><span class="lineNum">     232</span>              : static void</span>
+<span id="L233"><span class="lineNum">     233</span> <span class="tlaGNC">         672 : SetXidCommitTsInPage(TransactionId xid, int nsubxids,</span></span>
+<span id="L234"><span class="lineNum">     234</span>              :                                          TransactionId *subxids, TimestampTz ts,</span>
+<span id="L235"><span class="lineNum">     235</span>              :                                          RepOriginId nodeid, int pageno)</span>
+<span id="L236"><span class="lineNum">     236</span>              : {</span>
+<span id="L237"><span class="lineNum">     237</span>              :         int                     slotno;</span>
+<span id="L238"><span class="lineNum">     238</span>              :         int                     i;</span>
+<span id="L239"><span class="lineNum">     239</span>              : </span>
+<span id="L240"><span class="lineNum">     240</span> <span class="tlaGNC">         672 :         LWLockAcquire(CommitTsSLRULock, LW_EXCLUSIVE);</span></span>
+<span id="L241"><span class="lineNum">     241</span>              : </span>
+<span id="L242"><span class="lineNum">     242</span> <span class="tlaGNC">         672 :         slotno = SimpleLruReadPage(CommitTsCtl, pageno, true, xid);</span></span>
+<span id="L243"><span class="lineNum">     243</span>              : </span>
+<span id="L244"><span class="lineNum">     244</span> <span class="tlaGNC">         672 :         TransactionIdSetCommitTs(xid, ts, nodeid, slotno);</span></span>
+<span id="L245"><span class="lineNum">     245</span> <span class="tlaGNC">         677 :         for (i = 0; i &lt; nsubxids; i++)</span></span>
+<span id="L246"><span class="lineNum">     246</span> <span class="tlaGNC">           5 :                 TransactionIdSetCommitTs(subxids[i], ts, nodeid, slotno);</span></span>
+<span id="L247"><span class="lineNum">     247</span>              : </span>
+<span id="L248"><span class="lineNum">     248</span> <span class="tlaGNC">         672 :         CommitTsCtl-&gt;shared-&gt;page_dirty[slotno] = true;</span></span>
+<span id="L249"><span class="lineNum">     249</span>              : </span>
+<span id="L250"><span class="lineNum">     250</span> <span class="tlaGNC">         672 :         LWLockRelease(CommitTsSLRULock);</span></span>
+<span id="L251"><span class="lineNum">     251</span> <span class="tlaGNC">         672 : }</span></span>
+<span id="L252"><span class="lineNum">     252</span>              : </span>
+<span id="L253"><span class="lineNum">     253</span>              : /*</span>
+<span id="L254"><span class="lineNum">     254</span>              :  * Sets the commit timestamp of a single transaction.</span>
+<span id="L255"><span class="lineNum">     255</span>              :  *</span>
+<span id="L256"><span class="lineNum">     256</span>              :  * Must be called with CommitTsSLRULock held</span>
+<span id="L257"><span class="lineNum">     257</span>              :  */</span>
+<span id="L258"><span class="lineNum">     258</span>              : static void</span>
+<span id="L259"><span class="lineNum">     259</span> <span class="tlaGNC">         677 : TransactionIdSetCommitTs(TransactionId xid, TimestampTz ts,</span></span>
+<span id="L260"><span class="lineNum">     260</span>              :                                                  RepOriginId nodeid, int slotno)</span>
+<span id="L261"><span class="lineNum">     261</span>              : {</span>
+<span id="L262"><span class="lineNum">     262</span> <span class="tlaGNC">         677 :         int                     entryno = TransactionIdToCTsEntry(xid);</span></span>
+<span id="L263"><span class="lineNum">     263</span>              :         CommitTimestampEntry entry;</span>
+<span id="L264"><span class="lineNum">     264</span>              : </span>
+<span id="L265"><span class="lineNum">     265</span>              :         Assert(TransactionIdIsNormal(xid));</span>
+<span id="L266"><span class="lineNum">     266</span>              : </span>
+<span id="L267"><span class="lineNum">     267</span> <span class="tlaGNC">         677 :         entry.time = ts;</span></span>
+<span id="L268"><span class="lineNum">     268</span> <span class="tlaGNC">         677 :         entry.nodeid = nodeid;</span></span>
+<span id="L269"><span class="lineNum">     269</span>              : </span>
+<span id="L270"><span class="lineNum">     270</span> <span class="tlaGNC">         677 :         memcpy(CommitTsCtl-&gt;shared-&gt;page_buffer[slotno] +</span></span>
+<span id="L271"><span class="lineNum">     271</span> <span class="tlaGNC">         677 :                    SizeOfCommitTimestampEntry * entryno,</span></span>
+<span id="L272"><span class="lineNum">     272</span>              :                    &amp;entry, SizeOfCommitTimestampEntry);</span>
+<span id="L273"><span class="lineNum">     273</span> <span class="tlaGNC">         677 : }</span></span>
+<span id="L274"><span class="lineNum">     274</span>              : </span>
+<span id="L275"><span class="lineNum">     275</span>              : /*</span>
+<span id="L276"><span class="lineNum">     276</span>              :  * Interrogate the commit timestamp of a transaction.</span>
+<span id="L277"><span class="lineNum">     277</span>              :  *</span>
+<span id="L278"><span class="lineNum">     278</span>              :  * The return value indicates whether a commit timestamp record was found for</span>
+<span id="L279"><span class="lineNum">     279</span>              :  * the given xid.  The timestamp value is returned in *ts (which may not be</span>
+<span id="L280"><span class="lineNum">     280</span>              :  * null), and the origin node for the Xid is returned in *nodeid, if it's not</span>
+<span id="L281"><span class="lineNum">     281</span>              :  * null.</span>
+<span id="L282"><span class="lineNum">     282</span>              :  */</span>
+<span id="L283"><span class="lineNum">     283</span>              : bool</span>
+<span id="L284"><span class="lineNum">     284</span> <span class="tlaUNC tlaBgUNC">           0 : TransactionIdGetCommitTsData(TransactionId xid, TimestampTz *ts,</span></span>
+<span id="L285"><span class="lineNum">     285</span>              :                                                          RepOriginId *nodeid)</span>
+<span id="L286"><span class="lineNum">     286</span>              : {</span>
+<span id="L287"><span class="lineNum">     287</span> <span class="tlaUNC">           0 :         int                     pageno = TransactionIdToCTsPage(xid);</span></span>
+<span id="L288"><span class="lineNum">     288</span> <span class="tlaUNC">           0 :         int                     entryno = TransactionIdToCTsEntry(xid);</span></span>
+<span id="L289"><span class="lineNum">     289</span>              :         int                     slotno;</span>
+<span id="L290"><span class="lineNum">     290</span>              :         CommitTimestampEntry entry;</span>
+<span id="L291"><span class="lineNum">     291</span>              :         TransactionId oldestCommitTsXid;</span>
+<span id="L292"><span class="lineNum">     292</span>              :         TransactionId newestCommitTsXid;</span>
+<span id="L293"><span class="lineNum">     293</span>              : </span>
+<span id="L294"><span class="lineNum">     294</span> <span class="tlaUNC">           0 :         if (!TransactionIdIsValid(xid))</span></span>
+<span id="L295"><span class="lineNum">     295</span> <span class="tlaUNC">           0 :                 ereport(ERROR,</span></span>
+<span id="L296"><span class="lineNum">     296</span>              :                                 (errcode(ERRCODE_INVALID_PARAMETER_VALUE),</span>
+<span id="L297"><span class="lineNum">     297</span>              :                                  errmsg(&quot;cannot retrieve commit timestamp for transaction %u&quot;, xid)));</span>
+<span id="L298"><span class="lineNum">     298</span> <span class="tlaUNC">           0 :         else if (!TransactionIdIsNormal(xid))</span></span>
+<span id="L299"><span class="lineNum">     299</span>              :         {</span>
+<span id="L300"><span class="lineNum">     300</span>              :                 /* frozen and bootstrap xids are always committed far in the past */</span>
+<span id="L301"><span class="lineNum">     301</span> <span class="tlaUNC">           0 :                 *ts = 0;</span></span>
+<span id="L302"><span class="lineNum">     302</span> <span class="tlaUNC">           0 :                 if (nodeid)</span></span>
+<span id="L303"><span class="lineNum">     303</span> <span class="tlaUNC">           0 :                         *nodeid = 0;</span></span>
+<span id="L304"><span class="lineNum">     304</span> <span class="tlaUNC">           0 :                 return false;</span></span>
+<span id="L305"><span class="lineNum">     305</span>              :         }</span>
+<span id="L306"><span class="lineNum">     306</span>              : </span>
+<span id="L307"><span class="lineNum">     307</span> <span class="tlaUNC">           0 :         LWLockAcquire(CommitTsLock, LW_SHARED);</span></span>
+<span id="L308"><span class="lineNum">     308</span>              : </span>
+<span id="L309"><span class="lineNum">     309</span>              :         /* Error if module not enabled */</span>
+<span id="L310"><span class="lineNum">     310</span> <span class="tlaUNC">           0 :         if (!commitTsShared-&gt;commitTsActive)</span></span>
+<span id="L311"><span class="lineNum">     311</span> <span class="tlaUNC">           0 :                 error_commit_ts_disabled();</span></span>
+<span id="L312"><span class="lineNum">     312</span>              : </span>
+<span id="L313"><span class="lineNum">     313</span>              :         /*</span>
+<span id="L314"><span class="lineNum">     314</span>              :          * If we're asked for the cached value, return that.  Otherwise, fall</span>
+<span id="L315"><span class="lineNum">     315</span>              :          * through to read from SLRU.</span>
+<span id="L316"><span class="lineNum">     316</span>              :          */</span>
+<span id="L317"><span class="lineNum">     317</span> <span class="tlaUNC">           0 :         if (commitTsShared-&gt;xidLastCommit == xid)</span></span>
+<span id="L318"><span class="lineNum">     318</span>              :         {</span>
+<span id="L319"><span class="lineNum">     319</span> <span class="tlaUNC">           0 :                 *ts = commitTsShared-&gt;dataLastCommit.time;</span></span>
+<span id="L320"><span class="lineNum">     320</span> <span class="tlaUNC">           0 :                 if (nodeid)</span></span>
+<span id="L321"><span class="lineNum">     321</span> <span class="tlaUNC">           0 :                         *nodeid = commitTsShared-&gt;dataLastCommit.nodeid;</span></span>
+<span id="L322"><span class="lineNum">     322</span>              : </span>
+<span id="L323"><span class="lineNum">     323</span> <span class="tlaUNC">           0 :                 LWLockRelease(CommitTsLock);</span></span>
+<span id="L324"><span class="lineNum">     324</span> <span class="tlaUNC">           0 :                 return *ts != 0;</span></span>
+<span id="L325"><span class="lineNum">     325</span>              :         }</span>
+<span id="L326"><span class="lineNum">     326</span>              : </span>
+<span id="L327"><span class="lineNum">     327</span> <span class="tlaUNC">           0 :         oldestCommitTsXid = ShmemVariableCache-&gt;oldestCommitTsXid;</span></span>
+<span id="L328"><span class="lineNum">     328</span> <span class="tlaUNC">           0 :         newestCommitTsXid = ShmemVariableCache-&gt;newestCommitTsXid;</span></span>
+<span id="L329"><span class="lineNum">     329</span>              :         /* neither is invalid, or both are */</span>
+<span id="L330"><span class="lineNum">     330</span>              :         Assert(TransactionIdIsValid(oldestCommitTsXid) == TransactionIdIsValid(newestCommitTsXid));</span>
+<span id="L331"><span class="lineNum">     331</span> <span class="tlaUNC">           0 :         LWLockRelease(CommitTsLock);</span></span>
+<span id="L332"><span class="lineNum">     332</span>              : </span>
+<span id="L333"><span class="lineNum">     333</span>              :         /*</span>
+<span id="L334"><span class="lineNum">     334</span>              :          * Return empty if the requested value is outside our valid range.</span>
+<span id="L335"><span class="lineNum">     335</span>              :          */</span>
+<span id="L336"><span class="lineNum">     336</span> <span class="tlaUNC">           0 :         if (!TransactionIdIsValid(oldestCommitTsXid) ||</span></span>
+<span id="L337"><span class="lineNum">     337</span> <span class="tlaUNC">           0 :                 TransactionIdPrecedes(xid, oldestCommitTsXid) ||</span></span>
+<span id="L338"><span class="lineNum">     338</span> <span class="tlaUNC">           0 :                 TransactionIdPrecedes(newestCommitTsXid, xid))</span></span>
+<span id="L339"><span class="lineNum">     339</span>              :         {</span>
+<span id="L340"><span class="lineNum">     340</span> <span class="tlaUNC">           0 :                 *ts = 0;</span></span>
+<span id="L341"><span class="lineNum">     341</span> <span class="tlaUNC">           0 :                 if (nodeid)</span></span>
+<span id="L342"><span class="lineNum">     342</span> <span class="tlaUNC">           0 :                         *nodeid = InvalidRepOriginId;</span></span>
+<span id="L343"><span class="lineNum">     343</span> <span class="tlaUNC">           0 :                 return false;</span></span>
+<span id="L344"><span class="lineNum">     344</span>              :         }</span>
+<span id="L345"><span class="lineNum">     345</span>              : </span>
+<span id="L346"><span class="lineNum">     346</span>              :         /* lock is acquired by SimpleLruReadPage_ReadOnly */</span>
+<span id="L347"><span class="lineNum">     347</span> <span class="tlaUNC">           0 :         slotno = SimpleLruReadPage_ReadOnly(CommitTsCtl, pageno, xid);</span></span>
+<span id="L348"><span class="lineNum">     348</span> <span class="tlaUNC">           0 :         memcpy(&amp;entry,</span></span>
+<span id="L349"><span class="lineNum">     349</span> <span class="tlaUNC">           0 :                    CommitTsCtl-&gt;shared-&gt;page_buffer[slotno] +</span></span>
+<span id="L350"><span class="lineNum">     350</span> <span class="tlaUNC">           0 :                    SizeOfCommitTimestampEntry * entryno,</span></span>
+<span id="L351"><span class="lineNum">     351</span>              :                    SizeOfCommitTimestampEntry);</span>
+<span id="L352"><span class="lineNum">     352</span>              : </span>
+<span id="L353"><span class="lineNum">     353</span> <span class="tlaUNC">           0 :         *ts = entry.time;</span></span>
+<span id="L354"><span class="lineNum">     354</span> <span class="tlaUNC">           0 :         if (nodeid)</span></span>
+<span id="L355"><span class="lineNum">     355</span> <span class="tlaUNC">           0 :                 *nodeid = entry.nodeid;</span></span>
+<span id="L356"><span class="lineNum">     356</span>              : </span>
+<span id="L357"><span class="lineNum">     357</span> <span class="tlaUNC">           0 :         LWLockRelease(CommitTsSLRULock);</span></span>
+<span id="L358"><span class="lineNum">     358</span> <span class="tlaUNC">           0 :         return *ts != 0;</span></span>
+<span id="L359"><span class="lineNum">     359</span>              : }</span>
+<span id="L360"><span class="lineNum">     360</span>              : </span>
+<span id="L361"><span class="lineNum">     361</span>              : /*</span>
+<span id="L362"><span class="lineNum">     362</span>              :  * Return the Xid of the latest committed transaction.  (As far as this module</span>
+<span id="L363"><span class="lineNum">     363</span>              :  * is concerned, anyway; it's up to the caller to ensure the value is useful</span>
+<span id="L364"><span class="lineNum">     364</span>              :  * for its purposes.)</span>
+<span id="L365"><span class="lineNum">     365</span>              :  *</span>
+<span id="L366"><span class="lineNum">     366</span>              :  * ts and extra are filled with the corresponding data; they can be passed</span>
+<span id="L367"><span class="lineNum">     367</span>              :  * as NULL if not wanted.</span>
+<span id="L368"><span class="lineNum">     368</span>              :  */</span>
+<span id="L369"><span class="lineNum">     369</span>              : TransactionId</span>
+<span id="L370"><span class="lineNum">     370</span> <span class="tlaUNC">           0 : GetLatestCommitTsData(TimestampTz *ts, RepOriginId *nodeid)</span></span>
+<span id="L371"><span class="lineNum">     371</span>              : {</span>
+<span id="L372"><span class="lineNum">     372</span>              :         TransactionId xid;</span>
+<span id="L373"><span class="lineNum">     373</span>              : </span>
+<span id="L374"><span class="lineNum">     374</span> <span class="tlaUNC">           0 :         LWLockAcquire(CommitTsLock, LW_SHARED);</span></span>
+<span id="L375"><span class="lineNum">     375</span>              : </span>
+<span id="L376"><span class="lineNum">     376</span>              :         /* Error if module not enabled */</span>
+<span id="L377"><span class="lineNum">     377</span> <span class="tlaUNC">           0 :         if (!commitTsShared-&gt;commitTsActive)</span></span>
+<span id="L378"><span class="lineNum">     378</span> <span class="tlaUNC">           0 :                 error_commit_ts_disabled();</span></span>
+<span id="L379"><span class="lineNum">     379</span>              : </span>
+<span id="L380"><span class="lineNum">     380</span> <span class="tlaUNC">           0 :         xid = commitTsShared-&gt;xidLastCommit;</span></span>
+<span id="L381"><span class="lineNum">     381</span> <span class="tlaUNC">           0 :         if (ts)</span></span>
+<span id="L382"><span class="lineNum">     382</span> <span class="tlaUNC">           0 :                 *ts = commitTsShared-&gt;dataLastCommit.time;</span></span>
+<span id="L383"><span class="lineNum">     383</span> <span class="tlaUNC">           0 :         if (nodeid)</span></span>
+<span id="L384"><span class="lineNum">     384</span> <span class="tlaUNC">           0 :                 *nodeid = commitTsShared-&gt;dataLastCommit.nodeid;</span></span>
+<span id="L385"><span class="lineNum">     385</span> <span class="tlaUNC">           0 :         LWLockRelease(CommitTsLock);</span></span>
+<span id="L386"><span class="lineNum">     386</span>              : </span>
+<span id="L387"><span class="lineNum">     387</span> <span class="tlaUNC">           0 :         return xid;</span></span>
+<span id="L388"><span class="lineNum">     388</span>              : }</span>
+<span id="L389"><span class="lineNum">     389</span>              : </span>
+<span id="L390"><span class="lineNum">     390</span>              : static void</span>
+<span id="L391"><span class="lineNum">     391</span> <span class="tlaUNC">           0 : error_commit_ts_disabled(void)</span></span>
+<span id="L392"><span class="lineNum">     392</span>              : {</span>
+<span id="L393"><span class="lineNum">     393</span> <span class="tlaUNC">           0 :         ereport(ERROR,</span></span>
+<span id="L394"><span class="lineNum">     394</span>              :                         (errcode(ERRCODE_OBJECT_NOT_IN_PREREQUISITE_STATE),</span>
+<span id="L395"><span class="lineNum">     395</span>              :                          errmsg(&quot;could not get commit timestamp data&quot;),</span>
+<span id="L396"><span class="lineNum">     396</span>              :                          RecoveryInProgress() ?</span>
+<span id="L397"><span class="lineNum">     397</span>              :                          errhint(&quot;Make sure the configuration parameter \&quot;%s\&quot; is set on the master server.&quot;,</span>
+<span id="L398"><span class="lineNum">     398</span>              :                                          &quot;track_commit_timestamp&quot;) :</span>
+<span id="L399"><span class="lineNum">     399</span>              :                          errhint(&quot;Make sure the configuration parameter \&quot;%s\&quot; is set.&quot;,</span>
+<span id="L400"><span class="lineNum">     400</span>              :                                          &quot;track_commit_timestamp&quot;)));</span>
+<span id="L401"><span class="lineNum">     401</span>              : }</span>
+<span id="L402"><span class="lineNum">     402</span>              : </span>
+<span id="L403"><span class="lineNum">     403</span>              : /*</span>
+<span id="L404"><span class="lineNum">     404</span>              :  * SQL-callable wrapper to obtain commit time of a transaction</span>
+<span id="L405"><span class="lineNum">     405</span>              :  */</span>
+<span id="L406"><span class="lineNum">     406</span>              : Datum</span>
+<span id="L407"><span class="lineNum">     407</span> <span class="tlaUNC">           0 : pg_xact_commit_timestamp(PG_FUNCTION_ARGS)</span></span>
+<span id="L408"><span class="lineNum">     408</span>              : {</span>
+<span id="L409"><span class="lineNum">     409</span> <span class="tlaUNC">           0 :         TransactionId xid = PG_GETARG_UINT32(0);</span></span>
+<span id="L410"><span class="lineNum">     410</span>              :         TimestampTz ts;</span>
+<span id="L411"><span class="lineNum">     411</span>              :         bool            found;</span>
+<span id="L412"><span class="lineNum">     412</span>              : </span>
+<span id="L413"><span class="lineNum">     413</span> <span class="tlaUNC">           0 :         found = TransactionIdGetCommitTsData(xid, &amp;ts, NULL);</span></span>
+<span id="L414"><span class="lineNum">     414</span>              : </span>
+<span id="L415"><span class="lineNum">     415</span> <span class="tlaUNC">           0 :         if (!found)</span></span>
+<span id="L416"><span class="lineNum">     416</span> <span class="tlaUNC">           0 :                 PG_RETURN_NULL();</span></span>
+<span id="L417"><span class="lineNum">     417</span>              : </span>
+<span id="L418"><span class="lineNum">     418</span> <span class="tlaUNC">           0 :         PG_RETURN_TIMESTAMPTZ(ts);</span></span>
+<span id="L419"><span class="lineNum">     419</span>              : }</span>
+<span id="L420"><span class="lineNum">     420</span>              : </span>
+<span id="L421"><span class="lineNum">     421</span>              : </span>
+<span id="L422"><span class="lineNum">     422</span>              : Datum</span>
+<span id="L423"><span class="lineNum">     423</span> <span class="tlaUNC">           0 : pg_last_committed_xact(PG_FUNCTION_ARGS)</span></span>
+<span id="L424"><span class="lineNum">     424</span>              : {</span>
+<span id="L425"><span class="lineNum">     425</span>              :         TransactionId xid;</span>
+<span id="L426"><span class="lineNum">     426</span>              :         TimestampTz ts;</span>
+<span id="L427"><span class="lineNum">     427</span>              :         Datum           values[2];</span>
+<span id="L428"><span class="lineNum">     428</span>              :         bool            nulls[2];</span>
+<span id="L429"><span class="lineNum">     429</span>              :         TupleDesc       tupdesc;</span>
+<span id="L430"><span class="lineNum">     430</span>              :         HeapTuple       htup;</span>
+<span id="L431"><span class="lineNum">     431</span>              : </span>
+<span id="L432"><span class="lineNum">     432</span>              :         /* and construct a tuple with our data */</span>
+<span id="L433"><span class="lineNum">     433</span> <span class="tlaUNC">           0 :         xid = GetLatestCommitTsData(&amp;ts, NULL);</span></span>
+<span id="L434"><span class="lineNum">     434</span>              : </span>
+<span id="L435"><span class="lineNum">     435</span>              :         /*</span>
+<span id="L436"><span class="lineNum">     436</span>              :          * Construct a tuple descriptor for the result row.  This must match this</span>
+<span id="L437"><span class="lineNum">     437</span>              :          * function's pg_proc entry!</span>
+<span id="L438"><span class="lineNum">     438</span>              :          */</span>
+<span id="L439"><span class="lineNum">     439</span> <span class="tlaUNC">           0 :         tupdesc = CreateTemplateTupleDesc(2);</span></span>
+<span id="L440"><span class="lineNum">     440</span> <span class="tlaUNC">           0 :         TupleDescInitEntry(tupdesc, (AttrNumber) 1, &quot;xid&quot;,</span></span>
+<span id="L441"><span class="lineNum">     441</span>              :                                            XIDOID, -1, 0);</span>
+<span id="L442"><span class="lineNum">     442</span> <span class="tlaUNC">           0 :         TupleDescInitEntry(tupdesc, (AttrNumber) 2, &quot;timestamp&quot;,</span></span>
+<span id="L443"><span class="lineNum">     443</span>              :                                            TIMESTAMPTZOID, -1, 0);</span>
+<span id="L444"><span class="lineNum">     444</span> <span class="tlaUNC">           0 :         tupdesc = BlessTupleDesc(tupdesc);</span></span>
+<span id="L445"><span class="lineNum">     445</span>              : </span>
+<span id="L446"><span class="lineNum">     446</span> <span class="tlaUNC">           0 :         if (!TransactionIdIsNormal(xid))</span></span>
+<span id="L447"><span class="lineNum">     447</span>              :         {</span>
+<span id="L448"><span class="lineNum">     448</span> <span class="tlaUNC">           0 :                 memset(nulls, true, sizeof(nulls));</span></span>
+<span id="L449"><span class="lineNum">     449</span>              :         }</span>
+<span id="L450"><span class="lineNum">     450</span>              :         else</span>
+<span id="L451"><span class="lineNum">     451</span>              :         {</span>
+<span id="L452"><span class="lineNum">     452</span> <span class="tlaUNC">           0 :                 values[0] = TransactionIdGetDatum(xid);</span></span>
+<span id="L453"><span class="lineNum">     453</span> <span class="tlaUNC">           0 :                 nulls[0] = false;</span></span>
+<span id="L454"><span class="lineNum">     454</span>              : </span>
+<span id="L455"><span class="lineNum">     455</span> <span class="tlaUNC">           0 :                 values[1] = TimestampTzGetDatum(ts);</span></span>
+<span id="L456"><span class="lineNum">     456</span> <span class="tlaUNC">           0 :                 nulls[1] = false;</span></span>
+<span id="L457"><span class="lineNum">     457</span>              :         }</span>
+<span id="L458"><span class="lineNum">     458</span>              : </span>
+<span id="L459"><span class="lineNum">     459</span> <span class="tlaUNC">           0 :         htup = heap_form_tuple(tupdesc, values, nulls);</span></span>
+<span id="L460"><span class="lineNum">     460</span>              : </span>
+<span id="L461"><span class="lineNum">     461</span> <span class="tlaUNC">           0 :         PG_RETURN_DATUM(HeapTupleGetDatum(htup));</span></span>
+<span id="L462"><span class="lineNum">     462</span>              : }</span>
+<span id="L463"><span class="lineNum">     463</span>              : </span>
+<span id="L464"><span class="lineNum">     464</span>              : </span>
+<span id="L465"><span class="lineNum">     465</span>              : /*</span>
+<span id="L466"><span class="lineNum">     466</span>              :  * Number of shared CommitTS buffers.</span>
+<span id="L467"><span class="lineNum">     467</span>              :  *</span>
+<span id="L468"><span class="lineNum">     468</span>              :  * We use a very similar logic as for the number of CLOG buffers; see comments</span>
+<span id="L469"><span class="lineNum">     469</span>              :  * in CLOGShmemBuffers.</span>
+<span id="L470"><span class="lineNum">     470</span>              :  */</span>
+<span id="L471"><span class="lineNum">     471</span>              : Size</span>
+<span id="L472"><span class="lineNum">     472</span> <span class="tlaGNC tlaBgGNC">          10 : CommitTsShmemBuffers(void)</span></span>
+<span id="L473"><span class="lineNum">     473</span>              : {</span>
+<span id="L474"><span class="lineNum">     474</span> <span class="tlaGNC">          10 :         return Min(16, Max(4, NBuffers / 1024));</span></span>
+<span id="L475"><span class="lineNum">     475</span>              : }</span>
+<span id="L476"><span class="lineNum">     476</span>              : </span>
+<span id="L477"><span class="lineNum">     477</span>              : /*</span>
+<span id="L478"><span class="lineNum">     478</span>              :  * Shared memory sizing for CommitTs</span>
+<span id="L479"><span class="lineNum">     479</span>              :  */</span>
+<span id="L480"><span class="lineNum">     480</span>              : Size</span>
+<span id="L481"><span class="lineNum">     481</span> <span class="tlaGNC">           5 : CommitTsShmemSize(void)</span></span>
+<span id="L482"><span class="lineNum">     482</span>              : {</span>
+<span id="L483"><span class="lineNum">     483</span> <span class="tlaGNC">           5 :         return SimpleLruShmemSize(CommitTsShmemBuffers(), 0) +</span></span>
+<span id="L484"><span class="lineNum">     484</span>              :                 sizeof(CommitTimestampShared);</span>
+<span id="L485"><span class="lineNum">     485</span>              : }</span>
+<span id="L486"><span class="lineNum">     486</span>              : </span>
+<span id="L487"><span class="lineNum">     487</span>              : /*</span>
+<span id="L488"><span class="lineNum">     488</span>              :  * Initialize CommitTs at system startup (postmaster start or standalone</span>
+<span id="L489"><span class="lineNum">     489</span>              :  * backend)</span>
+<span id="L490"><span class="lineNum">     490</span>              :  */</span>
+<span id="L491"><span class="lineNum">     491</span>              : void</span>
+<span id="L492"><span class="lineNum">     492</span> <span class="tlaGNC">           5 : CommitTsShmemInit(void)</span></span>
+<span id="L493"><span class="lineNum">     493</span>              : {</span>
+<span id="L494"><span class="lineNum">     494</span>              :         bool            found;</span>
+<span id="L495"><span class="lineNum">     495</span>              : </span>
+<span id="L496"><span class="lineNum">     496</span> <span class="tlaGNC">           5 :         CommitTsCtl-&gt;PagePrecedes = CommitTsPagePrecedes;</span></span>
+<span id="L497"><span class="lineNum">     497</span> <span class="tlaGNC">           5 :         SimpleLruInit(CommitTsCtl, &quot;CommitTs&quot;, CommitTsShmemBuffers(), 0,</span></span>
+<span id="L498"><span class="lineNum">     498</span> <span class="tlaGNC">           5 :                                   CommitTsSLRULock, &quot;pg_commit_ts&quot;,</span></span>
+<span id="L499"><span class="lineNum">     499</span>              :                                   LWTRANCHE_COMMITTS_BUFFER);</span>
+<span id="L500"><span class="lineNum">     500</span>              :         SlruPagePrecedesUnitTests(CommitTsCtl, COMMIT_TS_XACTS_PER_PAGE);</span>
+<span id="L501"><span class="lineNum">     501</span>              : </span>
+<span id="L502"><span class="lineNum">     502</span> <span class="tlaGNC">           5 :         commitTsShared = ShmemInitStruct(&quot;CommitTs shared&quot;,</span></span>
+<span id="L503"><span class="lineNum">     503</span>              :                                                                          sizeof(CommitTimestampShared),</span>
+<span id="L504"><span class="lineNum">     504</span>              :                                                                          &amp;found);</span>
+<span id="L505"><span class="lineNum">     505</span>              : </span>
+<span id="L506"><span class="lineNum">     506</span> <span class="tlaGNC">           5 :         if (!IsUnderPostmaster)</span></span>
+<span id="L507"><span class="lineNum">     507</span>              :         {</span>
+<span id="L508"><span class="lineNum">     508</span>              :                 Assert(!found);</span>
+<span id="L509"><span class="lineNum">     509</span>              : </span>
+<span id="L510"><span class="lineNum">     510</span> <span class="tlaGNC">           5 :                 commitTsShared-&gt;xidLastCommit = InvalidTransactionId;</span></span>
+<span id="L511"><span class="lineNum">     511</span> <span class="tlaGNC">           5 :                 TIMESTAMP_NOBEGIN(commitTsShared-&gt;dataLastCommit.time);</span></span>
+<span id="L512"><span class="lineNum">     512</span> <span class="tlaGNC">           5 :                 commitTsShared-&gt;dataLastCommit.nodeid = InvalidRepOriginId;</span></span>
+<span id="L513"><span class="lineNum">     513</span> <span class="tlaGNC">           5 :                 commitTsShared-&gt;commitTsActive = false;</span></span>
+<span id="L514"><span class="lineNum">     514</span>              :         }</span>
+<span id="L515"><span class="lineNum">     515</span>              :         else</span>
+<span id="L516"><span class="lineNum">     516</span>              :                 Assert(found);</span>
+<span id="L517"><span class="lineNum">     517</span> <span class="tlaGNC">           5 : }</span></span>
+<span id="L518"><span class="lineNum">     518</span>              : </span>
+<span id="L519"><span class="lineNum">     519</span>              : /*</span>
+<span id="L520"><span class="lineNum">     520</span>              :  * This function must be called ONCE on system install.</span>
+<span id="L521"><span class="lineNum">     521</span>              :  *</span>
+<span id="L522"><span class="lineNum">     522</span>              :  * (The CommitTs directory is assumed to have been created by initdb, and</span>
+<span id="L523"><span class="lineNum">     523</span>              :  * CommitTsShmemInit must have been called already.)</span>
+<span id="L524"><span class="lineNum">     524</span>              :  */</span>
+<span id="L525"><span class="lineNum">     525</span>              : void</span>
+<span id="L526"><span class="lineNum">     526</span> <span class="tlaGNC">           1 : BootStrapCommitTs(void)</span></span>
+<span id="L527"><span class="lineNum">     527</span>              : {</span>
+<span id="L528"><span class="lineNum">     528</span>              :         /*</span>
+<span id="L529"><span class="lineNum">     529</span>              :          * Nothing to do here at present, unlike most other SLRU modules; segments</span>
+<span id="L530"><span class="lineNum">     530</span>              :          * are created when the server is started with this module enabled. See</span>
+<span id="L531"><span class="lineNum">     531</span>              :          * ActivateCommitTs.</span>
+<span id="L532"><span class="lineNum">     532</span>              :          */</span>
+<span id="L533"><span class="lineNum">     533</span> <span class="tlaGNC">           1 : }</span></span>
+<span id="L534"><span class="lineNum">     534</span>              : </span>
+<span id="L535"><span class="lineNum">     535</span>              : /*</span>
+<span id="L536"><span class="lineNum">     536</span>              :  * Initialize (or reinitialize) a page of CommitTs to zeroes.</span>
+<span id="L537"><span class="lineNum">     537</span>              :  * If writeXlog is true, also emit an XLOG record saying we did this.</span>
+<span id="L538"><span class="lineNum">     538</span>              :  *</span>
+<span id="L539"><span class="lineNum">     539</span>              :  * The page is not actually written, just set up in shared memory.</span>
+<span id="L540"><span class="lineNum">     540</span>              :  * The slot number of the new page is returned.</span>
+<span id="L541"><span class="lineNum">     541</span>              :  *</span>
+<span id="L542"><span class="lineNum">     542</span>              :  * Control lock must be held at entry, and will be held at exit.</span>
+<span id="L543"><span class="lineNum">     543</span>              :  */</span>
+<span id="L544"><span class="lineNum">     544</span>              : static int</span>
+<span id="L545"><span class="lineNum">     545</span> <span class="tlaGNC">           2 : ZeroCommitTsPage(int pageno, bool writeXlog)</span></span>
+<span id="L546"><span class="lineNum">     546</span>              : {</span>
+<span id="L547"><span class="lineNum">     547</span>              :         int                     slotno;</span>
+<span id="L548"><span class="lineNum">     548</span>              : </span>
+<span id="L549"><span class="lineNum">     549</span> <span class="tlaGNC">           2 :         slotno = SimpleLruZeroPage(CommitTsCtl, pageno);</span></span>
+<span id="L550"><span class="lineNum">     550</span>              : </span>
+<span id="L551"><span class="lineNum">     551</span> <span class="tlaGNC">           2 :         if (writeXlog)</span></span>
+<span id="L552"><span class="lineNum">     552</span> <span class="tlaGNC">           1 :                 WriteZeroPageXlogRec(pageno);</span></span>
+<span id="L553"><span class="lineNum">     553</span>              : </span>
+<span id="L554"><span class="lineNum">     554</span> <span class="tlaGNC">           2 :         return slotno;</span></span>
+<span id="L555"><span class="lineNum">     555</span>              : }</span>
+<span id="L556"><span class="lineNum">     556</span>              : </span>
+<span id="L557"><span class="lineNum">     557</span>              : /*</span>
+<span id="L558"><span class="lineNum">     558</span>              :  * This must be called ONCE during postmaster or standalone-backend startup,</span>
+<span id="L559"><span class="lineNum">     559</span>              :  * after StartupXLOG has initialized ShmemVariableCache-&gt;nextFullXid.</span>
+<span id="L560"><span class="lineNum">     560</span>              :  */</span>
+<span id="L561"><span class="lineNum">     561</span>              : void</span>
+<span id="L562"><span class="lineNum">     562</span> <span class="tlaUNC tlaBgUNC">           0 : StartupCommitTs(void)</span></span>
+<span id="L563"><span class="lineNum">     563</span>              : {</span>
+<span id="L564"><span class="lineNum">     564</span> <span class="tlaUNC">           0 :         ActivateCommitTs();</span></span>
+<span id="L565"><span class="lineNum">     565</span> <span class="tlaUNC">           0 : }</span></span>
+<span id="L566"><span class="lineNum">     566</span>              : </span>
+<span id="L567"><span class="lineNum">     567</span>              : /*</span>
+<span id="L568"><span class="lineNum">     568</span>              :  * This must be called ONCE during postmaster or standalone-backend startup,</span>
+<span id="L569"><span class="lineNum">     569</span>              :  * after recovery has finished.</span>
+<span id="L570"><span class="lineNum">     570</span>              :  */</span>
+<span id="L571"><span class="lineNum">     571</span>              : void</span>
+<span id="L572"><span class="lineNum">     572</span> <span class="tlaGNC tlaBgGNC">           3 : CompleteCommitTsInitialization(void)</span></span>
+<span id="L573"><span class="lineNum">     573</span>              : {</span>
+<span id="L574"><span class="lineNum">     574</span>              :         /*</span>
+<span id="L575"><span class="lineNum">     575</span>              :          * If the feature is not enabled, turn it off for good.  This also removes</span>
+<span id="L576"><span class="lineNum">     576</span>              :          * any leftover data.</span>
+<span id="L577"><span class="lineNum">     577</span>              :          *</span>
+<span id="L578"><span class="lineNum">     578</span>              :          * Conversely, we activate the module if the feature is enabled.  This is</span>
+<span id="L579"><span class="lineNum">     579</span>              :          * necessary for primary and standby as the activation depends on the</span>
+<span id="L580"><span class="lineNum">     580</span>              :          * control file contents at the beginning of recovery or when a</span>
+<span id="L581"><span class="lineNum">     581</span>              :          * XLOG_PARAMETER_CHANGE is replayed.</span>
+<span id="L582"><span class="lineNum">     582</span>              :          */</span>
+<span id="L583"><span class="lineNum">     583</span> <span class="tlaGNC">           3 :         if (!track_commit_timestamp)</span></span>
+<span id="L584"><span class="lineNum">     584</span> <span class="tlaGNC">           2 :                 DeactivateCommitTs();</span></span>
+<span id="L585"><span class="lineNum">     585</span>              :         else</span>
+<span id="L586"><span class="lineNum">     586</span> <span class="tlaGNC">           1 :                 ActivateCommitTs();</span></span>
+<span id="L587"><span class="lineNum">     587</span> <span class="tlaGNC">           3 : }</span></span>
+<span id="L588"><span class="lineNum">     588</span>              : </span>
+<span id="L589"><span class="lineNum">     589</span>              : /*</span>
+<span id="L590"><span class="lineNum">     590</span>              :  * Activate or deactivate CommitTs' upon reception of a XLOG_PARAMETER_CHANGE</span>
+<span id="L591"><span class="lineNum">     591</span>              :  * XLog record during recovery.</span>
+<span id="L592"><span class="lineNum">     592</span>              :  */</span>
+<span id="L593"><span class="lineNum">     593</span>              : void</span>
+<span id="L594"><span class="lineNum">     594</span> <span class="tlaUNC tlaBgUNC">           0 : CommitTsParameterChange(bool newvalue, bool oldvalue)</span></span>
+<span id="L595"><span class="lineNum">     595</span>              : {</span>
+<span id="L596"><span class="lineNum">     596</span>              :         /*</span>
+<span id="L597"><span class="lineNum">     597</span>              :          * If the commit_ts module is disabled in this server and we get word from</span>
+<span id="L598"><span class="lineNum">     598</span>              :          * the master server that it is enabled there, activate it so that we can</span>
+<span id="L599"><span class="lineNum">     599</span>              :          * replay future WAL records involving it; also mark it as active on</span>
+<span id="L600"><span class="lineNum">     600</span>              :          * pg_control.  If the old value was already set, we already did this, so</span>
+<span id="L601"><span class="lineNum">     601</span>              :          * don't do anything.</span>
+<span id="L602"><span class="lineNum">     602</span>              :          *</span>
+<span id="L603"><span class="lineNum">     603</span>              :          * If the module is disabled in the master, disable it here too, unless</span>
+<span id="L604"><span class="lineNum">     604</span>              :          * the module is enabled locally.</span>
+<span id="L605"><span class="lineNum">     605</span>              :          *</span>
+<span id="L606"><span class="lineNum">     606</span>              :          * Note this only runs in the recovery process, so an unlocked read is</span>
+<span id="L607"><span class="lineNum">     607</span>              :          * fine.</span>
+<span id="L608"><span class="lineNum">     608</span>              :          */</span>
+<span id="L609"><span class="lineNum">     609</span> <span class="tlaUNC">           0 :         if (newvalue)</span></span>
+<span id="L610"><span class="lineNum">     610</span>              :         {</span>
+<span id="L611"><span class="lineNum">     611</span> <span class="tlaUNC">           0 :                 if (!commitTsShared-&gt;commitTsActive)</span></span>
+<span id="L612"><span class="lineNum">     612</span> <span class="tlaUNC">           0 :                         ActivateCommitTs();</span></span>
+<span id="L613"><span class="lineNum">     613</span>              :         }</span>
+<span id="L614"><span class="lineNum">     614</span> <span class="tlaUNC">           0 :         else if (commitTsShared-&gt;commitTsActive)</span></span>
+<span id="L615"><span class="lineNum">     615</span> <span class="tlaUNC">           0 :                 DeactivateCommitTs();</span></span>
+<span id="L616"><span class="lineNum">     616</span> <span class="tlaUNC">           0 : }</span></span>
+<span id="L617"><span class="lineNum">     617</span>              : </span>
+<span id="L618"><span class="lineNum">     618</span>              : /*</span>
+<span id="L619"><span class="lineNum">     619</span>              :  * Activate this module whenever necessary.</span>
+<span id="L620"><span class="lineNum">     620</span>              :  *              This must happen during postmaster or standalone-backend startup,</span>
+<span id="L621"><span class="lineNum">     621</span>              :  *              or during WAL replay anytime the track_commit_timestamp setting is</span>
+<span id="L622"><span class="lineNum">     622</span>              :  *              changed in the master.</span>
+<span id="L623"><span class="lineNum">     623</span>              :  *</span>
+<span id="L624"><span class="lineNum">     624</span>              :  * The reason why this SLRU needs separate activation/deactivation functions is</span>
+<span id="L625"><span class="lineNum">     625</span>              :  * that it can be enabled/disabled during start and the activation/deactivation</span>
+<span id="L626"><span class="lineNum">     626</span>              :  * on master is propagated to standby via replay. Other SLRUs don't have this</span>
+<span id="L627"><span class="lineNum">     627</span>              :  * property and they can be just initialized during normal startup.</span>
+<span id="L628"><span class="lineNum">     628</span>              :  *</span>
+<span id="L629"><span class="lineNum">     629</span>              :  * This is in charge of creating the currently active segment, if it's not</span>
+<span id="L630"><span class="lineNum">     630</span>              :  * already there.  The reason for this is that the server might have been</span>
+<span id="L631"><span class="lineNum">     631</span>              :  * running with this module disabled for a while and thus might have skipped</span>
+<span id="L632"><span class="lineNum">     632</span>              :  * the normal creation point.</span>
+<span id="L633"><span class="lineNum">     633</span>              :  */</span>
+<span id="L634"><span class="lineNum">     634</span>              : static void</span>
+<span id="L635"><span class="lineNum">     635</span> <span class="tlaGNC tlaBgGNC">           1 : ActivateCommitTs(void)</span></span>
+<span id="L636"><span class="lineNum">     636</span>              : {</span>
+<span id="L637"><span class="lineNum">     637</span>              :         TransactionId xid;</span>
+<span id="L638"><span class="lineNum">     638</span>              :         int                     pageno;</span>
+<span id="L639"><span class="lineNum">     639</span>              : </span>
+<span id="L640"><span class="lineNum">     640</span>              :         /*</span>
+<span id="L641"><span class="lineNum">     641</span>              :          * During bootstrap, we should not register commit timestamps so skip the</span>
+<span id="L642"><span class="lineNum">     642</span>              :          * activation in this case.</span>
+<span id="L643"><span class="lineNum">     643</span>              :          */</span>
+<span id="L644"><span class="lineNum">     644</span> <span class="tlaGNC">           1 :         if (IsBootstrapProcessingMode())</span></span>
+<span id="L645"><span class="lineNum">     645</span> <span class="tlaUNC tlaBgUNC">           0 :                 return;</span></span>
+<span id="L646"><span class="lineNum">     646</span>              : </span>
+<span id="L647"><span class="lineNum">     647</span>              :         /* If we've done this already, there's nothing to do */</span>
+<span id="L648"><span class="lineNum">     648</span> <span class="tlaGNC tlaBgGNC">           1 :         LWLockAcquire(CommitTsLock, LW_EXCLUSIVE);</span></span>
+<span id="L649"><span class="lineNum">     649</span> <span class="tlaGNC">           1 :         if (commitTsShared-&gt;commitTsActive)</span></span>
+<span id="L650"><span class="lineNum">     650</span>              :         {</span>
+<span id="L651"><span class="lineNum">     651</span> <span class="tlaUNC tlaBgUNC">           0 :                 LWLockRelease(CommitTsLock);</span></span>
+<span id="L652"><span class="lineNum">     652</span> <span class="tlaUNC">           0 :                 return;</span></span>
+<span id="L653"><span class="lineNum">     653</span>              :         }</span>
+<span id="L654"><span class="lineNum">     654</span> <span class="tlaGNC tlaBgGNC">           1 :         LWLockRelease(CommitTsLock);</span></span>
+<span id="L655"><span class="lineNum">     655</span>              : </span>
+<span id="L656"><span class="lineNum">     656</span> <span class="tlaGNC">           1 :         xid = XidFromFullTransactionId(ShmemVariableCache-&gt;nextFullXid);</span></span>
+<span id="L657"><span class="lineNum">     657</span> <span class="tlaGNC">           1 :         pageno = TransactionIdToCTsPage(xid);</span></span>
+<span id="L658"><span class="lineNum">     658</span>              : </span>
+<span id="L659"><span class="lineNum">     659</span>              :         /*</span>
+<span id="L660"><span class="lineNum">     660</span>              :          * Re-Initialize our idea of the latest page number.</span>
+<span id="L661"><span class="lineNum">     661</span>              :          */</span>
+<span id="L662"><span class="lineNum">     662</span> <span class="tlaGNC">           1 :         LWLockAcquire(CommitTsSLRULock, LW_EXCLUSIVE);</span></span>
+<span id="L663"><span class="lineNum">     663</span> <span class="tlaGNC">           1 :         CommitTsCtl-&gt;shared-&gt;latest_page_number = pageno;</span></span>
+<span id="L664"><span class="lineNum">     664</span> <span class="tlaGNC">           1 :         LWLockRelease(CommitTsSLRULock);</span></span>
+<span id="L665"><span class="lineNum">     665</span>              : </span>
+<span id="L666"><span class="lineNum">     666</span>              :         /*</span>
+<span id="L667"><span class="lineNum">     667</span>              :          * If CommitTs is enabled, but it wasn't in the previous server run, we</span>
+<span id="L668"><span class="lineNum">     668</span>              :          * need to set the oldest and newest values to the next Xid; that way, we</span>
+<span id="L669"><span class="lineNum">     669</span>              :          * will not try to read data that might not have been set.</span>
+<span id="L670"><span class="lineNum">     670</span>              :          *</span>
+<span id="L671"><span class="lineNum">     671</span>              :          * XXX does this have a problem if a server is started with commitTs</span>
+<span id="L672"><span class="lineNum">     672</span>              :          * enabled, then started with commitTs disabled, then restarted with it</span>
+<span id="L673"><span class="lineNum">     673</span>              :          * enabled again?  It doesn't look like it does, because there should be a</span>
+<span id="L674"><span class="lineNum">     674</span>              :          * checkpoint that sets the value to InvalidTransactionId at end of</span>
+<span id="L675"><span class="lineNum">     675</span>              :          * recovery; and so any chance of injecting new transactions without</span>
+<span id="L676"><span class="lineNum">     676</span>              :          * CommitTs values would occur after the oldestCommitTsXid has been set to</span>
+<span id="L677"><span class="lineNum">     677</span>              :          * Invalid temporarily.</span>
+<span id="L678"><span class="lineNum">     678</span>              :          */</span>
+<span id="L679"><span class="lineNum">     679</span> <span class="tlaGNC">           1 :         LWLockAcquire(CommitTsLock, LW_EXCLUSIVE);</span></span>
+<span id="L680"><span class="lineNum">     680</span> <span class="tlaGNC">           1 :         if (ShmemVariableCache-&gt;oldestCommitTsXid == InvalidTransactionId)</span></span>
+<span id="L681"><span class="lineNum">     681</span>              :         {</span>
+<span id="L682"><span class="lineNum">     682</span> <span class="tlaGNC">           1 :                 ShmemVariableCache-&gt;oldestCommitTsXid =</span></span>
+<span id="L683"><span class="lineNum">     683</span> <span class="tlaGNC">           1 :                         ShmemVariableCache-&gt;newestCommitTsXid = ReadNewTransactionId();</span></span>
+<span id="L684"><span class="lineNum">     684</span>              :         }</span>
+<span id="L685"><span class="lineNum">     685</span> <span class="tlaGNC">           1 :         LWLockRelease(CommitTsLock);</span></span>
+<span id="L686"><span class="lineNum">     686</span>              : </span>
+<span id="L687"><span class="lineNum">     687</span>              :         /* Create the current segment file, if necessary */</span>
+<span id="L688"><span class="lineNum">     688</span> <span class="tlaGNC">           1 :         if (!SimpleLruDoesPhysicalPageExist(CommitTsCtl, pageno))</span></span>
+<span id="L689"><span class="lineNum">     689</span>              :         {</span>
+<span id="L690"><span class="lineNum">     690</span>              :                 int                     slotno;</span>
+<span id="L691"><span class="lineNum">     691</span>              : </span>
+<span id="L692"><span class="lineNum">     692</span> <span class="tlaGNC">           1 :                 LWLockAcquire(CommitTsSLRULock, LW_EXCLUSIVE);</span></span>
+<span id="L693"><span class="lineNum">     693</span> <span class="tlaGNC">           1 :                 slotno = ZeroCommitTsPage(pageno, false);</span></span>
+<span id="L694"><span class="lineNum">     694</span> <span class="tlaGNC">           1 :                 SimpleLruWritePage(CommitTsCtl, slotno);</span></span>
+<span id="L695"><span class="lineNum">     695</span>              :                 Assert(!CommitTsCtl-&gt;shared-&gt;page_dirty[slotno]);</span>
+<span id="L696"><span class="lineNum">     696</span> <span class="tlaGNC">           1 :                 LWLockRelease(CommitTsSLRULock);</span></span>
+<span id="L697"><span class="lineNum">     697</span>              :         }</span>
+<span id="L698"><span class="lineNum">     698</span>              : </span>
+<span id="L699"><span class="lineNum">     699</span>              :         /* Change the activation status in shared memory. */</span>
+<span id="L700"><span class="lineNum">     700</span> <span class="tlaGNC">           1 :         LWLockAcquire(CommitTsLock, LW_EXCLUSIVE);</span></span>
+<span id="L701"><span class="lineNum">     701</span> <span class="tlaGNC">           1 :         commitTsShared-&gt;commitTsActive = true;</span></span>
+<span id="L702"><span class="lineNum">     702</span> <span class="tlaGNC">           1 :         LWLockRelease(CommitTsLock);</span></span>
+<span id="L703"><span class="lineNum">     703</span>              : }</span>
+<span id="L704"><span class="lineNum">     704</span>              : </span>
+<span id="L705"><span class="lineNum">     705</span>              : /*</span>
+<span id="L706"><span class="lineNum">     706</span>              :  * Deactivate this module.</span>
+<span id="L707"><span class="lineNum">     707</span>              :  *</span>
+<span id="L708"><span class="lineNum">     708</span>              :  * This must be called when the track_commit_timestamp parameter is turned off.</span>
+<span id="L709"><span class="lineNum">     709</span>              :  * This happens during postmaster or standalone-backend startup, or during WAL</span>
+<span id="L710"><span class="lineNum">     710</span>              :  * replay.</span>
+<span id="L711"><span class="lineNum">     711</span>              :  *</span>
+<span id="L712"><span class="lineNum">     712</span>              :  * Resets CommitTs into invalid state to make sure we don't hand back</span>
+<span id="L713"><span class="lineNum">     713</span>              :  * possibly-invalid data; also removes segments of old data.</span>
+<span id="L714"><span class="lineNum">     714</span>              :  */</span>
+<span id="L715"><span class="lineNum">     715</span>              : static void</span>
+<span id="L716"><span class="lineNum">     716</span> <span class="tlaGNC">           2 : DeactivateCommitTs(void)</span></span>
+<span id="L717"><span class="lineNum">     717</span>              : {</span>
+<span id="L718"><span class="lineNum">     718</span>              :         /*</span>
+<span id="L719"><span class="lineNum">     719</span>              :          * Cleanup the status in the shared memory.</span>
+<span id="L720"><span class="lineNum">     720</span>              :          *</span>
+<span id="L721"><span class="lineNum">     721</span>              :          * We reset everything in the commitTsShared record to prevent user from</span>
+<span id="L722"><span class="lineNum">     722</span>              :          * getting confusing data about last committed transaction on the standby</span>
+<span id="L723"><span class="lineNum">     723</span>              :          * when the module was activated repeatedly on the primary.</span>
+<span id="L724"><span class="lineNum">     724</span>              :          */</span>
+<span id="L725"><span class="lineNum">     725</span> <span class="tlaGNC">           2 :         LWLockAcquire(CommitTsLock, LW_EXCLUSIVE);</span></span>
+<span id="L726"><span class="lineNum">     726</span>              : </span>
+<span id="L727"><span class="lineNum">     727</span> <span class="tlaGNC">           2 :         commitTsShared-&gt;commitTsActive = false;</span></span>
+<span id="L728"><span class="lineNum">     728</span> <span class="tlaGNC">           2 :         commitTsShared-&gt;xidLastCommit = InvalidTransactionId;</span></span>
+<span id="L729"><span class="lineNum">     729</span> <span class="tlaGNC">           2 :         TIMESTAMP_NOBEGIN(commitTsShared-&gt;dataLastCommit.time);</span></span>
+<span id="L730"><span class="lineNum">     730</span> <span class="tlaGNC">           2 :         commitTsShared-&gt;dataLastCommit.nodeid = InvalidRepOriginId;</span></span>
+<span id="L731"><span class="lineNum">     731</span>              : </span>
+<span id="L732"><span class="lineNum">     732</span> <span class="tlaGNC">           2 :         ShmemVariableCache-&gt;oldestCommitTsXid = InvalidTransactionId;</span></span>
+<span id="L733"><span class="lineNum">     733</span> <span class="tlaGNC">           2 :         ShmemVariableCache-&gt;newestCommitTsXid = InvalidTransactionId;</span></span>
+<span id="L734"><span class="lineNum">     734</span>              : </span>
+<span id="L735"><span class="lineNum">     735</span> <span class="tlaGNC">           2 :         LWLockRelease(CommitTsLock);</span></span>
+<span id="L736"><span class="lineNum">     736</span>              : </span>
+<span id="L737"><span class="lineNum">     737</span>              :         /*</span>
+<span id="L738"><span class="lineNum">     738</span>              :          * Remove *all* files.  This is necessary so that there are no leftover</span>
+<span id="L739"><span class="lineNum">     739</span>              :          * files; in the case where this feature is later enabled after running</span>
+<span id="L740"><span class="lineNum">     740</span>              :          * with it disabled for some time there may be a gap in the file sequence.</span>
+<span id="L741"><span class="lineNum">     741</span>              :          * (We can probably tolerate out-of-sequence files, as they are going to</span>
+<span id="L742"><span class="lineNum">     742</span>              :          * be overwritten anyway when we wrap around, but it seems better to be</span>
+<span id="L743"><span class="lineNum">     743</span>              :          * tidy.)</span>
+<span id="L744"><span class="lineNum">     744</span>              :          */</span>
+<span id="L745"><span class="lineNum">     745</span> <span class="tlaGNC">           2 :         LWLockAcquire(CommitTsSLRULock, LW_EXCLUSIVE);</span></span>
+<span id="L746"><span class="lineNum">     746</span> <span class="tlaGNC">           2 :         (void) SlruScanDirectory(CommitTsCtl, SlruScanDirCbDeleteAll, NULL);</span></span>
+<span id="L747"><span class="lineNum">     747</span> <span class="tlaGNC">           2 :         LWLockRelease(CommitTsSLRULock);</span></span>
+<span id="L748"><span class="lineNum">     748</span> <span class="tlaGNC">           2 : }</span></span>
+<span id="L749"><span class="lineNum">     749</span>              : </span>
+<span id="L750"><span class="lineNum">     750</span>              : /*</span>
+<span id="L751"><span class="lineNum">     751</span>              :  * This must be called ONCE during postmaster or standalone-backend shutdown</span>
+<span id="L752"><span class="lineNum">     752</span>              :  */</span>
+<span id="L753"><span class="lineNum">     753</span>              : void</span>
+<span id="L754"><span class="lineNum">     754</span> <span class="tlaGNC">           3 : ShutdownCommitTs(void)</span></span>
+<span id="L755"><span class="lineNum">     755</span>              : {</span>
+<span id="L756"><span class="lineNum">     756</span>              :         /* Flush dirty CommitTs pages to disk */</span>
+<span id="L757"><span class="lineNum">     757</span> <span class="tlaGNC">           3 :         SimpleLruFlush(CommitTsCtl, false);</span></span>
+<span id="L758"><span class="lineNum">     758</span>              : </span>
+<span id="L759"><span class="lineNum">     759</span>              :         /*</span>
+<span id="L760"><span class="lineNum">     760</span>              :          * fsync pg_commit_ts to ensure that any files flushed previously are</span>
+<span id="L761"><span class="lineNum">     761</span>              :          * durably on disk.</span>
+<span id="L762"><span class="lineNum">     762</span>              :          */</span>
+<span id="L763"><span class="lineNum">     763</span> <span class="tlaGNC">           3 :         fsync_fname(&quot;pg_commit_ts&quot;, true);</span></span>
+<span id="L764"><span class="lineNum">     764</span> <span class="tlaGNC">           3 : }</span></span>
+<span id="L765"><span class="lineNum">     765</span>              : </span>
+<span id="L766"><span class="lineNum">     766</span>              : /*</span>
+<span id="L767"><span class="lineNum">     767</span>              :  * Perform a checkpoint --- either during shutdown, or on-the-fly</span>
+<span id="L768"><span class="lineNum">     768</span>              :  */</span>
+<span id="L769"><span class="lineNum">     769</span>              : void</span>
+<span id="L770"><span class="lineNum">     770</span> <span class="tlaGNC">          18 : CheckPointCommitTs(void)</span></span>
+<span id="L771"><span class="lineNum">     771</span>              : {</span>
+<span id="L772"><span class="lineNum">     772</span>              :         /* Flush dirty CommitTs pages to disk */</span>
+<span id="L773"><span class="lineNum">     773</span> <span class="tlaGNC">          18 :         SimpleLruFlush(CommitTsCtl, true);</span></span>
+<span id="L774"><span class="lineNum">     774</span> <span class="tlaGNC">          18 : }</span></span>
+<span id="L775"><span class="lineNum">     775</span>              : </span>
+<span id="L776"><span class="lineNum">     776</span>              : /*</span>
+<span id="L777"><span class="lineNum">     777</span>              :  * Make sure that CommitTs has room for a newly-allocated XID.</span>
+<span id="L778"><span class="lineNum">     778</span>              :  *</span>
+<span id="L779"><span class="lineNum">     779</span>              :  * NB: this is called while holding XidGenLock.  We want it to be very fast</span>
+<span id="L780"><span class="lineNum">     780</span>              :  * most of the time; even when it's not so fast, no actual I/O need happen</span>
+<span id="L781"><span class="lineNum">     781</span>              :  * unless we're forced to write out a dirty CommitTs or xlog page to make room</span>
+<span id="L782"><span class="lineNum">     782</span>              :  * in shared memory.</span>
+<span id="L783"><span class="lineNum">     783</span>              :  *</span>
+<span id="L784"><span class="lineNum">     784</span>              :  * NB: the current implementation relies on track_commit_timestamp being</span>
+<span id="L785"><span class="lineNum">     785</span>              :  * PGC_POSTMASTER.</span>
+<span id="L786"><span class="lineNum">     786</span>              :  */</span>
+<span id="L787"><span class="lineNum">     787</span>              : void</span>
+<span id="L788"><span class="lineNum">     788</span> <span class="tlaGNC">        1172 : ExtendCommitTs(TransactionId newestXact)</span></span>
+<span id="L789"><span class="lineNum">     789</span>              : {</span>
+<span id="L790"><span class="lineNum">     790</span>              :         int                     pageno;</span>
+<span id="L791"><span class="lineNum">     791</span>              : </span>
+<span id="L792"><span class="lineNum">     792</span>              :         /*</span>
+<span id="L793"><span class="lineNum">     793</span>              :          * Nothing to do if module not enabled.  Note we do an unlocked read of</span>
+<span id="L794"><span class="lineNum">     794</span>              :          * the flag here, which is okay because this routine is only called from</span>
+<span id="L795"><span class="lineNum">     795</span>              :          * GetNewTransactionId, which is never called in a standby.</span>
+<span id="L796"><span class="lineNum">     796</span>              :          */</span>
+<span id="L797"><span class="lineNum">     797</span>              :         Assert(!InRecovery);</span>
+<span id="L798"><span class="lineNum">     798</span> <span class="tlaGNC">        1172 :         if (!commitTsShared-&gt;commitTsActive)</span></span>
+<span id="L799"><span class="lineNum">     799</span> <span class="tlaGNC">         482 :                 return;</span></span>
+<span id="L800"><span class="lineNum">     800</span>              : </span>
+<span id="L801"><span class="lineNum">     801</span>              :         /*</span>
+<span id="L802"><span class="lineNum">     802</span>              :          * No work except at first XID of a page.  But beware: just after</span>
+<span id="L803"><span class="lineNum">     803</span>              :          * wraparound, the first XID of page zero is FirstNormalTransactionId.</span>
+<span id="L804"><span class="lineNum">     804</span>              :          */</span>
+<span id="L805"><span class="lineNum">     805</span> <span class="tlaGNC">         690 :         if (TransactionIdToCTsEntry(newestXact) != 0 &amp;&amp;</span></span>
+<span id="L806"><span class="lineNum">     806</span>              :                 !TransactionIdEquals(newestXact, FirstNormalTransactionId))</span>
+<span id="L807"><span class="lineNum">     807</span> <span class="tlaGNC">         689 :                 return;</span></span>
+<span id="L808"><span class="lineNum">     808</span>              : </span>
+<span id="L809"><span class="lineNum">     809</span> <span class="tlaGNC">           1 :         pageno = TransactionIdToCTsPage(newestXact);</span></span>
+<span id="L810"><span class="lineNum">     810</span>              : </span>
+<span id="L811"><span class="lineNum">     811</span> <span class="tlaGNC">           1 :         LWLockAcquire(CommitTsSLRULock, LW_EXCLUSIVE);</span></span>
+<span id="L812"><span class="lineNum">     812</span>              : </span>
+<span id="L813"><span class="lineNum">     813</span>              :         /* Zero the page and make an XLOG entry about it */</span>
+<span id="L814"><span class="lineNum">     814</span> <span class="tlaGNC">           1 :         ZeroCommitTsPage(pageno, !InRecovery);</span></span>
+<span id="L815"><span class="lineNum">     815</span>              : </span>
+<span id="L816"><span class="lineNum">     816</span> <span class="tlaGNC">           1 :         LWLockRelease(CommitTsSLRULock);</span></span>
+<span id="L817"><span class="lineNum">     817</span>              : }</span>
+<span id="L818"><span class="lineNum">     818</span>              : </span>
+<span id="L819"><span class="lineNum">     819</span>              : /*</span>
+<span id="L820"><span class="lineNum">     820</span>              :  * Remove all CommitTs segments before the one holding the passed</span>
+<span id="L821"><span class="lineNum">     821</span>              :  * transaction ID.</span>
+<span id="L822"><span class="lineNum">     822</span>              :  *</span>
+<span id="L823"><span class="lineNum">     823</span>              :  * Note that we don't need to flush XLOG here.</span>
+<span id="L824"><span class="lineNum">     824</span>              :  */</span>
+<span id="L825"><span class="lineNum">     825</span>              : void</span>
+<span id="L826"><span class="lineNum">     826</span> <span class="tlaGNC">           2 : TruncateCommitTs(TransactionId oldestXact)</span></span>
+<span id="L827"><span class="lineNum">     827</span>              : {</span>
+<span id="L828"><span class="lineNum">     828</span>              :         int                     cutoffPage;</span>
+<span id="L829"><span class="lineNum">     829</span>              : </span>
+<span id="L830"><span class="lineNum">     830</span>              :         /*</span>
+<span id="L831"><span class="lineNum">     831</span>              :          * The cutoff point is the start of the segment containing oldestXact. We</span>
+<span id="L832"><span class="lineNum">     832</span>              :          * pass the *page* containing oldestXact to SimpleLruTruncate.</span>
+<span id="L833"><span class="lineNum">     833</span>              :          */</span>
+<span id="L834"><span class="lineNum">     834</span> <span class="tlaGNC">           2 :         cutoffPage = TransactionIdToCTsPage(oldestXact);</span></span>
+<span id="L835"><span class="lineNum">     835</span>              : </span>
+<span id="L836"><span class="lineNum">     836</span>              :         /* Check to see if there's any files that could be removed */</span>
+<span id="L837"><span class="lineNum">     837</span> <span class="tlaGNC">           2 :         if (!SlruScanDirectory(CommitTsCtl, SlruScanDirCbReportPresence,</span></span>
+<span id="L838"><span class="lineNum">     838</span>              :                                                    &amp;cutoffPage))</span>
+<span id="L839"><span class="lineNum">     839</span> <span class="tlaGNC">           2 :                 return;                                 /* nothing to remove */</span></span>
+<span id="L840"><span class="lineNum">     840</span>              : </span>
+<span id="L841"><span class="lineNum">     841</span>              :         /* Write XLOG record */</span>
+<span id="L842"><span class="lineNum">     842</span> <span class="tlaUNC tlaBgUNC">           0 :         WriteTruncateXlogRec(cutoffPage, oldestXact);</span></span>
+<span id="L843"><span class="lineNum">     843</span>              : </span>
+<span id="L844"><span class="lineNum">     844</span>              :         /* Now we can remove the old CommitTs segment(s) */</span>
+<span id="L845"><span class="lineNum">     845</span> <span class="tlaUNC">           0 :         SimpleLruTruncate(CommitTsCtl, cutoffPage);</span></span>
+<span id="L846"><span class="lineNum">     846</span>              : }</span>
+<span id="L847"><span class="lineNum">     847</span>              : </span>
+<span id="L848"><span class="lineNum">     848</span>              : /*</span>
+<span id="L849"><span class="lineNum">     849</span>              :  * Set the limit values between which commit TS can be consulted.</span>
+<span id="L850"><span class="lineNum">     850</span>              :  */</span>
+<span id="L851"><span class="lineNum">     851</span>              : void</span>
+<span id="L852"><span class="lineNum">     852</span> <span class="tlaGNC tlaBgGNC">           4 : SetCommitTsLimit(TransactionId oldestXact, TransactionId newestXact)</span></span>
+<span id="L853"><span class="lineNum">     853</span>              : {</span>
+<span id="L854"><span class="lineNum">     854</span>              :         /*</span>
+<span id="L855"><span class="lineNum">     855</span>              :          * Be careful not to overwrite values that are either further into the</span>
+<span id="L856"><span class="lineNum">     856</span>              :          * &quot;future&quot; or signal a disabled committs.</span>
+<span id="L857"><span class="lineNum">     857</span>              :          */</span>
+<span id="L858"><span class="lineNum">     858</span> <span class="tlaGNC">           4 :         LWLockAcquire(CommitTsLock, LW_EXCLUSIVE);</span></span>
+<span id="L859"><span class="lineNum">     859</span> <span class="tlaGNC">           4 :         if (ShmemVariableCache-&gt;oldestCommitTsXid != InvalidTransactionId)</span></span>
+<span id="L860"><span class="lineNum">     860</span>              :         {</span>
+<span id="L861"><span class="lineNum">     861</span> <span class="tlaUNC tlaBgUNC">           0 :                 if (TransactionIdPrecedes(ShmemVariableCache-&gt;oldestCommitTsXid, oldestXact))</span></span>
+<span id="L862"><span class="lineNum">     862</span> <span class="tlaUNC">           0 :                         ShmemVariableCache-&gt;oldestCommitTsXid = oldestXact;</span></span>
+<span id="L863"><span class="lineNum">     863</span> <span class="tlaUNC">           0 :                 if (TransactionIdPrecedes(newestXact, ShmemVariableCache-&gt;newestCommitTsXid))</span></span>
+<span id="L864"><span class="lineNum">     864</span> <span class="tlaUNC">           0 :                         ShmemVariableCache-&gt;newestCommitTsXid = newestXact;</span></span>
+<span id="L865"><span class="lineNum">     865</span>              :         }</span>
+<span id="L866"><span class="lineNum">     866</span>              :         else</span>
+<span id="L867"><span class="lineNum">     867</span>              :         {</span>
+<span id="L868"><span class="lineNum">     868</span>              :                 Assert(ShmemVariableCache-&gt;newestCommitTsXid == InvalidTransactionId);</span>
+<span id="L869"><span class="lineNum">     869</span> <span class="tlaGNC tlaBgGNC">           4 :                 ShmemVariableCache-&gt;oldestCommitTsXid = oldestXact;</span></span>
+<span id="L870"><span class="lineNum">     870</span> <span class="tlaGNC">           4 :                 ShmemVariableCache-&gt;newestCommitTsXid = newestXact;</span></span>
+<span id="L871"><span class="lineNum">     871</span>              :         }</span>
+<span id="L872"><span class="lineNum">     872</span> <span class="tlaGNC">           4 :         LWLockRelease(CommitTsLock);</span></span>
+<span id="L873"><span class="lineNum">     873</span> <span class="tlaGNC">           4 : }</span></span>
+<span id="L874"><span class="lineNum">     874</span>              : </span>
+<span id="L875"><span class="lineNum">     875</span>              : /*</span>
+<span id="L876"><span class="lineNum">     876</span>              :  * Move forwards the oldest commitTS value that can be consulted</span>
+<span id="L877"><span class="lineNum">     877</span>              :  */</span>
+<span id="L878"><span class="lineNum">     878</span>              : void</span>
+<span id="L879"><span class="lineNum">     879</span> <span class="tlaGNC">           2 : AdvanceOldestCommitTsXid(TransactionId oldestXact)</span></span>
+<span id="L880"><span class="lineNum">     880</span>              : {</span>
+<span id="L881"><span class="lineNum">     881</span> <span class="tlaGNC">           2 :         LWLockAcquire(CommitTsLock, LW_EXCLUSIVE);</span></span>
+<span id="L882"><span class="lineNum">     882</span> <span class="tlaGNC">           2 :         if (ShmemVariableCache-&gt;oldestCommitTsXid != InvalidTransactionId &amp;&amp;</span></span>
+<span id="L883"><span class="lineNum">     883</span> <span class="tlaUNC tlaBgUNC">           0 :                 TransactionIdPrecedes(ShmemVariableCache-&gt;oldestCommitTsXid, oldestXact))</span></span>
+<span id="L884"><span class="lineNum">     884</span> <span class="tlaUNC">           0 :                 ShmemVariableCache-&gt;oldestCommitTsXid = oldestXact;</span></span>
+<span id="L885"><span class="lineNum">     885</span> <span class="tlaGNC tlaBgGNC">           2 :         LWLockRelease(CommitTsLock);</span></span>
+<span id="L886"><span class="lineNum">     886</span> <span class="tlaGNC">           2 : }</span></span>
+<span id="L887"><span class="lineNum">     887</span>              : </span>
+<span id="L888"><span class="lineNum">     888</span>              : </span>
+<span id="L889"><span class="lineNum">     889</span>              : /*</span>
+<span id="L890"><span class="lineNum">     890</span>              :  * Decide whether a commitTS page number is &quot;older&quot; for truncation purposes.</span>
+<span id="L891"><span class="lineNum">     891</span>              :  * Analogous to CLOGPagePrecedes().</span>
+<span id="L892"><span class="lineNum">     892</span>              :  *</span>
+<span id="L893"><span class="lineNum">     893</span>              :  * At default BLCKSZ, (1 &lt;&lt; 31) % COMMIT_TS_XACTS_PER_PAGE == 128.  This</span>
+<span id="L894"><span class="lineNum">     894</span>              :  * introduces differences compared to CLOG and the other SLRUs having (1 &lt;&lt;</span>
+<span id="L895"><span class="lineNum">     895</span>              :  * 31) % per_page == 0.  This function never tests exactly</span>
+<span id="L896"><span class="lineNum">     896</span>              :  * TransactionIdPrecedes(x-2^31, x).  When the system reaches xidStopLimit,</span>
+<span id="L897"><span class="lineNum">     897</span>              :  * there are two possible counts of page boundaries between oldestXact and the</span>
+<span id="L898"><span class="lineNum">     898</span>              :  * latest XID assigned, depending on whether oldestXact is within the first</span>
+<span id="L899"><span class="lineNum">     899</span>              :  * 128 entries of its page.  Since this function doesn't know the location of</span>
+<span id="L900"><span class="lineNum">     900</span>              :  * oldestXact within page2, it returns false for one page that actually is</span>
+<span id="L901"><span class="lineNum">     901</span>              :  * expendable.  This is a wider (yet still negligible) version of the</span>
+<span id="L902"><span class="lineNum">     902</span>              :  * truncation opportunity that CLOGPagePrecedes() cannot recognize.</span>
+<span id="L903"><span class="lineNum">     903</span>              :  *</span>
+<span id="L904"><span class="lineNum">     904</span>              :  * For the sake of a worked example, number entries with decimal values such</span>
+<span id="L905"><span class="lineNum">     905</span>              :  * that page1==1 entries range from 1.0 to 1.999.  Let N+0.15 be the number of</span>
+<span id="L906"><span class="lineNum">     906</span>              :  * pages that 2^31 entries will span (N is an integer).  If oldestXact=N+2.1,</span>
+<span id="L907"><span class="lineNum">     907</span>              :  * then the final safe XID assignment leaves newestXact=1.95.  We keep page 2,</span>
+<span id="L908"><span class="lineNum">     908</span>              :  * because entry=2.85 is the border that toggles whether entries precede the</span>
+<span id="L909"><span class="lineNum">     909</span>              :  * last entry of the oldestXact page.  While page 2 is expendable at</span>
+<span id="L910"><span class="lineNum">     910</span>              :  * oldestXact=N+2.1, it would be precious at oldestXact=N+2.9.</span>
+<span id="L911"><span class="lineNum">     911</span>              :  */</span>
+<span id="L912"><span class="lineNum">     912</span>              : static bool</span>
+<span id="L913"><span class="lineNum">     913</span> <span class="tlaUNC tlaBgUNC">           0 : CommitTsPagePrecedes(int page1, int page2)</span></span>
+<span id="L914"><span class="lineNum">     914</span>              : {</span>
+<span id="L915"><span class="lineNum">     915</span>              :         TransactionId xid1;</span>
+<span id="L916"><span class="lineNum">     916</span>              :         TransactionId xid2;</span>
+<span id="L917"><span class="lineNum">     917</span>              : </span>
+<span id="L918"><span class="lineNum">     918</span> <span class="tlaUNC">           0 :         xid1 = ((TransactionId) page1) * COMMIT_TS_XACTS_PER_PAGE;</span></span>
+<span id="L919"><span class="lineNum">     919</span> <span class="tlaUNC">           0 :         xid1 += FirstNormalTransactionId + 1;</span></span>
+<span id="L920"><span class="lineNum">     920</span> <span class="tlaUNC">           0 :         xid2 = ((TransactionId) page2) * COMMIT_TS_XACTS_PER_PAGE;</span></span>
+<span id="L921"><span class="lineNum">     921</span> <span class="tlaUNC">           0 :         xid2 += FirstNormalTransactionId + 1;</span></span>
+<span id="L922"><span class="lineNum">     922</span>              : </span>
+<span id="L923"><span class="lineNum">     923</span> <span class="tlaUNC">           0 :         return (TransactionIdPrecedes(xid1, xid2) &amp;&amp;</span></span>
+<span id="L924"><span class="lineNum">     924</span> <span class="tlaUNC">           0 :                         TransactionIdPrecedes(xid1, xid2 + COMMIT_TS_XACTS_PER_PAGE - 1));</span></span>
+<span id="L925"><span class="lineNum">     925</span>              : }</span>
+<span id="L926"><span class="lineNum">     926</span>              : </span>
+<span id="L927"><span class="lineNum">     927</span>              : </span>
+<span id="L928"><span class="lineNum">     928</span>              : /*</span>
+<span id="L929"><span class="lineNum">     929</span>              :  * Write a ZEROPAGE xlog record</span>
+<span id="L930"><span class="lineNum">     930</span>              :  */</span>
+<span id="L931"><span class="lineNum">     931</span>              : static void</span>
+<span id="L932"><span class="lineNum">     932</span> <span class="tlaGNC tlaBgGNC">           1 : WriteZeroPageXlogRec(int pageno)</span></span>
+<span id="L933"><span class="lineNum">     933</span>              : {</span>
+<span id="L934"><span class="lineNum">     934</span> <span class="tlaGNC">           1 :         XLogBeginInsert();</span></span>
+<span id="L935"><span class="lineNum">     935</span> <span class="tlaGNC">           1 :         XLogRegisterData((char *) (&amp;pageno), sizeof(int));</span></span>
+<span id="L936"><span class="lineNum">     936</span> <span class="tlaGNC">           1 :         (void) XLogInsert(RM_COMMIT_TS_ID, COMMIT_TS_ZEROPAGE);</span></span>
+<span id="L937"><span class="lineNum">     937</span> <span class="tlaGNC">           1 : }</span></span>
+<span id="L938"><span class="lineNum">     938</span>              : </span>
+<span id="L939"><span class="lineNum">     939</span>              : /*</span>
+<span id="L940"><span class="lineNum">     940</span>              :  * Write a TRUNCATE xlog record</span>
+<span id="L941"><span class="lineNum">     941</span>              :  */</span>
+<span id="L942"><span class="lineNum">     942</span>              : static void</span>
+<span id="L943"><span class="lineNum">     943</span> <span class="tlaUNC tlaBgUNC">           0 : WriteTruncateXlogRec(int pageno, TransactionId oldestXid)</span></span>
+<span id="L944"><span class="lineNum">     944</span>              : {</span>
+<span id="L945"><span class="lineNum">     945</span>              :         xl_commit_ts_truncate xlrec;</span>
+<span id="L946"><span class="lineNum">     946</span>              : </span>
+<span id="L947"><span class="lineNum">     947</span> <span class="tlaUNC">           0 :         xlrec.pageno = pageno;</span></span>
+<span id="L948"><span class="lineNum">     948</span> <span class="tlaUNC">           0 :         xlrec.oldestXid = oldestXid;</span></span>
+<span id="L949"><span class="lineNum">     949</span>              : </span>
+<span id="L950"><span class="lineNum">     950</span> <span class="tlaUNC">           0 :         XLogBeginInsert();</span></span>
+<span id="L951"><span class="lineNum">     951</span> <span class="tlaUNC">           0 :         XLogRegisterData((char *) (&amp;xlrec), SizeOfCommitTsTruncate);</span></span>
+<span id="L952"><span class="lineNum">     952</span> <span class="tlaUNC">           0 :         (void) XLogInsert(RM_COMMIT_TS_ID, COMMIT_TS_TRUNCATE);</span></span>
+<span id="L953"><span class="lineNum">     953</span> <span class="tlaUNC">           0 : }</span></span>
+<span id="L954"><span class="lineNum">     954</span>              : </span>
+<span id="L955"><span class="lineNum">     955</span>              : /*</span>
+<span id="L956"><span class="lineNum">     956</span>              :  * Write a SETTS xlog record</span>
+<span id="L957"><span class="lineNum">     957</span>              :  */</span>
+<span id="L958"><span class="lineNum">     958</span>              : static void</span>
+<span id="L959"><span class="lineNum">     959</span> <span class="tlaUNC">           0 : WriteSetTimestampXlogRec(TransactionId mainxid, int nsubxids,</span></span>
+<span id="L960"><span class="lineNum">     960</span>              :                                                  TransactionId *subxids, TimestampTz timestamp,</span>
+<span id="L961"><span class="lineNum">     961</span>              :                                                  RepOriginId nodeid)</span>
+<span id="L962"><span class="lineNum">     962</span>              : {</span>
+<span id="L963"><span class="lineNum">     963</span>              :         xl_commit_ts_set record;</span>
+<span id="L964"><span class="lineNum">     964</span>              : </span>
+<span id="L965"><span class="lineNum">     965</span> <span class="tlaUNC">           0 :         record.timestamp = timestamp;</span></span>
+<span id="L966"><span class="lineNum">     966</span> <span class="tlaUNC">           0 :         record.nodeid = nodeid;</span></span>
+<span id="L967"><span class="lineNum">     967</span> <span class="tlaUNC">           0 :         record.mainxid = mainxid;</span></span>
+<span id="L968"><span class="lineNum">     968</span>              : </span>
+<span id="L969"><span class="lineNum">     969</span> <span class="tlaUNC">           0 :         XLogBeginInsert();</span></span>
+<span id="L970"><span class="lineNum">     970</span> <span class="tlaUNC">           0 :         XLogRegisterData((char *) &amp;record,</span></span>
+<span id="L971"><span class="lineNum">     971</span>              :                                          offsetof(xl_commit_ts_set, mainxid) +</span>
+<span id="L972"><span class="lineNum">     972</span>              :                                          sizeof(TransactionId));</span>
+<span id="L973"><span class="lineNum">     973</span> <span class="tlaUNC">           0 :         XLogRegisterData((char *) subxids, nsubxids * sizeof(TransactionId));</span></span>
+<span id="L974"><span class="lineNum">     974</span> <span class="tlaUNC">           0 :         XLogInsert(RM_COMMIT_TS_ID, COMMIT_TS_SETTS);</span></span>
+<span id="L975"><span class="lineNum">     975</span> <span class="tlaUNC">           0 : }</span></span>
+<span id="L976"><span class="lineNum">     976</span>              : </span>
+<span id="L977"><span class="lineNum">     977</span>              : /*</span>
+<span id="L978"><span class="lineNum">     978</span>              :  * CommitTS resource manager's routines</span>
+<span id="L979"><span class="lineNum">     979</span>              :  */</span>
+<span id="L980"><span class="lineNum">     980</span>              : void</span>
+<span id="L981"><span class="lineNum">     981</span> <span class="tlaUNC">           0 : commit_ts_redo(XLogReaderState *record)</span></span>
+<span id="L982"><span class="lineNum">     982</span>              : {</span>
+<span id="L983"><span class="lineNum">     983</span> <span class="tlaUNC">           0 :         uint8           info = XLogRecGetInfo(record) &amp; ~XLR_INFO_MASK;</span></span>
+<span id="L984"><span class="lineNum">     984</span>              : </span>
+<span id="L985"><span class="lineNum">     985</span>              :         /* Backup blocks are not used in commit_ts records */</span>
+<span id="L986"><span class="lineNum">     986</span>              :         Assert(!XLogRecHasAnyBlockRefs(record));</span>
+<span id="L987"><span class="lineNum">     987</span>              : </span>
+<span id="L988"><span class="lineNum">     988</span> <span class="tlaUNC">           0 :         if (info == COMMIT_TS_ZEROPAGE)</span></span>
+<span id="L989"><span class="lineNum">     989</span>              :         {</span>
+<span id="L990"><span class="lineNum">     990</span>              :                 int                     pageno;</span>
+<span id="L991"><span class="lineNum">     991</span>              :                 int                     slotno;</span>
+<span id="L992"><span class="lineNum">     992</span>              : </span>
+<span id="L993"><span class="lineNum">     993</span> <span class="tlaUNC">           0 :                 memcpy(&amp;pageno, XLogRecGetData(record), sizeof(int));</span></span>
+<span id="L994"><span class="lineNum">     994</span>              : </span>
+<span id="L995"><span class="lineNum">     995</span> <span class="tlaUNC">           0 :                 LWLockAcquire(CommitTsSLRULock, LW_EXCLUSIVE);</span></span>
+<span id="L996"><span class="lineNum">     996</span>              : </span>
+<span id="L997"><span class="lineNum">     997</span> <span class="tlaUNC">           0 :                 slotno = ZeroCommitTsPage(pageno, false);</span></span>
+<span id="L998"><span class="lineNum">     998</span> <span class="tlaUNC">           0 :                 SimpleLruWritePage(CommitTsCtl, slotno);</span></span>
+<span id="L999"><span class="lineNum">     999</span>              :                 Assert(!CommitTsCtl-&gt;shared-&gt;page_dirty[slotno]);</span>
+<span id="L1000"><span class="lineNum">    1000</span>              : </span>
+<span id="L1001"><span class="lineNum">    1001</span> <span class="tlaUNC">           0 :                 LWLockRelease(CommitTsSLRULock);</span></span>
+<span id="L1002"><span class="lineNum">    1002</span>              :         }</span>
+<span id="L1003"><span class="lineNum">    1003</span> <span class="tlaUNC">           0 :         else if (info == COMMIT_TS_TRUNCATE)</span></span>
+<span id="L1004"><span class="lineNum">    1004</span>              :         {</span>
+<span id="L1005"><span class="lineNum">    1005</span> <span class="tlaUNC">           0 :                 xl_commit_ts_truncate *trunc = (xl_commit_ts_truncate *) XLogRecGetData(record);</span></span>
+<span id="L1006"><span class="lineNum">    1006</span>              : </span>
+<span id="L1007"><span class="lineNum">    1007</span> <span class="tlaUNC">           0 :                 AdvanceOldestCommitTsXid(trunc-&gt;oldestXid);</span></span>
+<span id="L1008"><span class="lineNum">    1008</span>              : </span>
+<span id="L1009"><span class="lineNum">    1009</span>              :                 /*</span>
+<span id="L1010"><span class="lineNum">    1010</span>              :                  * During XLOG replay, latest_page_number isn't set up yet; insert a</span>
+<span id="L1011"><span class="lineNum">    1011</span>              :                  * suitable value to bypass the sanity test in SimpleLruTruncate.</span>
+<span id="L1012"><span class="lineNum">    1012</span>              :                  */</span>
+<span id="L1013"><span class="lineNum">    1013</span> <span class="tlaUNC">           0 :                 CommitTsCtl-&gt;shared-&gt;latest_page_number = trunc-&gt;pageno;</span></span>
+<span id="L1014"><span class="lineNum">    1014</span>              : </span>
+<span id="L1015"><span class="lineNum">    1015</span> <span class="tlaUNC">           0 :                 SimpleLruTruncate(CommitTsCtl, trunc-&gt;pageno);</span></span>
+<span id="L1016"><span class="lineNum">    1016</span>              :         }</span>
+<span id="L1017"><span class="lineNum">    1017</span> <span class="tlaUNC">           0 :         else if (info == COMMIT_TS_SETTS)</span></span>
+<span id="L1018"><span class="lineNum">    1018</span>              :         {</span>
+<span id="L1019"><span class="lineNum">    1019</span> <span class="tlaUNC">           0 :                 xl_commit_ts_set *setts = (xl_commit_ts_set *) XLogRecGetData(record);</span></span>
+<span id="L1020"><span class="lineNum">    1020</span>              :                 int                     nsubxids;</span>
+<span id="L1021"><span class="lineNum">    1021</span>              :                 TransactionId *subxids;</span>
+<span id="L1022"><span class="lineNum">    1022</span>              : </span>
+<span id="L1023"><span class="lineNum">    1023</span> <span class="tlaUNC">           0 :                 nsubxids = ((XLogRecGetDataLen(record) - SizeOfCommitTsSet) /</span></span>
+<span id="L1024"><span class="lineNum">    1024</span>              :                                         sizeof(TransactionId));</span>
+<span id="L1025"><span class="lineNum">    1025</span> <span class="tlaUNC">           0 :                 if (nsubxids &gt; 0)</span></span>
+<span id="L1026"><span class="lineNum">    1026</span>              :                 {</span>
+<span id="L1027"><span class="lineNum">    1027</span> <span class="tlaUNC">           0 :                         subxids = palloc(sizeof(TransactionId) * nsubxids);</span></span>
+<span id="L1028"><span class="lineNum">    1028</span> <span class="tlaUNC">           0 :                         memcpy(subxids,</span></span>
+<span id="L1029"><span class="lineNum">    1029</span> <span class="tlaUNC">           0 :                                    XLogRecGetData(record) + SizeOfCommitTsSet,</span></span>
+<span id="L1030"><span class="lineNum">    1030</span>              :                                    sizeof(TransactionId) * nsubxids);</span>
+<span id="L1031"><span class="lineNum">    1031</span>              :                 }</span>
+<span id="L1032"><span class="lineNum">    1032</span>              :                 else</span>
+<span id="L1033"><span class="lineNum">    1033</span> <span class="tlaUNC">           0 :                         subxids = NULL;</span></span>
+<span id="L1034"><span class="lineNum">    1034</span>              : </span>
+<span id="L1035"><span class="lineNum">    1035</span> <span class="tlaUNC">           0 :                 TransactionTreeSetCommitTsData(setts-&gt;mainxid, nsubxids, subxids,</span></span>
+<span id="L1036"><span class="lineNum">    1036</span> <span class="tlaUNC">           0 :                                                                            setts-&gt;timestamp, setts-&gt;nodeid, false);</span></span>
+<span id="L1037"><span class="lineNum">    1037</span> <span class="tlaUNC">           0 :                 if (subxids)</span></span>
+<span id="L1038"><span class="lineNum">    1038</span> <span class="tlaUNC">           0 :                         pfree(subxids);</span></span>
+<span id="L1039"><span class="lineNum">    1039</span>              :         }</span>
+<span id="L1040"><span class="lineNum">    1040</span>              :         else</span>
+<span id="L1041"><span class="lineNum">    1041</span> <span class="tlaUNC">           0 :                 elog(PANIC, &quot;commit_ts_redo: unknown op code %u&quot;, info);</span></span>
+<span id="L1042"><span class="lineNum">    1042</span> <span class="tlaUNC">           0 : }</span></span>
+        </pre>
+              </td>
+            </tr>
+          </table>
+          <br>
+
+          <table width="100%" border=0 cellspacing=0 cellpadding=0>
+            <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+            <tr><td class="versionInfo">Generated by: <a href="https://github.com//linux-test-project/lcov" target="_parent">LCOV version 2.0-1</a></td></tr>
+          </table>
+          <br>
+
+</body>
+</html>

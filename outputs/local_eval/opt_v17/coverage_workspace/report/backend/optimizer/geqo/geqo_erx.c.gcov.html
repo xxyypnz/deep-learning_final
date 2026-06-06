@@ -1,0 +1,547 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - coverage_filtered.info - backend/optimizer/geqo/geqo_erx.c</title>
+  <link rel="stylesheet" type="text/css" href="../../../gcov.css">
+</head>
+
+<body>
+
+          <table width="100%" border=0 cellspacing=0 cellpadding=0>
+            <tr><td class="title">LCOV - code coverage report</td></tr>
+            <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+
+            <tr>
+              <td width="100%">
+                <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="10%" class="headerValue"><a href="../../../index.html">top level</a> - <a href="index.html">backend/optimizer/geqo</a> - geqo_erx.c<span style="font-size: 80%;"> (source / <a href="geqo_erx.c.func-c.html">functions</a>)</span></td>
+            <td width="5%"></td>
+            <td width="5%"></td>
+            <td width="5%" class="headerCovTableHead">Coverage</td>
+            <td width="5%" class="headerCovTableHead" title="Covered + Uncovered code">Total</td>
+            <td width="5%" class="headerCovTableHead" title="Exercised code only">Hit</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">coverage_filtered.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntryLo">0.0&nbsp;%</td>
+            <td class="headerCovTableEntry">107</td>
+            <td class="headerCovTableEntry">0</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test Date:</td>
+            <td class="headerValue">2026-06-06 03:50:52</td>
+            <td></td>
+            <td class="headerItem">Functions:</td>
+            <td class="headerCovTableEntryLo">0.0&nbsp;%</td>
+            <td class="headerCovTableEntry">8</td>
+            <td class="headerCovTableEntry">0</td>
+          </tr>
+                  <tr><td><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+                </table>
+              </td>
+            </tr>
+
+            <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+          </table>
+
+          <table cellpadding=0 cellspacing=0 border=0>
+            <tr>
+              <td><br></td>
+            </tr>
+            <tr>
+              <td>
+<pre class="sourceHeading">            Line data    Source code</pre>
+<pre class="source">
+<span id="L1"><span class="lineNum">       1</span>              : /*------------------------------------------------------------------------</span>
+<span id="L2"><span class="lineNum">       2</span>              : *</span>
+<span id="L3"><span class="lineNum">       3</span>              : * geqo_erx.c</span>
+<span id="L4"><span class="lineNum">       4</span>              : *        edge recombination crossover [ER]</span>
+<span id="L5"><span class="lineNum">       5</span>              : *</span>
+<span id="L6"><span class="lineNum">       6</span>              : * src/backend/optimizer/geqo/geqo_erx.c</span>
+<span id="L7"><span class="lineNum">       7</span>              : *</span>
+<span id="L8"><span class="lineNum">       8</span>              : *-------------------------------------------------------------------------</span>
+<span id="L9"><span class="lineNum">       9</span>              : */</span>
+<span id="L10"><span class="lineNum">      10</span>              : </span>
+<span id="L11"><span class="lineNum">      11</span>              : /* contributed by:</span>
+<span id="L12"><span class="lineNum">      12</span>              :    =*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=</span>
+<span id="L13"><span class="lineNum">      13</span>              :    *  Martin Utesch                              * Institute of Automatic Control          *</span>
+<span id="L14"><span class="lineNum">      14</span>              :    =                                                     = University of Mining and Technology =</span>
+<span id="L15"><span class="lineNum">      15</span>              :    *  utesch@aut.tu-freiberg.de  * Freiberg, Germany                               *</span>
+<span id="L16"><span class="lineNum">      16</span>              :    =*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=</span>
+<span id="L17"><span class="lineNum">      17</span>              :  */</span>
+<span id="L18"><span class="lineNum">      18</span>              : </span>
+<span id="L19"><span class="lineNum">      19</span>              : /* the edge recombination algorithm is adopted from Genitor : */</span>
+<span id="L20"><span class="lineNum">      20</span>              : /*************************************************************/</span>
+<span id="L21"><span class="lineNum">      21</span>              : /*                                                                                                                       */</span>
+<span id="L22"><span class="lineNum">      22</span>              : /*      Copyright (c) 1990                                                                               */</span>
+<span id="L23"><span class="lineNum">      23</span>              : /*      Darrell L. Whitley                                                                               */</span>
+<span id="L24"><span class="lineNum">      24</span>              : /*      Computer Science Department                                                              */</span>
+<span id="L25"><span class="lineNum">      25</span>              : /*      Colorado State University                                                                */</span>
+<span id="L26"><span class="lineNum">      26</span>              : /*                                                                                                                       */</span>
+<span id="L27"><span class="lineNum">      27</span>              : /*      Permission is hereby granted to copy all or any part of  */</span>
+<span id="L28"><span class="lineNum">      28</span>              : /*      this program for free distribution.   The author's name  */</span>
+<span id="L29"><span class="lineNum">      29</span>              : /*      and this copyright notice must be included in any copy.  */</span>
+<span id="L30"><span class="lineNum">      30</span>              : /*                                                                                                                       */</span>
+<span id="L31"><span class="lineNum">      31</span>              : /*************************************************************/</span>
+<span id="L32"><span class="lineNum">      32</span>              : </span>
+<span id="L33"><span class="lineNum">      33</span>              : </span>
+<span id="L34"><span class="lineNum">      34</span>              : #include &quot;postgres.h&quot;</span>
+<span id="L35"><span class="lineNum">      35</span>              : #include &quot;optimizer/geqo_random.h&quot;</span>
+<span id="L36"><span class="lineNum">      36</span>              : #include &quot;optimizer/geqo_recombination.h&quot;</span>
+<span id="L37"><span class="lineNum">      37</span>              : </span>
+<span id="L38"><span class="lineNum">      38</span>              : #if defined(ERX)</span>
+<span id="L39"><span class="lineNum">      39</span>              : </span>
+<span id="L40"><span class="lineNum">      40</span>              : static int      gimme_edge(PlannerInfo *root, Gene gene1, Gene gene2, Edge *edge_table);</span>
+<span id="L41"><span class="lineNum">      41</span>              : static void remove_gene(PlannerInfo *root, Gene gene, Edge edge, Edge *edge_table);</span>
+<span id="L42"><span class="lineNum">      42</span>              : static Gene gimme_gene(PlannerInfo *root, Edge edge, Edge *edge_table);</span>
+<span id="L43"><span class="lineNum">      43</span>              : </span>
+<span id="L44"><span class="lineNum">      44</span>              : static Gene edge_failure(PlannerInfo *root, Gene *gene, int index, Edge *edge_table, int num_gene);</span>
+<span id="L45"><span class="lineNum">      45</span>              : </span>
+<span id="L46"><span class="lineNum">      46</span>              : </span>
+<span id="L47"><span class="lineNum">      47</span>              : /* alloc_edge_table</span>
+<span id="L48"><span class="lineNum">      48</span>              :  *</span>
+<span id="L49"><span class="lineNum">      49</span>              :  *       allocate memory for edge table</span>
+<span id="L50"><span class="lineNum">      50</span>              :  *</span>
+<span id="L51"><span class="lineNum">      51</span>              :  */</span>
+<span id="L52"><span class="lineNum">      52</span>              : </span>
+<span id="L53"><span class="lineNum">      53</span>              : Edge *</span>
+<span id="L54"><span class="lineNum">      54</span> <span class="tlaUNC tlaBgUNC">           0 : alloc_edge_table(PlannerInfo *root, int num_gene)</span></span>
+<span id="L55"><span class="lineNum">      55</span>              : {</span>
+<span id="L56"><span class="lineNum">      56</span>              :         Edge       *edge_table;</span>
+<span id="L57"><span class="lineNum">      57</span>              : </span>
+<span id="L58"><span class="lineNum">      58</span>              :         /*</span>
+<span id="L59"><span class="lineNum">      59</span>              :          * palloc one extra location so that nodes numbered 1..n can be indexed</span>
+<span id="L60"><span class="lineNum">      60</span>              :          * directly; 0 will not be used</span>
+<span id="L61"><span class="lineNum">      61</span>              :          */</span>
+<span id="L62"><span class="lineNum">      62</span>              : </span>
+<span id="L63"><span class="lineNum">      63</span> <span class="tlaUNC">           0 :         edge_table = (Edge *) palloc((num_gene + 1) * sizeof(Edge));</span></span>
+<span id="L64"><span class="lineNum">      64</span>              : </span>
+<span id="L65"><span class="lineNum">      65</span> <span class="tlaUNC">           0 :         return edge_table;</span></span>
+<span id="L66"><span class="lineNum">      66</span>              : }</span>
+<span id="L67"><span class="lineNum">      67</span>              : </span>
+<span id="L68"><span class="lineNum">      68</span>              : /* free_edge_table</span>
+<span id="L69"><span class="lineNum">      69</span>              :  *</span>
+<span id="L70"><span class="lineNum">      70</span>              :  *        deallocate memory of edge table</span>
+<span id="L71"><span class="lineNum">      71</span>              :  *</span>
+<span id="L72"><span class="lineNum">      72</span>              :  */</span>
+<span id="L73"><span class="lineNum">      73</span>              : void</span>
+<span id="L74"><span class="lineNum">      74</span> <span class="tlaUNC">           0 : free_edge_table(PlannerInfo *root, Edge *edge_table)</span></span>
+<span id="L75"><span class="lineNum">      75</span>              : {</span>
+<span id="L76"><span class="lineNum">      76</span> <span class="tlaUNC">           0 :         pfree(edge_table);</span></span>
+<span id="L77"><span class="lineNum">      77</span> <span class="tlaUNC">           0 : }</span></span>
+<span id="L78"><span class="lineNum">      78</span>              : </span>
+<span id="L79"><span class="lineNum">      79</span>              : /* gimme_edge_table</span>
+<span id="L80"><span class="lineNum">      80</span>              :  *</span>
+<span id="L81"><span class="lineNum">      81</span>              :  *       fills a data structure which represents the set of explicit</span>
+<span id="L82"><span class="lineNum">      82</span>              :  *       edges between points in the (2) input genes</span>
+<span id="L83"><span class="lineNum">      83</span>              :  *</span>
+<span id="L84"><span class="lineNum">      84</span>              :  *       assumes circular tours and bidirectional edges</span>
+<span id="L85"><span class="lineNum">      85</span>              :  *</span>
+<span id="L86"><span class="lineNum">      86</span>              :  *       gimme_edge() will set &quot;shared&quot; edges to negative values</span>
+<span id="L87"><span class="lineNum">      87</span>              :  *</span>
+<span id="L88"><span class="lineNum">      88</span>              :  *       returns average number edges/city in range 2.0 - 4.0</span>
+<span id="L89"><span class="lineNum">      89</span>              :  *       where 2.0=homogeneous; 4.0=diverse</span>
+<span id="L90"><span class="lineNum">      90</span>              :  *</span>
+<span id="L91"><span class="lineNum">      91</span>              :  */</span>
+<span id="L92"><span class="lineNum">      92</span>              : float</span>
+<span id="L93"><span class="lineNum">      93</span> <span class="tlaUNC">           0 : gimme_edge_table(PlannerInfo *root, Gene *tour1, Gene *tour2,</span></span>
+<span id="L94"><span class="lineNum">      94</span>              :                                  int num_gene, Edge *edge_table)</span>
+<span id="L95"><span class="lineNum">      95</span>              : {</span>
+<span id="L96"><span class="lineNum">      96</span>              :         int                     i,</span>
+<span id="L97"><span class="lineNum">      97</span>              :                                 index1,</span>
+<span id="L98"><span class="lineNum">      98</span>              :                                 index2;</span>
+<span id="L99"><span class="lineNum">      99</span>              :         int                     edge_total;             /* total number of unique edges in two genes */</span>
+<span id="L100"><span class="lineNum">     100</span>              : </span>
+<span id="L101"><span class="lineNum">     101</span>              :         /* at first clear the edge table's old data */</span>
+<span id="L102"><span class="lineNum">     102</span> <span class="tlaUNC">           0 :         for (i = 1; i &lt;= num_gene; i++)</span></span>
+<span id="L103"><span class="lineNum">     103</span>              :         {</span>
+<span id="L104"><span class="lineNum">     104</span> <span class="tlaUNC">           0 :                 edge_table[i].total_edges = 0;</span></span>
+<span id="L105"><span class="lineNum">     105</span> <span class="tlaUNC">           0 :                 edge_table[i].unused_edges = 0;</span></span>
+<span id="L106"><span class="lineNum">     106</span>              :         }</span>
+<span id="L107"><span class="lineNum">     107</span>              : </span>
+<span id="L108"><span class="lineNum">     108</span>              :         /* fill edge table with new data */</span>
+<span id="L109"><span class="lineNum">     109</span>              : </span>
+<span id="L110"><span class="lineNum">     110</span> <span class="tlaUNC">           0 :         edge_total = 0;</span></span>
+<span id="L111"><span class="lineNum">     111</span>              : </span>
+<span id="L112"><span class="lineNum">     112</span> <span class="tlaUNC">           0 :         for (index1 = 0; index1 &lt; num_gene; index1++)</span></span>
+<span id="L113"><span class="lineNum">     113</span>              :         {</span>
+<span id="L114"><span class="lineNum">     114</span>              :                 /*</span>
+<span id="L115"><span class="lineNum">     115</span>              :                  * presume the tour is circular, i.e. 1-&gt;2, 2-&gt;3, 3-&gt;1 this operation</span>
+<span id="L116"><span class="lineNum">     116</span>              :                  * maps n back to 1</span>
+<span id="L117"><span class="lineNum">     117</span>              :                  */</span>
+<span id="L118"><span class="lineNum">     118</span>              : </span>
+<span id="L119"><span class="lineNum">     119</span> <span class="tlaUNC">           0 :                 index2 = (index1 + 1) % num_gene;</span></span>
+<span id="L120"><span class="lineNum">     120</span>              : </span>
+<span id="L121"><span class="lineNum">     121</span>              :                 /*</span>
+<span id="L122"><span class="lineNum">     122</span>              :                  * edges are bidirectional, i.e. 1-&gt;2 is same as 2-&gt;1 call gimme_edge</span>
+<span id="L123"><span class="lineNum">     123</span>              :                  * twice per edge</span>
+<span id="L124"><span class="lineNum">     124</span>              :                  */</span>
+<span id="L125"><span class="lineNum">     125</span>              : </span>
+<span id="L126"><span class="lineNum">     126</span> <span class="tlaUNC">           0 :                 edge_total += gimme_edge(root, tour1[index1], tour1[index2], edge_table);</span></span>
+<span id="L127"><span class="lineNum">     127</span> <span class="tlaUNC">           0 :                 gimme_edge(root, tour1[index2], tour1[index1], edge_table);</span></span>
+<span id="L128"><span class="lineNum">     128</span>              : </span>
+<span id="L129"><span class="lineNum">     129</span> <span class="tlaUNC">           0 :                 edge_total += gimme_edge(root, tour2[index1], tour2[index2], edge_table);</span></span>
+<span id="L130"><span class="lineNum">     130</span> <span class="tlaUNC">           0 :                 gimme_edge(root, tour2[index2], tour2[index1], edge_table);</span></span>
+<span id="L131"><span class="lineNum">     131</span>              :         }</span>
+<span id="L132"><span class="lineNum">     132</span>              : </span>
+<span id="L133"><span class="lineNum">     133</span>              :         /* return average number of edges per index */</span>
+<span id="L134"><span class="lineNum">     134</span> <span class="tlaUNC">           0 :         return ((float) (edge_total * 2) / (float) num_gene);</span></span>
+<span id="L135"><span class="lineNum">     135</span>              : }</span>
+<span id="L136"><span class="lineNum">     136</span>              : </span>
+<span id="L137"><span class="lineNum">     137</span>              : /* gimme_edge</span>
+<span id="L138"><span class="lineNum">     138</span>              :  *</span>
+<span id="L139"><span class="lineNum">     139</span>              :  *        registers edge from city1 to city2 in input edge table</span>
+<span id="L140"><span class="lineNum">     140</span>              :  *</span>
+<span id="L141"><span class="lineNum">     141</span>              :  *        no assumptions about directionality are made;</span>
+<span id="L142"><span class="lineNum">     142</span>              :  *        therefore it is up to the calling routine to</span>
+<span id="L143"><span class="lineNum">     143</span>              :  *        call gimme_edge twice to make a bi-directional edge</span>
+<span id="L144"><span class="lineNum">     144</span>              :  *        between city1 and city2;</span>
+<span id="L145"><span class="lineNum">     145</span>              :  *        uni-directional edges are possible as well (just call gimme_edge</span>
+<span id="L146"><span class="lineNum">     146</span>              :  *        once with the direction from city1 to city2)</span>
+<span id="L147"><span class="lineNum">     147</span>              :  *</span>
+<span id="L148"><span class="lineNum">     148</span>              :  *        returns 1 if edge was not already registered and was just added;</span>
+<span id="L149"><span class="lineNum">     149</span>              :  *                        0 if edge was already registered and edge_table is unchanged</span>
+<span id="L150"><span class="lineNum">     150</span>              :  */</span>
+<span id="L151"><span class="lineNum">     151</span>              : static int</span>
+<span id="L152"><span class="lineNum">     152</span> <span class="tlaUNC">           0 : gimme_edge(PlannerInfo *root, Gene gene1, Gene gene2, Edge *edge_table)</span></span>
+<span id="L153"><span class="lineNum">     153</span>              : {</span>
+<span id="L154"><span class="lineNum">     154</span>              :         int                     i;</span>
+<span id="L155"><span class="lineNum">     155</span>              :         int                     edges;</span>
+<span id="L156"><span class="lineNum">     156</span> <span class="tlaUNC">           0 :         int                     city1 = (int) gene1;</span></span>
+<span id="L157"><span class="lineNum">     157</span> <span class="tlaUNC">           0 :         int                     city2 = (int) gene2;</span></span>
+<span id="L158"><span class="lineNum">     158</span>              : </span>
+<span id="L159"><span class="lineNum">     159</span>              : </span>
+<span id="L160"><span class="lineNum">     160</span>              :         /* check whether edge city1-&gt;city2 already exists */</span>
+<span id="L161"><span class="lineNum">     161</span> <span class="tlaUNC">           0 :         edges = edge_table[city1].total_edges;</span></span>
+<span id="L162"><span class="lineNum">     162</span>              : </span>
+<span id="L163"><span class="lineNum">     163</span> <span class="tlaUNC">           0 :         for (i = 0; i &lt; edges; i++)</span></span>
+<span id="L164"><span class="lineNum">     164</span>              :         {</span>
+<span id="L165"><span class="lineNum">     165</span> <span class="tlaUNC">           0 :                 if ((Gene) Abs(edge_table[city1].edge_list[i]) == city2)</span></span>
+<span id="L166"><span class="lineNum">     166</span>              :                 {</span>
+<span id="L167"><span class="lineNum">     167</span>              : </span>
+<span id="L168"><span class="lineNum">     168</span>              :                         /* mark shared edges as negative */</span>
+<span id="L169"><span class="lineNum">     169</span> <span class="tlaUNC">           0 :                         edge_table[city1].edge_list[i] = 0 - city2;</span></span>
+<span id="L170"><span class="lineNum">     170</span>              : </span>
+<span id="L171"><span class="lineNum">     171</span> <span class="tlaUNC">           0 :                         return 0;</span></span>
+<span id="L172"><span class="lineNum">     172</span>              :                 }</span>
+<span id="L173"><span class="lineNum">     173</span>              :         }</span>
+<span id="L174"><span class="lineNum">     174</span>              : </span>
+<span id="L175"><span class="lineNum">     175</span>              :         /* add city1-&gt;city2; */</span>
+<span id="L176"><span class="lineNum">     176</span> <span class="tlaUNC">           0 :         edge_table[city1].edge_list[edges] = city2;</span></span>
+<span id="L177"><span class="lineNum">     177</span>              : </span>
+<span id="L178"><span class="lineNum">     178</span>              :         /* increment the number of edges from city1 */</span>
+<span id="L179"><span class="lineNum">     179</span> <span class="tlaUNC">           0 :         edge_table[city1].total_edges++;</span></span>
+<span id="L180"><span class="lineNum">     180</span> <span class="tlaUNC">           0 :         edge_table[city1].unused_edges++;</span></span>
+<span id="L181"><span class="lineNum">     181</span>              : </span>
+<span id="L182"><span class="lineNum">     182</span> <span class="tlaUNC">           0 :         return 1;</span></span>
+<span id="L183"><span class="lineNum">     183</span>              : }</span>
+<span id="L184"><span class="lineNum">     184</span>              : </span>
+<span id="L185"><span class="lineNum">     185</span>              : /* gimme_tour</span>
+<span id="L186"><span class="lineNum">     186</span>              :  *</span>
+<span id="L187"><span class="lineNum">     187</span>              :  *        creates a new tour using edges from the edge table.</span>
+<span id="L188"><span class="lineNum">     188</span>              :  *        priority is given to &quot;shared&quot; edges (i.e. edges which</span>
+<span id="L189"><span class="lineNum">     189</span>              :  *        all parent genes possess and are marked as negative</span>
+<span id="L190"><span class="lineNum">     190</span>              :  *        in the edge table.)</span>
+<span id="L191"><span class="lineNum">     191</span>              :  *</span>
+<span id="L192"><span class="lineNum">     192</span>              :  */</span>
+<span id="L193"><span class="lineNum">     193</span>              : int</span>
+<span id="L194"><span class="lineNum">     194</span> <span class="tlaUNC">           0 : gimme_tour(PlannerInfo *root, Edge *edge_table, Gene *new_gene, int num_gene)</span></span>
+<span id="L195"><span class="lineNum">     195</span>              : {</span>
+<span id="L196"><span class="lineNum">     196</span>              :         int                     i;</span>
+<span id="L197"><span class="lineNum">     197</span> <span class="tlaUNC">           0 :         int                     edge_failures = 0;</span></span>
+<span id="L198"><span class="lineNum">     198</span>              : </span>
+<span id="L199"><span class="lineNum">     199</span>              :         /* choose int between 1 and num_gene */</span>
+<span id="L200"><span class="lineNum">     200</span> <span class="tlaUNC">           0 :         new_gene[0] = (Gene) geqo_randint(root, num_gene, 1);</span></span>
+<span id="L201"><span class="lineNum">     201</span>              : </span>
+<span id="L202"><span class="lineNum">     202</span> <span class="tlaUNC">           0 :         for (i = 1; i &lt; num_gene; i++)</span></span>
+<span id="L203"><span class="lineNum">     203</span>              :         {</span>
+<span id="L204"><span class="lineNum">     204</span>              :                 /*</span>
+<span id="L205"><span class="lineNum">     205</span>              :                  * as each point is entered into the tour, remove it from the edge</span>
+<span id="L206"><span class="lineNum">     206</span>              :                  * table</span>
+<span id="L207"><span class="lineNum">     207</span>              :                  */</span>
+<span id="L208"><span class="lineNum">     208</span>              : </span>
+<span id="L209"><span class="lineNum">     209</span> <span class="tlaUNC">           0 :                 remove_gene(root, new_gene[i - 1], edge_table[(int) new_gene[i - 1]], edge_table);</span></span>
+<span id="L210"><span class="lineNum">     210</span>              : </span>
+<span id="L211"><span class="lineNum">     211</span>              :                 /* find destination for the newly entered point */</span>
+<span id="L212"><span class="lineNum">     212</span>              : </span>
+<span id="L213"><span class="lineNum">     213</span> <span class="tlaUNC">           0 :                 if (edge_table[new_gene[i - 1]].unused_edges &gt; 0)</span></span>
+<span id="L214"><span class="lineNum">     214</span> <span class="tlaUNC">           0 :                         new_gene[i] = gimme_gene(root, edge_table[(int) new_gene[i - 1]], edge_table);</span></span>
+<span id="L215"><span class="lineNum">     215</span>              : </span>
+<span id="L216"><span class="lineNum">     216</span>              :                 else</span>
+<span id="L217"><span class="lineNum">     217</span>              :                 {                                               /* cope with fault */</span>
+<span id="L218"><span class="lineNum">     218</span> <span class="tlaUNC">           0 :                         edge_failures++;</span></span>
+<span id="L219"><span class="lineNum">     219</span>              : </span>
+<span id="L220"><span class="lineNum">     220</span> <span class="tlaUNC">           0 :                         new_gene[i] = edge_failure(root, new_gene, i - 1, edge_table, num_gene);</span></span>
+<span id="L221"><span class="lineNum">     221</span>              :                 }</span>
+<span id="L222"><span class="lineNum">     222</span>              : </span>
+<span id="L223"><span class="lineNum">     223</span>              :                 /* mark this node as incorporated */</span>
+<span id="L224"><span class="lineNum">     224</span> <span class="tlaUNC">           0 :                 edge_table[(int) new_gene[i - 1]].unused_edges = -1;</span></span>
+<span id="L225"><span class="lineNum">     225</span>              : </span>
+<span id="L226"><span class="lineNum">     226</span>              :         }                                                       /* for (i=1; i&lt;num_gene; i++) */</span>
+<span id="L227"><span class="lineNum">     227</span>              : </span>
+<span id="L228"><span class="lineNum">     228</span> <span class="tlaUNC">           0 :         return edge_failures;</span></span>
+<span id="L229"><span class="lineNum">     229</span>              : </span>
+<span id="L230"><span class="lineNum">     230</span>              : }</span>
+<span id="L231"><span class="lineNum">     231</span>              : </span>
+<span id="L232"><span class="lineNum">     232</span>              : /* remove_gene</span>
+<span id="L233"><span class="lineNum">     233</span>              :  *</span>
+<span id="L234"><span class="lineNum">     234</span>              :  *       removes input gene from edge_table.</span>
+<span id="L235"><span class="lineNum">     235</span>              :  *       input edge is used</span>
+<span id="L236"><span class="lineNum">     236</span>              :  *       to identify deletion locations within edge table.</span>
+<span id="L237"><span class="lineNum">     237</span>              :  *</span>
+<span id="L238"><span class="lineNum">     238</span>              :  */</span>
+<span id="L239"><span class="lineNum">     239</span>              : static void</span>
+<span id="L240"><span class="lineNum">     240</span> <span class="tlaUNC">           0 : remove_gene(PlannerInfo *root, Gene gene, Edge edge, Edge *edge_table)</span></span>
+<span id="L241"><span class="lineNum">     241</span>              : {</span>
+<span id="L242"><span class="lineNum">     242</span>              :         int                     i,</span>
+<span id="L243"><span class="lineNum">     243</span>              :                                 j;</span>
+<span id="L244"><span class="lineNum">     244</span>              :         int                     possess_edge;</span>
+<span id="L245"><span class="lineNum">     245</span>              :         int                     genes_remaining;</span>
+<span id="L246"><span class="lineNum">     246</span>              : </span>
+<span id="L247"><span class="lineNum">     247</span>              :         /*</span>
+<span id="L248"><span class="lineNum">     248</span>              :          * do for every gene known to have an edge to input gene (i.e. in</span>
+<span id="L249"><span class="lineNum">     249</span>              :          * edge_list for input edge)</span>
+<span id="L250"><span class="lineNum">     250</span>              :          */</span>
+<span id="L251"><span class="lineNum">     251</span>              : </span>
+<span id="L252"><span class="lineNum">     252</span> <span class="tlaUNC">           0 :         for (i = 0; i &lt; edge.unused_edges; i++)</span></span>
+<span id="L253"><span class="lineNum">     253</span>              :         {</span>
+<span id="L254"><span class="lineNum">     254</span> <span class="tlaUNC">           0 :                 possess_edge = (int) Abs(edge.edge_list[i]);</span></span>
+<span id="L255"><span class="lineNum">     255</span> <span class="tlaUNC">           0 :                 genes_remaining = edge_table[possess_edge].unused_edges;</span></span>
+<span id="L256"><span class="lineNum">     256</span>              : </span>
+<span id="L257"><span class="lineNum">     257</span>              :                 /* find the input gene in all edge_lists and delete it */</span>
+<span id="L258"><span class="lineNum">     258</span> <span class="tlaUNC">           0 :                 for (j = 0; j &lt; genes_remaining; j++)</span></span>
+<span id="L259"><span class="lineNum">     259</span>              :                 {</span>
+<span id="L260"><span class="lineNum">     260</span>              : </span>
+<span id="L261"><span class="lineNum">     261</span> <span class="tlaUNC">           0 :                         if ((Gene) Abs(edge_table[possess_edge].edge_list[j]) == gene)</span></span>
+<span id="L262"><span class="lineNum">     262</span>              :                         {</span>
+<span id="L263"><span class="lineNum">     263</span>              : </span>
+<span id="L264"><span class="lineNum">     264</span> <span class="tlaUNC">           0 :                                 edge_table[possess_edge].unused_edges--;</span></span>
+<span id="L265"><span class="lineNum">     265</span>              : </span>
+<span id="L266"><span class="lineNum">     266</span> <span class="tlaUNC">           0 :                                 edge_table[possess_edge].edge_list[j] =</span></span>
+<span id="L267"><span class="lineNum">     267</span> <span class="tlaUNC">           0 :                                         edge_table[possess_edge].edge_list[genes_remaining - 1];</span></span>
+<span id="L268"><span class="lineNum">     268</span>              : </span>
+<span id="L269"><span class="lineNum">     269</span> <span class="tlaUNC">           0 :                                 break;</span></span>
+<span id="L270"><span class="lineNum">     270</span>              :                         }</span>
+<span id="L271"><span class="lineNum">     271</span>              :                 }</span>
+<span id="L272"><span class="lineNum">     272</span>              :         }</span>
+<span id="L273"><span class="lineNum">     273</span> <span class="tlaUNC">           0 : }</span></span>
+<span id="L274"><span class="lineNum">     274</span>              : </span>
+<span id="L275"><span class="lineNum">     275</span>              : /* gimme_gene</span>
+<span id="L276"><span class="lineNum">     276</span>              :  *</span>
+<span id="L277"><span class="lineNum">     277</span>              :  *        priority is given to &quot;shared&quot; edges</span>
+<span id="L278"><span class="lineNum">     278</span>              :  *        (i.e. edges which both genes possess)</span>
+<span id="L279"><span class="lineNum">     279</span>              :  *</span>
+<span id="L280"><span class="lineNum">     280</span>              :  */</span>
+<span id="L281"><span class="lineNum">     281</span>              : static Gene</span>
+<span id="L282"><span class="lineNum">     282</span> <span class="tlaUNC">           0 : gimme_gene(PlannerInfo *root, Edge edge, Edge *edge_table)</span></span>
+<span id="L283"><span class="lineNum">     283</span>              : {</span>
+<span id="L284"><span class="lineNum">     284</span>              :         int                     i;</span>
+<span id="L285"><span class="lineNum">     285</span>              :         Gene            friend;</span>
+<span id="L286"><span class="lineNum">     286</span>              :         int                     minimum_edges;</span>
+<span id="L287"><span class="lineNum">     287</span> <span class="tlaUNC">           0 :         int                     minimum_count = -1;</span></span>
+<span id="L288"><span class="lineNum">     288</span>              :         int                     rand_decision;</span>
+<span id="L289"><span class="lineNum">     289</span>              : </span>
+<span id="L290"><span class="lineNum">     290</span>              :         /*</span>
+<span id="L291"><span class="lineNum">     291</span>              :          * no point has edges to more than 4 other points thus, this contrived</span>
+<span id="L292"><span class="lineNum">     292</span>              :          * minimum will be replaced</span>
+<span id="L293"><span class="lineNum">     293</span>              :          */</span>
+<span id="L294"><span class="lineNum">     294</span>              : </span>
+<span id="L295"><span class="lineNum">     295</span> <span class="tlaUNC">           0 :         minimum_edges = 5;</span></span>
+<span id="L296"><span class="lineNum">     296</span>              : </span>
+<span id="L297"><span class="lineNum">     297</span>              :         /* consider candidate destination points in edge list */</span>
+<span id="L298"><span class="lineNum">     298</span>              : </span>
+<span id="L299"><span class="lineNum">     299</span> <span class="tlaUNC">           0 :         for (i = 0; i &lt; edge.unused_edges; i++)</span></span>
+<span id="L300"><span class="lineNum">     300</span>              :         {</span>
+<span id="L301"><span class="lineNum">     301</span> <span class="tlaUNC">           0 :                 friend = (Gene) edge.edge_list[i];</span></span>
+<span id="L302"><span class="lineNum">     302</span>              : </span>
+<span id="L303"><span class="lineNum">     303</span>              :                 /*</span>
+<span id="L304"><span class="lineNum">     304</span>              :                  * give priority to shared edges that are negative; so return 'em</span>
+<span id="L305"><span class="lineNum">     305</span>              :                  */</span>
+<span id="L306"><span class="lineNum">     306</span>              : </span>
+<span id="L307"><span class="lineNum">     307</span>              :                 /*</span>
+<span id="L308"><span class="lineNum">     308</span>              :                  * negative values are caught here so we need not worry about</span>
+<span id="L309"><span class="lineNum">     309</span>              :                  * converting to absolute values</span>
+<span id="L310"><span class="lineNum">     310</span>              :                  */</span>
+<span id="L311"><span class="lineNum">     311</span> <span class="tlaUNC">           0 :                 if (friend &lt; 0)</span></span>
+<span id="L312"><span class="lineNum">     312</span> <span class="tlaUNC">           0 :                         return (Gene) Abs(friend);</span></span>
+<span id="L313"><span class="lineNum">     313</span>              : </span>
+<span id="L314"><span class="lineNum">     314</span>              : </span>
+<span id="L315"><span class="lineNum">     315</span>              :                 /*</span>
+<span id="L316"><span class="lineNum">     316</span>              :                  * give priority to candidates with fewest remaining unused edges;</span>
+<span id="L317"><span class="lineNum">     317</span>              :                  * find out what the minimum number of unused edges is</span>
+<span id="L318"><span class="lineNum">     318</span>              :                  * (minimum_edges); if there is more than one candidate with the</span>
+<span id="L319"><span class="lineNum">     319</span>              :                  * minimum number of unused edges keep count of this number</span>
+<span id="L320"><span class="lineNum">     320</span>              :                  * (minimum_count);</span>
+<span id="L321"><span class="lineNum">     321</span>              :                  */</span>
+<span id="L322"><span class="lineNum">     322</span>              : </span>
+<span id="L323"><span class="lineNum">     323</span>              :                 /*</span>
+<span id="L324"><span class="lineNum">     324</span>              :                  * The test for minimum_count can probably be removed at some point</span>
+<span id="L325"><span class="lineNum">     325</span>              :                  * but comments should probably indicate exactly why it is guaranteed</span>
+<span id="L326"><span class="lineNum">     326</span>              :                  * that the test will always succeed the first time around.  If it can</span>
+<span id="L327"><span class="lineNum">     327</span>              :                  * fail then the code is in error</span>
+<span id="L328"><span class="lineNum">     328</span>              :                  */</span>
+<span id="L329"><span class="lineNum">     329</span>              : </span>
+<span id="L330"><span class="lineNum">     330</span>              : </span>
+<span id="L331"><span class="lineNum">     331</span> <span class="tlaUNC">           0 :                 if (edge_table[(int) friend].unused_edges &lt; minimum_edges)</span></span>
+<span id="L332"><span class="lineNum">     332</span>              :                 {</span>
+<span id="L333"><span class="lineNum">     333</span> <span class="tlaUNC">           0 :                         minimum_edges = edge_table[(int) friend].unused_edges;</span></span>
+<span id="L334"><span class="lineNum">     334</span> <span class="tlaUNC">           0 :                         minimum_count = 1;</span></span>
+<span id="L335"><span class="lineNum">     335</span>              :                 }</span>
+<span id="L336"><span class="lineNum">     336</span> <span class="tlaUNC">           0 :                 else if (minimum_count == -1)</span></span>
+<span id="L337"><span class="lineNum">     337</span> <span class="tlaUNC">           0 :                         elog(ERROR, &quot;minimum_count not set&quot;);</span></span>
+<span id="L338"><span class="lineNum">     338</span> <span class="tlaUNC">           0 :                 else if (edge_table[(int) friend].unused_edges == minimum_edges)</span></span>
+<span id="L339"><span class="lineNum">     339</span> <span class="tlaUNC">           0 :                         minimum_count++;</span></span>
+<span id="L340"><span class="lineNum">     340</span>              : </span>
+<span id="L341"><span class="lineNum">     341</span>              :         }                                                       /* for (i=0; i&lt;edge.unused_edges; i++) */</span>
+<span id="L342"><span class="lineNum">     342</span>              : </span>
+<span id="L343"><span class="lineNum">     343</span>              : </span>
+<span id="L344"><span class="lineNum">     344</span>              :         /* random decision of the possible candidates to use */</span>
+<span id="L345"><span class="lineNum">     345</span> <span class="tlaUNC">           0 :         rand_decision = geqo_randint(root, minimum_count - 1, 0);</span></span>
+<span id="L346"><span class="lineNum">     346</span>              : </span>
+<span id="L347"><span class="lineNum">     347</span>              : </span>
+<span id="L348"><span class="lineNum">     348</span> <span class="tlaUNC">           0 :         for (i = 0; i &lt; edge.unused_edges; i++)</span></span>
+<span id="L349"><span class="lineNum">     349</span>              :         {</span>
+<span id="L350"><span class="lineNum">     350</span> <span class="tlaUNC">           0 :                 friend = (Gene) edge.edge_list[i];</span></span>
+<span id="L351"><span class="lineNum">     351</span>              : </span>
+<span id="L352"><span class="lineNum">     352</span>              :                 /* return the chosen candidate point */</span>
+<span id="L353"><span class="lineNum">     353</span> <span class="tlaUNC">           0 :                 if (edge_table[(int) friend].unused_edges == minimum_edges)</span></span>
+<span id="L354"><span class="lineNum">     354</span>              :                 {</span>
+<span id="L355"><span class="lineNum">     355</span> <span class="tlaUNC">           0 :                         minimum_count--;</span></span>
+<span id="L356"><span class="lineNum">     356</span>              : </span>
+<span id="L357"><span class="lineNum">     357</span> <span class="tlaUNC">           0 :                         if (minimum_count == rand_decision)</span></span>
+<span id="L358"><span class="lineNum">     358</span> <span class="tlaUNC">           0 :                                 return friend;</span></span>
+<span id="L359"><span class="lineNum">     359</span>              :                 }</span>
+<span id="L360"><span class="lineNum">     360</span>              :         }</span>
+<span id="L361"><span class="lineNum">     361</span>              : </span>
+<span id="L362"><span class="lineNum">     362</span>              :         /* ... should never be reached */</span>
+<span id="L363"><span class="lineNum">     363</span> <span class="tlaUNC">           0 :         elog(ERROR, &quot;neither shared nor minimum number nor random edge found&quot;);</span></span>
+<span id="L364"><span class="lineNum">     364</span>              :         return 0;                                       /* to keep the compiler quiet */</span>
+<span id="L365"><span class="lineNum">     365</span>              : }</span>
+<span id="L366"><span class="lineNum">     366</span>              : </span>
+<span id="L367"><span class="lineNum">     367</span>              : /* edge_failure</span>
+<span id="L368"><span class="lineNum">     368</span>              :  *</span>
+<span id="L369"><span class="lineNum">     369</span>              :  *        routine for handling edge failure</span>
+<span id="L370"><span class="lineNum">     370</span>              :  *</span>
+<span id="L371"><span class="lineNum">     371</span>              :  */</span>
+<span id="L372"><span class="lineNum">     372</span>              : static Gene</span>
+<span id="L373"><span class="lineNum">     373</span> <span class="tlaUNC">           0 : edge_failure(PlannerInfo *root, Gene *gene, int index, Edge *edge_table, int num_gene)</span></span>
+<span id="L374"><span class="lineNum">     374</span>              : {</span>
+<span id="L375"><span class="lineNum">     375</span>              :         int                     i;</span>
+<span id="L376"><span class="lineNum">     376</span> <span class="tlaUNC">           0 :         Gene            fail_gene = gene[index];</span></span>
+<span id="L377"><span class="lineNum">     377</span> <span class="tlaUNC">           0 :         int                     remaining_edges = 0;</span></span>
+<span id="L378"><span class="lineNum">     378</span> <span class="tlaUNC">           0 :         int                     four_count = 0;</span></span>
+<span id="L379"><span class="lineNum">     379</span>              :         int                     rand_decision;</span>
+<span id="L380"><span class="lineNum">     380</span>              : </span>
+<span id="L381"><span class="lineNum">     381</span>              : </span>
+<span id="L382"><span class="lineNum">     382</span>              :         /*</span>
+<span id="L383"><span class="lineNum">     383</span>              :          * how many edges remain? how many gene with four total (initial) edges</span>
+<span id="L384"><span class="lineNum">     384</span>              :          * remain?</span>
+<span id="L385"><span class="lineNum">     385</span>              :          */</span>
+<span id="L386"><span class="lineNum">     386</span>              : </span>
+<span id="L387"><span class="lineNum">     387</span> <span class="tlaUNC">           0 :         for (i = 1; i &lt;= num_gene; i++)</span></span>
+<span id="L388"><span class="lineNum">     388</span>              :         {</span>
+<span id="L389"><span class="lineNum">     389</span> <span class="tlaUNC">           0 :                 if ((edge_table[i].unused_edges != -1) &amp;&amp; (i != (int) fail_gene))</span></span>
+<span id="L390"><span class="lineNum">     390</span>              :                 {</span>
+<span id="L391"><span class="lineNum">     391</span> <span class="tlaUNC">           0 :                         remaining_edges++;</span></span>
+<span id="L392"><span class="lineNum">     392</span>              : </span>
+<span id="L393"><span class="lineNum">     393</span> <span class="tlaUNC">           0 :                         if (edge_table[i].total_edges == 4)</span></span>
+<span id="L394"><span class="lineNum">     394</span> <span class="tlaUNC">           0 :                                 four_count++;</span></span>
+<span id="L395"><span class="lineNum">     395</span>              :                 }</span>
+<span id="L396"><span class="lineNum">     396</span>              :         }</span>
+<span id="L397"><span class="lineNum">     397</span>              : </span>
+<span id="L398"><span class="lineNum">     398</span>              :         /*</span>
+<span id="L399"><span class="lineNum">     399</span>              :          * random decision of the gene with remaining edges and whose total_edges</span>
+<span id="L400"><span class="lineNum">     400</span>              :          * == 4</span>
+<span id="L401"><span class="lineNum">     401</span>              :          */</span>
+<span id="L402"><span class="lineNum">     402</span>              : </span>
+<span id="L403"><span class="lineNum">     403</span> <span class="tlaUNC">           0 :         if (four_count != 0)</span></span>
+<span id="L404"><span class="lineNum">     404</span>              :         {</span>
+<span id="L405"><span class="lineNum">     405</span>              : </span>
+<span id="L406"><span class="lineNum">     406</span> <span class="tlaUNC">           0 :                 rand_decision = geqo_randint(root, four_count - 1, 0);</span></span>
+<span id="L407"><span class="lineNum">     407</span>              : </span>
+<span id="L408"><span class="lineNum">     408</span> <span class="tlaUNC">           0 :                 for (i = 1; i &lt;= num_gene; i++)</span></span>
+<span id="L409"><span class="lineNum">     409</span>              :                 {</span>
+<span id="L410"><span class="lineNum">     410</span>              : </span>
+<span id="L411"><span class="lineNum">     411</span> <span class="tlaUNC">           0 :                         if ((Gene) i != fail_gene &amp;&amp;</span></span>
+<span id="L412"><span class="lineNum">     412</span> <span class="tlaUNC">           0 :                                 edge_table[i].unused_edges != -1 &amp;&amp;</span></span>
+<span id="L413"><span class="lineNum">     413</span> <span class="tlaUNC">           0 :                                 edge_table[i].total_edges == 4)</span></span>
+<span id="L414"><span class="lineNum">     414</span>              :                         {</span>
+<span id="L415"><span class="lineNum">     415</span>              : </span>
+<span id="L416"><span class="lineNum">     416</span> <span class="tlaUNC">           0 :                                 four_count--;</span></span>
+<span id="L417"><span class="lineNum">     417</span>              : </span>
+<span id="L418"><span class="lineNum">     418</span> <span class="tlaUNC">           0 :                                 if (rand_decision == four_count)</span></span>
+<span id="L419"><span class="lineNum">     419</span> <span class="tlaUNC">           0 :                                         return (Gene) i;</span></span>
+<span id="L420"><span class="lineNum">     420</span>              :                         }</span>
+<span id="L421"><span class="lineNum">     421</span>              :                 }</span>
+<span id="L422"><span class="lineNum">     422</span>              : </span>
+<span id="L423"><span class="lineNum">     423</span> <span class="tlaUNC">           0 :                 elog(LOG, &quot;no edge found via random decision and total_edges == 4&quot;);</span></span>
+<span id="L424"><span class="lineNum">     424</span>              :         }</span>
+<span id="L425"><span class="lineNum">     425</span> <span class="tlaUNC">           0 :         else if (remaining_edges != 0)</span></span>
+<span id="L426"><span class="lineNum">     426</span>              :         {</span>
+<span id="L427"><span class="lineNum">     427</span>              :                 /* random decision of the gene with remaining edges */</span>
+<span id="L428"><span class="lineNum">     428</span> <span class="tlaUNC">           0 :                 rand_decision = geqo_randint(root, remaining_edges - 1, 0);</span></span>
+<span id="L429"><span class="lineNum">     429</span>              : </span>
+<span id="L430"><span class="lineNum">     430</span> <span class="tlaUNC">           0 :                 for (i = 1; i &lt;= num_gene; i++)</span></span>
+<span id="L431"><span class="lineNum">     431</span>              :                 {</span>
+<span id="L432"><span class="lineNum">     432</span>              : </span>
+<span id="L433"><span class="lineNum">     433</span> <span class="tlaUNC">           0 :                         if ((Gene) i != fail_gene &amp;&amp;</span></span>
+<span id="L434"><span class="lineNum">     434</span> <span class="tlaUNC">           0 :                                 edge_table[i].unused_edges != -1)</span></span>
+<span id="L435"><span class="lineNum">     435</span>              :                         {</span>
+<span id="L436"><span class="lineNum">     436</span>              : </span>
+<span id="L437"><span class="lineNum">     437</span> <span class="tlaUNC">           0 :                                 remaining_edges--;</span></span>
+<span id="L438"><span class="lineNum">     438</span>              : </span>
+<span id="L439"><span class="lineNum">     439</span> <span class="tlaUNC">           0 :                                 if (rand_decision == remaining_edges)</span></span>
+<span id="L440"><span class="lineNum">     440</span> <span class="tlaUNC">           0 :                                         return i;</span></span>
+<span id="L441"><span class="lineNum">     441</span>              :                         }</span>
+<span id="L442"><span class="lineNum">     442</span>              :                 }</span>
+<span id="L443"><span class="lineNum">     443</span>              : </span>
+<span id="L444"><span class="lineNum">     444</span> <span class="tlaUNC">           0 :                 elog(LOG, &quot;no edge found via random decision with remaining edges&quot;);</span></span>
+<span id="L445"><span class="lineNum">     445</span>              :         }</span>
+<span id="L446"><span class="lineNum">     446</span>              : </span>
+<span id="L447"><span class="lineNum">     447</span>              :         /*</span>
+<span id="L448"><span class="lineNum">     448</span>              :          * edge table seems to be empty; this happens sometimes on the last point</span>
+<span id="L449"><span class="lineNum">     449</span>              :          * due to the fact that the first point is removed from the table even</span>
+<span id="L450"><span class="lineNum">     450</span>              :          * though only one of its edges has been determined</span>
+<span id="L451"><span class="lineNum">     451</span>              :          */</span>
+<span id="L452"><span class="lineNum">     452</span>              : </span>
+<span id="L453"><span class="lineNum">     453</span>              :         else</span>
+<span id="L454"><span class="lineNum">     454</span>              :         {                                                       /* occurs only at the last point in the tour;</span>
+<span id="L455"><span class="lineNum">     455</span>              :                                                                  * simply look for the point which is not yet</span>
+<span id="L456"><span class="lineNum">     456</span>              :                                                                  * used */</span>
+<span id="L457"><span class="lineNum">     457</span>              : </span>
+<span id="L458"><span class="lineNum">     458</span> <span class="tlaUNC">           0 :                 for (i = 1; i &lt;= num_gene; i++)</span></span>
+<span id="L459"><span class="lineNum">     459</span> <span class="tlaUNC">           0 :                         if (edge_table[i].unused_edges &gt;= 0)</span></span>
+<span id="L460"><span class="lineNum">     460</span> <span class="tlaUNC">           0 :                                 return (Gene) i;</span></span>
+<span id="L461"><span class="lineNum">     461</span>              : </span>
+<span id="L462"><span class="lineNum">     462</span> <span class="tlaUNC">           0 :                 elog(LOG, &quot;no edge found via looking for the last unused point&quot;);</span></span>
+<span id="L463"><span class="lineNum">     463</span>              :         }</span>
+<span id="L464"><span class="lineNum">     464</span>              : </span>
+<span id="L465"><span class="lineNum">     465</span>              : </span>
+<span id="L466"><span class="lineNum">     466</span>              :         /* ... should never be reached */</span>
+<span id="L467"><span class="lineNum">     467</span> <span class="tlaUNC">           0 :         elog(ERROR, &quot;no edge found&quot;);</span></span>
+<span id="L468"><span class="lineNum">     468</span>              :         return 0;                                       /* to keep the compiler quiet */</span>
+<span id="L469"><span class="lineNum">     469</span>              : }</span>
+<span id="L470"><span class="lineNum">     470</span>              : </span>
+<span id="L471"><span class="lineNum">     471</span>              : #endif                                                  /* defined(ERX) */</span>
+        </pre>
+              </td>
+            </tr>
+          </table>
+          <br>
+
+          <table width="100%" border=0 cellspacing=0 cellpadding=0>
+            <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+            <tr><td class="versionInfo">Generated by: <a href="https://github.com//linux-test-project/lcov" target="_parent">LCOV version 2.0-1</a></td></tr>
+          </table>
+          <br>
+
+</body>
+</html>

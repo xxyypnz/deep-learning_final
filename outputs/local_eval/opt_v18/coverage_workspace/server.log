@@ -1,0 +1,235 @@
+2026-06-06 04:00:03.932 UTC [117635] LOG:  starting PostgreSQL 13.23 on x86_64-pc-linux-gnu, compiled by gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0, 64-bit
+2026-06-06 04:00:03.935 UTC [117635] LOG:  listening on Unix socket "/tmp/pgcov-55432/.s.PGSQL.55432"
+2026-06-06 04:00:03.943 UTC [117640] LOG:  database system was shut down at 2026-06-06 04:00:02 UTC
+2026-06-06 04:00:03.994 UTC [117635] LOG:  database system is ready to accept connections
+2026-06-06 04:00:07.467 UTC [117698] ERROR:  cannot refer to NEW within WITH query
+2026-06-06 04:00:07.467 UTC [117698] STATEMENT:  CREATE RULE ruleutils_upd_r AS ON UPDATE TO ruleutils_upd_v DO INSTEAD
+	  WITH ruleutils_upd_t AS (SELECT NEW.id AS id)
+	  UPDATE ruleutils_upd_t AS target_alias SET val = 'updated' WHERE target_alias.id IN (SELECT id FROM ruleutils_upd_t);
+2026-06-06 04:00:07.861 UTC [117698] WARNING:  there is already a transaction in progress
+2026-06-06 04:00:07.871 UTC [117698] WARNING:  there is already a transaction in progress
+2026-06-06 04:00:07.872 UTC [117698] WARNING:  there is already a transaction in progress
+2026-06-06 04:00:07.884 UTC [117698] WARNING:  there is already a transaction in progress
+2026-06-06 04:00:07.905 UTC [117698] WARNING:  skipping "test_vacuum_perm" --- only table or database owner can vacuum it
+2026-06-06 04:00:07.911 UTC [117698] WARNING:  skipping "test_analyze_perm" --- only table or database owner can analyze it
+2026-06-06 04:00:07.918 UTC [117698] WARNING:  skipping "test_vacuum_analyze_perm" --- only table or database owner can vacuum it
+2026-06-06 04:00:07.924 UTC [117698] WARNING:  skipping "vacowned" --- only table or database owner can vacuum it
+2026-06-06 04:00:07.924 UTC [117698] WARNING:  skipping "vacowned" --- only table or database owner can analyze it
+2026-06-06 04:00:07.925 UTC [117698] WARNING:  skipping "vacowned" --- only table or database owner can vacuum it
+2026-06-06 04:00:07.925 UTC [117698] WARNING:  skipping "pg_class" --- only superuser or database owner can vacuum it
+2026-06-06 04:00:07.925 UTC [117698] WARNING:  skipping "pg_class" --- only superuser or database owner can analyze it
+2026-06-06 04:00:07.926 UTC [117698] WARNING:  skipping "pg_class" --- only superuser or database owner can vacuum it
+2026-06-06 04:00:07.926 UTC [117698] WARNING:  skipping "pg_authid" --- only superuser can vacuum it
+2026-06-06 04:00:07.926 UTC [117698] WARNING:  skipping "pg_authid" --- only superuser can analyze it
+2026-06-06 04:00:07.927 UTC [117698] WARNING:  skipping "pg_authid" --- only superuser can vacuum it
+2026-06-06 04:00:08.296 UTC [117698] ERROR:  syntax error at end of input at character 77
+2026-06-06 04:00:08.296 UTC [117698] STATEMENT:  CREATE FUNCTION test_bad_sql_func() RETURNS int LANGUAGE sql AS $$ SELECT + $$;
+2026-06-06 04:00:08.296 UTC [117698] ERROR:  missing expression at or near ";" at character 89
+2026-06-06 04:00:08.296 UTC [117698] STATEMENT:  CREATE FUNCTION test_bad_plpgsql_func() RETURNS int LANGUAGE plpgsql AS $$ BEGIN RETURN ; END $$;
+2026-06-06 04:00:08.297 UTC [117698] ERROR:  missing expression at or near "THEN" at character 16
+2026-06-06 04:00:08.297 UTC [117698] STATEMENT:  DO $$ BEGIN IF THEN RAISE NOTICE 'bad'; END IF; END $$;
+2026-06-06 04:00:08.316 UTC [117698] ERROR:  "fk_part_child" is already a partition
+2026-06-06 04:00:08.316 UTC [117698] STATEMENT:  ALTER TABLE fk_part_parent ATTACH PARTITION fk_part_child FOR VALUES FROM (1) TO (10);
+2026-06-06 04:00:08.359 UTC [117698] ERROR:  non-view rule for "test_t1" must not be named "_RETURN"
+2026-06-06 04:00:08.359 UTC [117698] STATEMENT:  CREATE OR REPLACE RULE "_RETURN" AS ON INSERT TO test_t1 DO INSTEAD NOTHING;
+2026-06-06 04:00:08.366 UTC [117698] ERROR:  non-view rule for "test_v2" must not be named "_RETURN"
+2026-06-06 04:00:08.366 UTC [117698] STATEMENT:  CREATE OR REPLACE RULE "_RETURN" AS ON INSERT TO test_v2 DO INSTEAD NOTHING;
+2026-06-06 04:00:08.374 UTC [117698] ERROR:  non-view rule for "r118_compact" must not be named "_RETURN"
+2026-06-06 04:00:08.374 UTC [117698] STATEMENT:  CREATE RULE "_RETURN" AS ON INSERT TO r118_compact DO ALSO SELECT 1;
+2026-06-06 04:00:08.484 UTC [117698] ERROR:  no partition of relation "test_part_multi" found for row
+2026-06-06 04:00:08.484 UTC [117698] DETAIL:  Partition key of the failing row contains (id) = (100).
+2026-06-06 04:00:08.484 UTC [117698] STATEMENT:  INSERT INTO test_part_multi (id, ref_id) VALUES (100, NULL);
+2026-06-06 04:00:08.484 UTC [117698] ERROR:  no partition of relation "test_part_multi" found for row
+2026-06-06 04:00:08.484 UTC [117698] DETAIL:  Partition key of the failing row contains (id) = (200).
+2026-06-06 04:00:08.484 UTC [117698] STATEMENT:  INSERT INTO test_part_multi (id, ref_id) VALUES (200, 100);
+2026-06-06 04:00:10.551 UTC [117698] ERROR:  canceling statement due to lock timeout
+2026-06-06 04:00:10.551 UTC [117698] CONTEXT:  while deleting tuple (0,1) in relation "conc_del125"
+2026-06-06 04:00:10.551 UTC [117698] STATEMENT:  DELETE FROM conc_del125 WHERE id = 1;
+2026-06-06 04:00:12.052 UTC [117698] ERROR:  canceling statement due to lock timeout
+2026-06-06 04:00:12.052 UTC [117698] STATEMENT:  DROP TABLE IF EXISTS conc_del125 CASCADE;
+2026-06-06 04:00:12.320 UTC [117698] ERROR:  check constraint "ck_invalid" of relation "test_check_invalid" is violated by some row
+2026-06-06 04:00:12.320 UTC [117698] STATEMENT:  ALTER TABLE test_check_invalid VALIDATE CONSTRAINT ck_invalid;
+2026-06-06 04:00:12.329 UTC [117698] LOG:  parse tree:
+2026-06-06 04:00:12.329 UTC [117698] DETAIL:     {QUERY 
+	   :commandType 5 
+	   :querySource 0 
+	   :canSetTag true 
+	   :utilityStmt ? 
+	   :resultRelation 0 
+	   :hasAggs false 
+	   :hasWindowFuncs false 
+	   :hasTargetSRFs false 
+	   :hasSubLinks false 
+	   :hasDistinctOn false 
+	   :hasRecursive false 
+	   :hasModifyingCTE false 
+	   :hasForUpdate false 
+	   :hasRowSecurity false 
+	   :cteList <> 
+	   :rtable <> 
+	   :jointree <> 
+	   :targetList <> 
+	   :override 0 
+	   :onConflict <> 
+	   :returningList <> 
+	   :groupClause <> 
+	   :groupingSets <> 
+	   :havingQual <> 
+	   :windowClause <> 
+	   :distinctClause <> 
+	   :sortClause <> 
+	   :limitOffset <> 
+	   :limitCount <> 
+	   :limitOption 0 
+	   :rowMarks <> 
+	   :setOperations <> 
+	   :constraintDeps <> 
+	   :withCheckOptions <> 
+	   :stmt_location 0 
+	   :stmt_len 28
+	   }
+	
+2026-06-06 04:00:12.329 UTC [117698] STATEMENT:  SET debug_pretty_print = off;
+2026-06-06 04:00:12.330 UTC [117698] LOG:  parse tree:
+2026-06-06 04:00:12.330 UTC [117698] DETAIL:  {QUERY :commandType 5 :querySource 0 :canSetTag true :utilityStmt ?
+	:resultRelation 0 :hasAggs false :hasWindowFuncs false :hasTargetSRFs false
+	:hasSubLinks false :hasDistinctOn false :hasRecursive false :hasModifyingCTE
+	false :hasForUpdate false :hasRowSecurity false :cteList <> :rtable <>
+	:jointree <> :targetList <> :override 0 :onConflict <> :returningList <>
+	:groupClause <> :groupingSets <> :havingQual <> :windowClause <>
+	:distinctClause <> :sortClause <> :limitOffset <> :limitCount <> :limitOption
+	0 :rowMarks <> :setOperations <> :constraintDeps <> :withCheckOptions <>
+	:stmt_location 0 :stmt_len 38}
+	
+2026-06-06 04:00:12.330 UTC [117698] STATEMENT:  DROP TABLE IF EXISTS outcon130 CASCADE;
+2026-06-06 04:00:12.331 UTC [117698] LOG:  parse tree:
+2026-06-06 04:00:12.331 UTC [117698] DETAIL:  {QUERY :commandType 5 :querySource 0 :canSetTag true :utilityStmt {CREATESTMT
+	:relation {RANGEVAR :schemaname <> :relname outcon130 :inh true
+	:relpersistence p :alias <> :location 13} :tableElts ({COLUMNDEF :colname a
+	:typeName {TYPENAME :names ("pg_catalog" "int4") :typeOid 0 :setof false
+	:pct_type false :typmods <> :typemod -1 :arrayBounds <> :location 26}
+	:inhcount 0 :is_local true :is_not_null false :is_from_type false :storage <>
+	:raw_default <> :cooked_default <> :identity <> :identitySequence <>
+	:generated <> :collClause <> :collOid 0 :constraints <> :fdwoptions <>
+	:location 24} {CONSTRAINT :conname outcon130_chk :deferrable false
+	:initdeferred false :location 31 :contype CHECK :is_no_inherit false :raw_expr
+	{AEXPR  :name (">") :lexpr {COLUMNREF :fields ("a") :location 63} :rexpr
+	{A_CONST :val 0 :location 67} :location 65} :cooked_expr <> :skip_validation
+	false :initially_valid true}) :inhRelations <> :partspec <> :partbound <>
+	:ofTypename <> :constraints <> :options <> :oncommit 0 :tablespacename <>
+	:accessMethod <> :if_not_exists false} :resultRelation 0 :hasAggs false
+	:hasWindowFuncs false :hasTargetSRFs false :hasSubLinks false :hasDistinctOn
+	false :hasRecursive false :hasModifyingCTE false :hasForUpdate false
+	:hasRowSecurity false :cteList <> :rtable <> :jointree <> :targetList <>
+	:override 0 :onConflict <> :returningList <> :groupClause <> :groupingSets <>
+	:havingQual <> :windowClause <> :distinctClause <> :sortClause <> :limitOffset
+	<> :limitCount <> :limitOption 0 :rowMarks <> :setOperations <>
+	:constraintDeps <> :withCheckOptions <> :stmt_location 0 :stmt_len 70}
+	
+2026-06-06 04:00:12.331 UTC [117698] STATEMENT:  CREATE TABLE outcon130 (a int, CONSTRAINT outcon130_chk CHECK (a > 0));
+2026-06-06 04:00:12.333 UTC [117698] LOG:  parse tree:
+2026-06-06 04:00:12.333 UTC [117698] DETAIL:  {QUERY :commandType 5 :querySource 0 :canSetTag true :utilityStmt ?
+	:resultRelation 0 :hasAggs false :hasWindowFuncs false :hasTargetSRFs false
+	:hasSubLinks false :hasDistinctOn false :hasRecursive false :hasModifyingCTE
+	false :hasForUpdate false :hasRowSecurity false :cteList <> :rtable <>
+	:jointree <> :targetList <> :override 0 :onConflict <> :returningList <>
+	:groupClause <> :groupingSets <> :havingQual <> :windowClause <>
+	:distinctClause <> :sortClause <> :limitOffset <> :limitCount <> :limitOption
+	0 :rowMarks <> :setOperations <> :constraintDeps <> :withCheckOptions <>
+	:stmt_location 0 :stmt_len 81}
+	
+2026-06-06 04:00:12.333 UTC [117698] STATEMENT:  ALTER TABLE outcon130 ADD CONSTRAINT outcon130_notvalid CHECK (a < 100) NOT VALID;
+2026-06-06 04:00:12.335 UTC [117698] LOG:  parse tree:
+2026-06-06 04:00:12.335 UTC [117698] DETAIL:  {QUERY :commandType 5 :querySource 0 :canSetTag true :utilityStmt ?
+	:resultRelation 0 :hasAggs false :hasWindowFuncs false :hasTargetSRFs false
+	:hasSubLinks false :hasDistinctOn false :hasRecursive false :hasModifyingCTE
+	false :hasForUpdate false :hasRowSecurity false :cteList <> :rtable <>
+	:jointree <> :targetList <> :override 0 :onConflict <> :returningList <>
+	:groupClause <> :groupingSets <> :havingQual <> :windowClause <>
+	:distinctClause <> :sortClause <> :limitOffset <> :limitCount <> :limitOption
+	0 :rowMarks <> :setOperations <> :constraintDeps <> :withCheckOptions <>
+	:stmt_location 0 :stmt_len 60}
+	
+2026-06-06 04:00:12.335 UTC [117698] STATEMENT:  ALTER TABLE outcon130 VALIDATE CONSTRAINT outcon130_notvalid;
+2026-06-06 04:00:12.337 UTC [117698] LOG:  parse tree:
+2026-06-06 04:00:12.337 UTC [117698] DETAIL:  {QUERY :commandType 5 :querySource 0 :canSetTag true :utilityStmt ?
+	:resultRelation 0 :hasAggs false :hasWindowFuncs false :hasTargetSRFs false
+	:hasSubLinks false :hasDistinctOn false :hasRecursive false :hasModifyingCTE
+	false :hasForUpdate false :hasRowSecurity false :cteList <> :rtable <>
+	:jointree <> :targetList <> :override 0 :onConflict <> :returningList <>
+	:groupClause <> :groupingSets <> :havingQual <> :windowClause <>
+	:distinctClause <> :sortClause <> :limitOffset <> :limitCount <> :limitOption
+	0 :rowMarks <> :setOperations <> :constraintDeps <> :withCheckOptions <>
+	:stmt_location 0 :stmt_len 23}
+	
+2026-06-06 04:00:12.337 UTC [117698] STATEMENT:  RESET debug_print_parse;
+2026-06-06 04:00:12.351 UTC [117698] ERROR:  relation "unnamed_join" in FOR UPDATE clause not found in FROM clause at character 56
+2026-06-06 04:00:12.351 UTC [117698] STATEMENT:  SELECT * FROM lock_a JOIN lock_b ON true FOR UPDATE OF unnamed_join;
+2026-06-06 04:00:12.369 UTC [117698] ERROR:  logical decoding requires wal_level >= logical
+2026-06-06 04:00:12.369 UTC [117698] STATEMENT:  SELECT pg_create_logical_replication_slot('test_slot', 'pgoutput');
+2026-06-06 04:00:12.370 UTC [117698] ERROR:  replication slot "test_slot" does not exist
+2026-06-06 04:00:12.370 UTC [117698] STATEMENT:  SELECT pg_drop_replication_slot('test_slot');
+2026-06-06 04:00:12.373 UTC [117698] ERROR:  logical decoding requires wal_level >= logical
+2026-06-06 04:00:12.373 UTC [117698] STATEMENT:  SELECT pg_create_logical_replication_slot('test_slot2', 'pgoutput');
+2026-06-06 04:00:12.374 UTC [117698] ERROR:  replication slot "test_slot2" does not exist
+2026-06-06 04:00:12.374 UTC [117698] STATEMENT:  SELECT pg_drop_replication_slot('test_slot2');
+2026-06-06 04:00:12.377 UTC [117698] ERROR:  logical decoding requires wal_level >= logical
+2026-06-06 04:00:12.377 UTC [117698] STATEMENT:  SELECT pg_create_logical_replication_slot('test_slot3', 'pgoutput');
+2026-06-06 04:00:12.378 UTC [117698] ERROR:  replication slot "test_slot3" does not exist
+2026-06-06 04:00:12.378 UTC [117698] STATEMENT:  SELECT pg_drop_replication_slot('test_slot3');
+2026-06-06 04:00:12.431 UTC [117698] ERROR:  subquery must return only one column at character 24
+2026-06-06 04:00:12.431 UTC [117698] STATEMENT:  SELECT * FROM (VALUES ((SELECT * FROM zero_col_tab))) AS v;
+2026-06-06 04:00:12.528 UTC [117698] ERROR:  column "oid" of relation "test_alter_sys_attr" does not exist
+2026-06-06 04:00:12.528 UTC [117698] STATEMENT:  ALTER TABLE test_alter_sys_attr ALTER COLUMN oid TYPE bigint;
+2026-06-06 04:00:12.539 UTC [117698] ERROR:  column "nonexistent" of relation "test_alter_nonexist" does not exist
+2026-06-06 04:00:12.539 UTC [117698] STATEMENT:  ALTER TABLE test_alter_nonexist ALTER COLUMN nonexistent TYPE text;
+2026-06-06 04:00:14.087 UTC [117698] ERROR:  canceling statement due to lock timeout
+2026-06-06 04:00:14.087 UTC [117698] CONTEXT:  while locking tuple (0,1) in relation "conc_lock140"
+2026-06-06 04:00:14.087 UTC [117698] STATEMENT:  SELECT * FROM conc_lock140 WHERE id = 1 FOR UPDATE;
+2026-06-06 04:00:14.677 UTC [117698] ERROR:  cannot drop partitioned index "idx_parent2" concurrently
+2026-06-06 04:00:14.677 UTC [117698] STATEMENT:  DROP INDEX CONCURRENTLY idx_parent2;
+2026-06-06 04:00:14.701 UTC [117698] ERROR:  "wrongdrop143_a_idx" is not a table
+2026-06-06 04:00:14.701 UTC [117698] HINT:  Use DROP INDEX to remove an index.
+2026-06-06 04:00:14.701 UTC [117698] STATEMENT:  DROP TABLE wrongdrop143_a_idx;
+2026-06-06 04:00:14.865 UTC [117635] LOG:  received fast shutdown request
+2026-06-06 04:00:14.868 UTC [117635] LOG:  aborting any active transactions
+2026-06-06 04:00:14.871 UTC [117698] FATAL:  terminating connection due to administrator command
+2026-06-06 04:00:15.118 UTC [117635] LOG:  background worker "logical replication launcher" (PID 117646) exited with exit code 1
+2026-06-06 04:00:15.118 UTC [117641] LOG:  shutting down
+2026-06-06 04:00:15.289 UTC [117635] LOG:  database system is shut down
+2026-06-06 04:00:15.464 UTC [117825] LOG:  starting PostgreSQL 13.23 on x86_64-pc-linux-gnu, compiled by gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0, 64-bit
+2026-06-06 04:00:15.465 UTC [117825] LOG:  listening on Unix socket "/tmp/pgcov-55432/.s.PGSQL.55432"
+2026-06-06 04:00:15.472 UTC [117826] LOG:  database system was shut down at 2026-06-06 04:00:15 UTC
+2026-06-06 04:00:15.474 UTC [117826] LOG:  starting archive recovery
+2026-06-06 04:00:15.486 UTC [117826] LOG:  consistent recovery state reached at 0/199A340
+2026-06-06 04:00:15.488 UTC [117826] LOG:  invalid record length at 0/199A340: wanted 24, got 0
+2026-06-06 04:00:15.488 UTC [117826] LOG:  redo is not required
+2026-06-06 04:00:15.489 UTC [117825] LOG:  database system is ready to accept read only connections
+2026-06-06 04:00:15.509 UTC [117826] LOG:  selected new timeline ID: 2
+2026-06-06 04:00:15.845 UTC [117826] LOG:  archive recovery complete
+2026-06-06 04:00:15.941 UTC [117825] LOG:  database system is ready to accept connections
+2026-06-06 04:00:17.149 UTC [117825] LOG:  received fast shutdown request
+2026-06-06 04:00:17.154 UTC [117825] LOG:  aborting any active transactions
+2026-06-06 04:00:17.155 UTC [117866] FATAL:  terminating connection due to administrator command
+2026-06-06 04:00:17.341 UTC [117825] LOG:  background worker "logical replication launcher" (PID 117849) exited with exit code 1
+2026-06-06 04:00:17.344 UTC [117831] LOG:  shutting down
+2026-06-06 04:00:17.513 UTC [117825] LOG:  database system is shut down
+2026-06-06 04:00:17.659 UTC [117880] LOG:  starting PostgreSQL 13.23 on x86_64-pc-linux-gnu, compiled by gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0, 64-bit
+2026-06-06 04:00:17.661 UTC [117880] LOG:  listening on Unix socket "/tmp/pgcov-55432/.s.PGSQL.55432"
+2026-06-06 04:00:17.672 UTC [117881] LOG:  database system was shut down at 2026-06-06 04:00:17 UTC
+2026-06-06 04:00:17.676 UTC [117881] LOG:  entering standby mode
+2026-06-06 04:00:17.702 UTC [117881] LOG:  consistent recovery state reached at 0/19AEEC8
+2026-06-06 04:00:17.702 UTC [117881] LOG:  invalid record length at 0/19AEEC8: wanted 24, got 0
+2026-06-06 04:00:17.704 UTC [117880] LOG:  database system is ready to accept read only connections
+2026-06-06 04:00:17.732 UTC [117881] LOG:  received promote request
+2026-06-06 04:00:17.732 UTC [117881] LOG:  redo is not required
+2026-06-06 04:00:17.750 UTC [117881] LOG:  selected new timeline ID: 3
+2026-06-06 04:00:18.092 UTC [117881] LOG:  archive recovery complete
+2026-06-06 04:00:18.174 UTC [117880] LOG:  database system is ready to accept connections
+2026-06-06 04:00:18.291 UTC [117920] ERROR:  multiple primary keys for table "test_t3" are not allowed
+2026-06-06 04:00:18.291 UTC [117920] STATEMENT:  ALTER TABLE test_t3 ADD PRIMARY KEY USING INDEX idx_t3;
+2026-06-06 04:00:18.460 UTC [117880] LOG:  received fast shutdown request
+2026-06-06 04:00:18.468 UTC [117880] LOG:  aborting any active transactions
+2026-06-06 04:00:18.610 UTC [117880] LOG:  background worker "logical replication launcher" (PID 117923) exited with exit code 1
+2026-06-06 04:00:18.628 UTC [117889] LOG:  shutting down
+2026-06-06 04:00:18.793 UTC [117880] LOG:  database system is shut down

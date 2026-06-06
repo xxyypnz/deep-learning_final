@@ -1,0 +1,398 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - coverage_filtered.info - backend/access/heap/syncscan.c</title>
+  <link rel="stylesheet" type="text/css" href="../../../gcov.css">
+</head>
+
+<body>
+
+          <table width="100%" border=0 cellspacing=0 cellpadding=0>
+            <tr><td class="title">LCOV - code coverage report</td></tr>
+            <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+
+            <tr>
+              <td width="100%">
+                <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="10%" class="headerValue"><a href="../../../index.html">top level</a> - <a href="index.html">backend/access/heap</a> - syncscan.c<span style="font-size: 80%;"> (source / <a href="syncscan.c.func-c.html">functions</a>)</span></td>
+            <td width="5%"></td>
+            <td width="5%"></td>
+            <td width="5%" class="headerCovTableHead">Coverage</td>
+            <td width="5%" class="headerCovTableHead" title="Covered + Uncovered code">Total</td>
+            <td width="5%" class="headerCovTableHead" title="Exercised code only">Hit</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">coverage_filtered.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntryLo">35.2&nbsp;%</td>
+            <td class="headerCovTableEntry">54</td>
+            <td class="headerCovTableEntry">19</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test Date:</td>
+            <td class="headerValue">2026-06-06 03:20:12</td>
+            <td></td>
+            <td class="headerItem">Functions:</td>
+            <td class="headerCovTableEntryLo">40.0&nbsp;%</td>
+            <td class="headerCovTableEntry">5</td>
+            <td class="headerCovTableEntry">2</td>
+          </tr>
+                  <tr><td><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+                </table>
+              </td>
+            </tr>
+
+            <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+          </table>
+
+          <table cellpadding=0 cellspacing=0 border=0>
+            <tr>
+              <td><br></td>
+            </tr>
+            <tr>
+              <td>
+<pre class="sourceHeading">            Line data    Source code</pre>
+<pre class="source">
+<span id="L1"><span class="lineNum">       1</span>              : /*-------------------------------------------------------------------------</span>
+<span id="L2"><span class="lineNum">       2</span>              :  *</span>
+<span id="L3"><span class="lineNum">       3</span>              :  * syncscan.c</span>
+<span id="L4"><span class="lineNum">       4</span>              :  *        heap scan synchronization support</span>
+<span id="L5"><span class="lineNum">       5</span>              :  *</span>
+<span id="L6"><span class="lineNum">       6</span>              :  * When multiple backends run a sequential scan on the same table, we try</span>
+<span id="L7"><span class="lineNum">       7</span>              :  * to keep them synchronized to reduce the overall I/O needed.  The goal is</span>
+<span id="L8"><span class="lineNum">       8</span>              :  * to read each page into shared buffer cache only once, and let all backends</span>
+<span id="L9"><span class="lineNum">       9</span>              :  * that take part in the shared scan process the page before it falls out of</span>
+<span id="L10"><span class="lineNum">      10</span>              :  * the cache.</span>
+<span id="L11"><span class="lineNum">      11</span>              :  *</span>
+<span id="L12"><span class="lineNum">      12</span>              :  * Since the &quot;leader&quot; in a pack of backends doing a seqscan will have to wait</span>
+<span id="L13"><span class="lineNum">      13</span>              :  * for I/O, while the &quot;followers&quot; don't, there is a strong self-synchronizing</span>
+<span id="L14"><span class="lineNum">      14</span>              :  * effect once we can get the backends examining approximately the same part</span>
+<span id="L15"><span class="lineNum">      15</span>              :  * of the table at the same time.  Hence all that is really needed is to get</span>
+<span id="L16"><span class="lineNum">      16</span>              :  * a new backend beginning a seqscan to begin it close to where other backends</span>
+<span id="L17"><span class="lineNum">      17</span>              :  * are reading.  We can scan the table circularly, from block X up to the</span>
+<span id="L18"><span class="lineNum">      18</span>              :  * end and then from block 0 to X-1, to ensure we visit all rows while still</span>
+<span id="L19"><span class="lineNum">      19</span>              :  * participating in the common scan.</span>
+<span id="L20"><span class="lineNum">      20</span>              :  *</span>
+<span id="L21"><span class="lineNum">      21</span>              :  * To accomplish that, we keep track of the scan position of each table, and</span>
+<span id="L22"><span class="lineNum">      22</span>              :  * start new scans close to where the previous scan(s) are.  We don't try to</span>
+<span id="L23"><span class="lineNum">      23</span>              :  * do any extra synchronization to keep the scans together afterwards; some</span>
+<span id="L24"><span class="lineNum">      24</span>              :  * scans might progress much more slowly than others, for example if the</span>
+<span id="L25"><span class="lineNum">      25</span>              :  * results need to be transferred to the client over a slow network, and we</span>
+<span id="L26"><span class="lineNum">      26</span>              :  * don't want such queries to slow down others.</span>
+<span id="L27"><span class="lineNum">      27</span>              :  *</span>
+<span id="L28"><span class="lineNum">      28</span>              :  * There can realistically only be a few large sequential scans on different</span>
+<span id="L29"><span class="lineNum">      29</span>              :  * tables in progress at any time.  Therefore we just keep the scan positions</span>
+<span id="L30"><span class="lineNum">      30</span>              :  * in a small LRU list which we scan every time we need to look up or update a</span>
+<span id="L31"><span class="lineNum">      31</span>              :  * scan position.  The whole mechanism is only applied for tables exceeding</span>
+<span id="L32"><span class="lineNum">      32</span>              :  * a threshold size (but that is not the concern of this module).</span>
+<span id="L33"><span class="lineNum">      33</span>              :  *</span>
+<span id="L34"><span class="lineNum">      34</span>              :  * INTERFACE ROUTINES</span>
+<span id="L35"><span class="lineNum">      35</span>              :  *              ss_get_location         - return current scan location of a relation</span>
+<span id="L36"><span class="lineNum">      36</span>              :  *              ss_report_location      - update current scan location</span>
+<span id="L37"><span class="lineNum">      37</span>              :  *</span>
+<span id="L38"><span class="lineNum">      38</span>              :  *</span>
+<span id="L39"><span class="lineNum">      39</span>              :  * Portions Copyright (c) 1996-2020, PostgreSQL Global Development Group</span>
+<span id="L40"><span class="lineNum">      40</span>              :  * Portions Copyright (c) 1994, Regents of the University of California</span>
+<span id="L41"><span class="lineNum">      41</span>              :  *</span>
+<span id="L42"><span class="lineNum">      42</span>              :  * IDENTIFICATION</span>
+<span id="L43"><span class="lineNum">      43</span>              :  *        src/backend/access/heap/syncscan.c</span>
+<span id="L44"><span class="lineNum">      44</span>              :  *</span>
+<span id="L45"><span class="lineNum">      45</span>              :  *-------------------------------------------------------------------------</span>
+<span id="L46"><span class="lineNum">      46</span>              :  */</span>
+<span id="L47"><span class="lineNum">      47</span>              : #include &quot;postgres.h&quot;</span>
+<span id="L48"><span class="lineNum">      48</span>              : </span>
+<span id="L49"><span class="lineNum">      49</span>              : #include &quot;access/heapam.h&quot;</span>
+<span id="L50"><span class="lineNum">      50</span>              : #include &quot;miscadmin.h&quot;</span>
+<span id="L51"><span class="lineNum">      51</span>              : #include &quot;storage/lwlock.h&quot;</span>
+<span id="L52"><span class="lineNum">      52</span>              : #include &quot;storage/shmem.h&quot;</span>
+<span id="L53"><span class="lineNum">      53</span>              : #include &quot;utils/rel.h&quot;</span>
+<span id="L54"><span class="lineNum">      54</span>              : </span>
+<span id="L55"><span class="lineNum">      55</span>              : </span>
+<span id="L56"><span class="lineNum">      56</span>              : /* GUC variables */</span>
+<span id="L57"><span class="lineNum">      57</span>              : #ifdef TRACE_SYNCSCAN</span>
+<span id="L58"><span class="lineNum">      58</span>              : bool            trace_syncscan = false;</span>
+<span id="L59"><span class="lineNum">      59</span>              : #endif</span>
+<span id="L60"><span class="lineNum">      60</span>              : </span>
+<span id="L61"><span class="lineNum">      61</span>              : </span>
+<span id="L62"><span class="lineNum">      62</span>              : /*</span>
+<span id="L63"><span class="lineNum">      63</span>              :  * Size of the LRU list.</span>
+<span id="L64"><span class="lineNum">      64</span>              :  *</span>
+<span id="L65"><span class="lineNum">      65</span>              :  * Note: the code assumes that SYNC_SCAN_NELEM &gt; 1.</span>
+<span id="L66"><span class="lineNum">      66</span>              :  *</span>
+<span id="L67"><span class="lineNum">      67</span>              :  * XXX: What's a good value? It should be large enough to hold the</span>
+<span id="L68"><span class="lineNum">      68</span>              :  * maximum number of large tables scanned simultaneously.  But a larger value</span>
+<span id="L69"><span class="lineNum">      69</span>              :  * means more traversing of the LRU list when starting a new scan.</span>
+<span id="L70"><span class="lineNum">      70</span>              :  */</span>
+<span id="L71"><span class="lineNum">      71</span>              : #define SYNC_SCAN_NELEM 20</span>
+<span id="L72"><span class="lineNum">      72</span>              : </span>
+<span id="L73"><span class="lineNum">      73</span>              : /*</span>
+<span id="L74"><span class="lineNum">      74</span>              :  * Interval between reports of the location of the current scan, in pages.</span>
+<span id="L75"><span class="lineNum">      75</span>              :  *</span>
+<span id="L76"><span class="lineNum">      76</span>              :  * Note: This should be smaller than the ring size (see buffer/freelist.c)</span>
+<span id="L77"><span class="lineNum">      77</span>              :  * we use for bulk reads.  Otherwise a scan joining other scans might start</span>
+<span id="L78"><span class="lineNum">      78</span>              :  * from a page that's no longer in the buffer cache.  This is a bit fuzzy;</span>
+<span id="L79"><span class="lineNum">      79</span>              :  * there's no guarantee that the new scan will read the page before it leaves</span>
+<span id="L80"><span class="lineNum">      80</span>              :  * the buffer cache anyway, and on the other hand the page is most likely</span>
+<span id="L81"><span class="lineNum">      81</span>              :  * still in the OS cache.</span>
+<span id="L82"><span class="lineNum">      82</span>              :  */</span>
+<span id="L83"><span class="lineNum">      83</span>              : #define SYNC_SCAN_REPORT_INTERVAL (128 * 1024 / BLCKSZ)</span>
+<span id="L84"><span class="lineNum">      84</span>              : </span>
+<span id="L85"><span class="lineNum">      85</span>              : </span>
+<span id="L86"><span class="lineNum">      86</span>              : /*</span>
+<span id="L87"><span class="lineNum">      87</span>              :  * The scan locations structure is essentially a doubly-linked LRU with head</span>
+<span id="L88"><span class="lineNum">      88</span>              :  * and tail pointer, but designed to hold a fixed maximum number of elements in</span>
+<span id="L89"><span class="lineNum">      89</span>              :  * fixed-size shared memory.</span>
+<span id="L90"><span class="lineNum">      90</span>              :  */</span>
+<span id="L91"><span class="lineNum">      91</span>              : typedef struct ss_scan_location_t</span>
+<span id="L92"><span class="lineNum">      92</span>              : {</span>
+<span id="L93"><span class="lineNum">      93</span>              :         RelFileNode relfilenode;        /* identity of a relation */</span>
+<span id="L94"><span class="lineNum">      94</span>              :         BlockNumber location;           /* last-reported location in the relation */</span>
+<span id="L95"><span class="lineNum">      95</span>              : } ss_scan_location_t;</span>
+<span id="L96"><span class="lineNum">      96</span>              : </span>
+<span id="L97"><span class="lineNum">      97</span>              : typedef struct ss_lru_item_t</span>
+<span id="L98"><span class="lineNum">      98</span>              : {</span>
+<span id="L99"><span class="lineNum">      99</span>              :         struct ss_lru_item_t *prev;</span>
+<span id="L100"><span class="lineNum">     100</span>              :         struct ss_lru_item_t *next;</span>
+<span id="L101"><span class="lineNum">     101</span>              :         ss_scan_location_t location;</span>
+<span id="L102"><span class="lineNum">     102</span>              : } ss_lru_item_t;</span>
+<span id="L103"><span class="lineNum">     103</span>              : </span>
+<span id="L104"><span class="lineNum">     104</span>              : typedef struct ss_scan_locations_t</span>
+<span id="L105"><span class="lineNum">     105</span>              : {</span>
+<span id="L106"><span class="lineNum">     106</span>              :         ss_lru_item_t *head;</span>
+<span id="L107"><span class="lineNum">     107</span>              :         ss_lru_item_t *tail;</span>
+<span id="L108"><span class="lineNum">     108</span>              :         ss_lru_item_t items[FLEXIBLE_ARRAY_MEMBER]; /* SYNC_SCAN_NELEM items */</span>
+<span id="L109"><span class="lineNum">     109</span>              : } ss_scan_locations_t;</span>
+<span id="L110"><span class="lineNum">     110</span>              : </span>
+<span id="L111"><span class="lineNum">     111</span>              : #define SizeOfScanLocations(N) \</span>
+<span id="L112"><span class="lineNum">     112</span>              :         (offsetof(ss_scan_locations_t, items) + (N) * sizeof(ss_lru_item_t))</span>
+<span id="L113"><span class="lineNum">     113</span>              : </span>
+<span id="L114"><span class="lineNum">     114</span>              : /* Pointer to struct in shared memory */</span>
+<span id="L115"><span class="lineNum">     115</span>              : static ss_scan_locations_t *scan_locations;</span>
+<span id="L116"><span class="lineNum">     116</span>              : </span>
+<span id="L117"><span class="lineNum">     117</span>              : /* prototypes for internal functions */</span>
+<span id="L118"><span class="lineNum">     118</span>              : static BlockNumber ss_search(RelFileNode relfilenode,</span>
+<span id="L119"><span class="lineNum">     119</span>              :                                                          BlockNumber location, bool set);</span>
+<span id="L120"><span class="lineNum">     120</span>              : </span>
+<span id="L121"><span class="lineNum">     121</span>              : </span>
+<span id="L122"><span class="lineNum">     122</span>              : /*</span>
+<span id="L123"><span class="lineNum">     123</span>              :  * SyncScanShmemSize --- report amount of shared memory space needed</span>
+<span id="L124"><span class="lineNum">     124</span>              :  */</span>
+<span id="L125"><span class="lineNum">     125</span>              : Size</span>
+<span id="L126"><span class="lineNum">     126</span> <span class="tlaGNC tlaBgGNC">           5 : SyncScanShmemSize(void)</span></span>
+<span id="L127"><span class="lineNum">     127</span>              : {</span>
+<span id="L128"><span class="lineNum">     128</span> <span class="tlaGNC">           5 :         return SizeOfScanLocations(SYNC_SCAN_NELEM);</span></span>
+<span id="L129"><span class="lineNum">     129</span>              : }</span>
+<span id="L130"><span class="lineNum">     130</span>              : </span>
+<span id="L131"><span class="lineNum">     131</span>              : /*</span>
+<span id="L132"><span class="lineNum">     132</span>              :  * SyncScanShmemInit --- initialize this module's shared memory</span>
+<span id="L133"><span class="lineNum">     133</span>              :  */</span>
+<span id="L134"><span class="lineNum">     134</span>              : void</span>
+<span id="L135"><span class="lineNum">     135</span> <span class="tlaGNC">           5 : SyncScanShmemInit(void)</span></span>
+<span id="L136"><span class="lineNum">     136</span>              : {</span>
+<span id="L137"><span class="lineNum">     137</span>              :         int                     i;</span>
+<span id="L138"><span class="lineNum">     138</span>              :         bool            found;</span>
+<span id="L139"><span class="lineNum">     139</span>              : </span>
+<span id="L140"><span class="lineNum">     140</span> <span class="tlaGNC">           5 :         scan_locations = (ss_scan_locations_t *)</span></span>
+<span id="L141"><span class="lineNum">     141</span> <span class="tlaGNC">           5 :                 ShmemInitStruct(&quot;Sync Scan Locations List&quot;,</span></span>
+<span id="L142"><span class="lineNum">     142</span>              :                                                 SizeOfScanLocations(SYNC_SCAN_NELEM),</span>
+<span id="L143"><span class="lineNum">     143</span>              :                                                 &amp;found);</span>
+<span id="L144"><span class="lineNum">     144</span>              : </span>
+<span id="L145"><span class="lineNum">     145</span> <span class="tlaGNC">           5 :         if (!IsUnderPostmaster)</span></span>
+<span id="L146"><span class="lineNum">     146</span>              :         {</span>
+<span id="L147"><span class="lineNum">     147</span>              :                 /* Initialize shared memory area */</span>
+<span id="L148"><span class="lineNum">     148</span>              :                 Assert(!found);</span>
+<span id="L149"><span class="lineNum">     149</span>              : </span>
+<span id="L150"><span class="lineNum">     150</span> <span class="tlaGNC">           5 :                 scan_locations-&gt;head = &amp;scan_locations-&gt;items[0];</span></span>
+<span id="L151"><span class="lineNum">     151</span> <span class="tlaGNC">           5 :                 scan_locations-&gt;tail = &amp;scan_locations-&gt;items[SYNC_SCAN_NELEM - 1];</span></span>
+<span id="L152"><span class="lineNum">     152</span>              : </span>
+<span id="L153"><span class="lineNum">     153</span> <span class="tlaGNC">         105 :                 for (i = 0; i &lt; SYNC_SCAN_NELEM; i++)</span></span>
+<span id="L154"><span class="lineNum">     154</span>              :                 {</span>
+<span id="L155"><span class="lineNum">     155</span> <span class="tlaGNC">         100 :                         ss_lru_item_t *item = &amp;scan_locations-&gt;items[i];</span></span>
+<span id="L156"><span class="lineNum">     156</span>              : </span>
+<span id="L157"><span class="lineNum">     157</span>              :                         /*</span>
+<span id="L158"><span class="lineNum">     158</span>              :                          * Initialize all slots with invalid values. As scans are started,</span>
+<span id="L159"><span class="lineNum">     159</span>              :                          * these invalid entries will fall off the LRU list and get</span>
+<span id="L160"><span class="lineNum">     160</span>              :                          * replaced with real entries.</span>
+<span id="L161"><span class="lineNum">     161</span>              :                          */</span>
+<span id="L162"><span class="lineNum">     162</span> <span class="tlaGNC">         100 :                         item-&gt;location.relfilenode.spcNode = InvalidOid;</span></span>
+<span id="L163"><span class="lineNum">     163</span> <span class="tlaGNC">         100 :                         item-&gt;location.relfilenode.dbNode = InvalidOid;</span></span>
+<span id="L164"><span class="lineNum">     164</span> <span class="tlaGNC">         100 :                         item-&gt;location.relfilenode.relNode = InvalidOid;</span></span>
+<span id="L165"><span class="lineNum">     165</span> <span class="tlaGNC">         100 :                         item-&gt;location.location = InvalidBlockNumber;</span></span>
+<span id="L166"><span class="lineNum">     166</span>              : </span>
+<span id="L167"><span class="lineNum">     167</span> <span class="tlaGNC">         100 :                         item-&gt;prev = (i &gt; 0) ?</span></span>
+<span id="L168"><span class="lineNum">     168</span> <span class="tlaGNC">         100 :                                 (&amp;scan_locations-&gt;items[i - 1]) : NULL;</span></span>
+<span id="L169"><span class="lineNum">     169</span> <span class="tlaGNC">         100 :                         item-&gt;next = (i &lt; SYNC_SCAN_NELEM - 1) ?</span></span>
+<span id="L170"><span class="lineNum">     170</span> <span class="tlaGNC">         100 :                                 (&amp;scan_locations-&gt;items[i + 1]) : NULL;</span></span>
+<span id="L171"><span class="lineNum">     171</span>              :                 }</span>
+<span id="L172"><span class="lineNum">     172</span>              :         }</span>
+<span id="L173"><span class="lineNum">     173</span>              :         else</span>
+<span id="L174"><span class="lineNum">     174</span>              :                 Assert(found);</span>
+<span id="L175"><span class="lineNum">     175</span> <span class="tlaGNC">           5 : }</span></span>
+<span id="L176"><span class="lineNum">     176</span>              : </span>
+<span id="L177"><span class="lineNum">     177</span>              : /*</span>
+<span id="L178"><span class="lineNum">     178</span>              :  * ss_search --- search the scan_locations structure for an entry with the</span>
+<span id="L179"><span class="lineNum">     179</span>              :  *              given relfilenode.</span>
+<span id="L180"><span class="lineNum">     180</span>              :  *</span>
+<span id="L181"><span class="lineNum">     181</span>              :  * If &quot;set&quot; is true, the location is updated to the given location.  If no</span>
+<span id="L182"><span class="lineNum">     182</span>              :  * entry for the given relfilenode is found, it will be created at the head</span>
+<span id="L183"><span class="lineNum">     183</span>              :  * of the list with the given location, even if &quot;set&quot; is false.</span>
+<span id="L184"><span class="lineNum">     184</span>              :  *</span>
+<span id="L185"><span class="lineNum">     185</span>              :  * In any case, the location after possible update is returned.</span>
+<span id="L186"><span class="lineNum">     186</span>              :  *</span>
+<span id="L187"><span class="lineNum">     187</span>              :  * Caller is responsible for having acquired suitable lock on the shared</span>
+<span id="L188"><span class="lineNum">     188</span>              :  * data structure.</span>
+<span id="L189"><span class="lineNum">     189</span>              :  */</span>
+<span id="L190"><span class="lineNum">     190</span>              : static BlockNumber</span>
+<span id="L191"><span class="lineNum">     191</span> <span class="tlaUNC tlaBgUNC">           0 : ss_search(RelFileNode relfilenode, BlockNumber location, bool set)</span></span>
+<span id="L192"><span class="lineNum">     192</span>              : {</span>
+<span id="L193"><span class="lineNum">     193</span>              :         ss_lru_item_t *item;</span>
+<span id="L194"><span class="lineNum">     194</span>              : </span>
+<span id="L195"><span class="lineNum">     195</span> <span class="tlaUNC">           0 :         item = scan_locations-&gt;head;</span></span>
+<span id="L196"><span class="lineNum">     196</span>              :         for (;;)</span>
+<span id="L197"><span class="lineNum">     197</span> <span class="tlaUNC">           0 :         {</span></span>
+<span id="L198"><span class="lineNum">     198</span>              :                 bool            match;</span>
+<span id="L199"><span class="lineNum">     199</span>              : </span>
+<span id="L200"><span class="lineNum">     200</span> <span class="tlaUNC">           0 :                 match = RelFileNodeEquals(item-&gt;location.relfilenode, relfilenode);</span></span>
+<span id="L201"><span class="lineNum">     201</span>              : </span>
+<span id="L202"><span class="lineNum">     202</span> <span class="tlaUNC">           0 :                 if (match || item-&gt;next == NULL)</span></span>
+<span id="L203"><span class="lineNum">     203</span>              :                 {</span>
+<span id="L204"><span class="lineNum">     204</span>              :                         /*</span>
+<span id="L205"><span class="lineNum">     205</span>              :                          * If we reached the end of list and no match was found, take over</span>
+<span id="L206"><span class="lineNum">     206</span>              :                          * the last entry</span>
+<span id="L207"><span class="lineNum">     207</span>              :                          */</span>
+<span id="L208"><span class="lineNum">     208</span> <span class="tlaUNC">           0 :                         if (!match)</span></span>
+<span id="L209"><span class="lineNum">     209</span>              :                         {</span>
+<span id="L210"><span class="lineNum">     210</span> <span class="tlaUNC">           0 :                                 item-&gt;location.relfilenode = relfilenode;</span></span>
+<span id="L211"><span class="lineNum">     211</span> <span class="tlaUNC">           0 :                                 item-&gt;location.location = location;</span></span>
+<span id="L212"><span class="lineNum">     212</span>              :                         }</span>
+<span id="L213"><span class="lineNum">     213</span> <span class="tlaUNC">           0 :                         else if (set)</span></span>
+<span id="L214"><span class="lineNum">     214</span> <span class="tlaUNC">           0 :                                 item-&gt;location.location = location;</span></span>
+<span id="L215"><span class="lineNum">     215</span>              : </span>
+<span id="L216"><span class="lineNum">     216</span>              :                         /* Move the entry to the front of the LRU list */</span>
+<span id="L217"><span class="lineNum">     217</span> <span class="tlaUNC">           0 :                         if (item != scan_locations-&gt;head)</span></span>
+<span id="L218"><span class="lineNum">     218</span>              :                         {</span>
+<span id="L219"><span class="lineNum">     219</span>              :                                 /* unlink */</span>
+<span id="L220"><span class="lineNum">     220</span> <span class="tlaUNC">           0 :                                 if (item == scan_locations-&gt;tail)</span></span>
+<span id="L221"><span class="lineNum">     221</span> <span class="tlaUNC">           0 :                                         scan_locations-&gt;tail = item-&gt;prev;</span></span>
+<span id="L222"><span class="lineNum">     222</span> <span class="tlaUNC">           0 :                                 item-&gt;prev-&gt;next = item-&gt;next;</span></span>
+<span id="L223"><span class="lineNum">     223</span> <span class="tlaUNC">           0 :                                 if (item-&gt;next)</span></span>
+<span id="L224"><span class="lineNum">     224</span> <span class="tlaUNC">           0 :                                         item-&gt;next-&gt;prev = item-&gt;prev;</span></span>
+<span id="L225"><span class="lineNum">     225</span>              : </span>
+<span id="L226"><span class="lineNum">     226</span>              :                                 /* link */</span>
+<span id="L227"><span class="lineNum">     227</span> <span class="tlaUNC">           0 :                                 item-&gt;prev = NULL;</span></span>
+<span id="L228"><span class="lineNum">     228</span> <span class="tlaUNC">           0 :                                 item-&gt;next = scan_locations-&gt;head;</span></span>
+<span id="L229"><span class="lineNum">     229</span> <span class="tlaUNC">           0 :                                 scan_locations-&gt;head-&gt;prev = item;</span></span>
+<span id="L230"><span class="lineNum">     230</span> <span class="tlaUNC">           0 :                                 scan_locations-&gt;head = item;</span></span>
+<span id="L231"><span class="lineNum">     231</span>              :                         }</span>
+<span id="L232"><span class="lineNum">     232</span>              : </span>
+<span id="L233"><span class="lineNum">     233</span> <span class="tlaUNC">           0 :                         return item-&gt;location.location;</span></span>
+<span id="L234"><span class="lineNum">     234</span>              :                 }</span>
+<span id="L235"><span class="lineNum">     235</span>              : </span>
+<span id="L236"><span class="lineNum">     236</span> <span class="tlaUNC">           0 :                 item = item-&gt;next;</span></span>
+<span id="L237"><span class="lineNum">     237</span>              :         }</span>
+<span id="L238"><span class="lineNum">     238</span>              : </span>
+<span id="L239"><span class="lineNum">     239</span>              :         /* not reached */</span>
+<span id="L240"><span class="lineNum">     240</span>              : }</span>
+<span id="L241"><span class="lineNum">     241</span>              : </span>
+<span id="L242"><span class="lineNum">     242</span>              : /*</span>
+<span id="L243"><span class="lineNum">     243</span>              :  * ss_get_location --- get the optimal starting location for scan</span>
+<span id="L244"><span class="lineNum">     244</span>              :  *</span>
+<span id="L245"><span class="lineNum">     245</span>              :  * Returns the last-reported location of a sequential scan on the</span>
+<span id="L246"><span class="lineNum">     246</span>              :  * relation, or 0 if no valid location is found.</span>
+<span id="L247"><span class="lineNum">     247</span>              :  *</span>
+<span id="L248"><span class="lineNum">     248</span>              :  * We expect the caller has just done RelationGetNumberOfBlocks(), and</span>
+<span id="L249"><span class="lineNum">     249</span>              :  * so that number is passed in rather than computing it again.  The result</span>
+<span id="L250"><span class="lineNum">     250</span>              :  * is guaranteed less than relnblocks (assuming that's &gt; 0).</span>
+<span id="L251"><span class="lineNum">     251</span>              :  */</span>
+<span id="L252"><span class="lineNum">     252</span>              : BlockNumber</span>
+<span id="L253"><span class="lineNum">     253</span> <span class="tlaUNC">           0 : ss_get_location(Relation rel, BlockNumber relnblocks)</span></span>
+<span id="L254"><span class="lineNum">     254</span>              : {</span>
+<span id="L255"><span class="lineNum">     255</span>              :         BlockNumber startloc;</span>
+<span id="L256"><span class="lineNum">     256</span>              : </span>
+<span id="L257"><span class="lineNum">     257</span> <span class="tlaUNC">           0 :         LWLockAcquire(SyncScanLock, LW_EXCLUSIVE);</span></span>
+<span id="L258"><span class="lineNum">     258</span> <span class="tlaUNC">           0 :         startloc = ss_search(rel-&gt;rd_node, 0, false);</span></span>
+<span id="L259"><span class="lineNum">     259</span> <span class="tlaUNC">           0 :         LWLockRelease(SyncScanLock);</span></span>
+<span id="L260"><span class="lineNum">     260</span>              : </span>
+<span id="L261"><span class="lineNum">     261</span>              :         /*</span>
+<span id="L262"><span class="lineNum">     262</span>              :          * If the location is not a valid block number for this scan, start at 0.</span>
+<span id="L263"><span class="lineNum">     263</span>              :          *</span>
+<span id="L264"><span class="lineNum">     264</span>              :          * This can happen if for instance a VACUUM truncated the table since the</span>
+<span id="L265"><span class="lineNum">     265</span>              :          * location was saved.</span>
+<span id="L266"><span class="lineNum">     266</span>              :          */</span>
+<span id="L267"><span class="lineNum">     267</span> <span class="tlaUNC">           0 :         if (startloc &gt;= relnblocks)</span></span>
+<span id="L268"><span class="lineNum">     268</span> <span class="tlaUNC">           0 :                 startloc = 0;</span></span>
+<span id="L269"><span class="lineNum">     269</span>              : </span>
+<span id="L270"><span class="lineNum">     270</span>              : #ifdef TRACE_SYNCSCAN</span>
+<span id="L271"><span class="lineNum">     271</span>              :         if (trace_syncscan)</span>
+<span id="L272"><span class="lineNum">     272</span>              :                 elog(LOG,</span>
+<span id="L273"><span class="lineNum">     273</span>              :                          &quot;SYNC_SCAN: start \&quot;%s\&quot; (size %u) at %u&quot;,</span>
+<span id="L274"><span class="lineNum">     274</span>              :                          RelationGetRelationName(rel), relnblocks, startloc);</span>
+<span id="L275"><span class="lineNum">     275</span>              : #endif</span>
+<span id="L276"><span class="lineNum">     276</span>              : </span>
+<span id="L277"><span class="lineNum">     277</span> <span class="tlaUNC">           0 :         return startloc;</span></span>
+<span id="L278"><span class="lineNum">     278</span>              : }</span>
+<span id="L279"><span class="lineNum">     279</span>              : </span>
+<span id="L280"><span class="lineNum">     280</span>              : /*</span>
+<span id="L281"><span class="lineNum">     281</span>              :  * ss_report_location --- update the current scan location</span>
+<span id="L282"><span class="lineNum">     282</span>              :  *</span>
+<span id="L283"><span class="lineNum">     283</span>              :  * Writes an entry into the shared Sync Scan state of the form</span>
+<span id="L284"><span class="lineNum">     284</span>              :  * (relfilenode, blocknumber), overwriting any existing entry for the</span>
+<span id="L285"><span class="lineNum">     285</span>              :  * same relfilenode.</span>
+<span id="L286"><span class="lineNum">     286</span>              :  */</span>
+<span id="L287"><span class="lineNum">     287</span>              : void</span>
+<span id="L288"><span class="lineNum">     288</span> <span class="tlaUNC">           0 : ss_report_location(Relation rel, BlockNumber location)</span></span>
+<span id="L289"><span class="lineNum">     289</span>              : {</span>
+<span id="L290"><span class="lineNum">     290</span>              : #ifdef TRACE_SYNCSCAN</span>
+<span id="L291"><span class="lineNum">     291</span>              :         if (trace_syncscan)</span>
+<span id="L292"><span class="lineNum">     292</span>              :         {</span>
+<span id="L293"><span class="lineNum">     293</span>              :                 if ((location % 1024) == 0)</span>
+<span id="L294"><span class="lineNum">     294</span>              :                         elog(LOG,</span>
+<span id="L295"><span class="lineNum">     295</span>              :                                  &quot;SYNC_SCAN: scanning \&quot;%s\&quot; at %u&quot;,</span>
+<span id="L296"><span class="lineNum">     296</span>              :                                  RelationGetRelationName(rel), location);</span>
+<span id="L297"><span class="lineNum">     297</span>              :         }</span>
+<span id="L298"><span class="lineNum">     298</span>              : #endif</span>
+<span id="L299"><span class="lineNum">     299</span>              : </span>
+<span id="L300"><span class="lineNum">     300</span>              :         /*</span>
+<span id="L301"><span class="lineNum">     301</span>              :          * To reduce lock contention, only report scan progress every N pages. For</span>
+<span id="L302"><span class="lineNum">     302</span>              :          * the same reason, don't block if the lock isn't immediately available.</span>
+<span id="L303"><span class="lineNum">     303</span>              :          * Missing a few updates isn't critical, it just means that a new scan</span>
+<span id="L304"><span class="lineNum">     304</span>              :          * that wants to join the pack will start a little bit behind the head of</span>
+<span id="L305"><span class="lineNum">     305</span>              :          * the scan.  Hopefully the pages are still in OS cache and the scan</span>
+<span id="L306"><span class="lineNum">     306</span>              :          * catches up quickly.</span>
+<span id="L307"><span class="lineNum">     307</span>              :          */</span>
+<span id="L308"><span class="lineNum">     308</span> <span class="tlaUNC">           0 :         if ((location % SYNC_SCAN_REPORT_INTERVAL) == 0)</span></span>
+<span id="L309"><span class="lineNum">     309</span>              :         {</span>
+<span id="L310"><span class="lineNum">     310</span> <span class="tlaUNC">           0 :                 if (LWLockConditionalAcquire(SyncScanLock, LW_EXCLUSIVE))</span></span>
+<span id="L311"><span class="lineNum">     311</span>              :                 {</span>
+<span id="L312"><span class="lineNum">     312</span> <span class="tlaUNC">           0 :                         (void) ss_search(rel-&gt;rd_node, location, true);</span></span>
+<span id="L313"><span class="lineNum">     313</span> <span class="tlaUNC">           0 :                         LWLockRelease(SyncScanLock);</span></span>
+<span id="L314"><span class="lineNum">     314</span>              :                 }</span>
+<span id="L315"><span class="lineNum">     315</span>              : #ifdef TRACE_SYNCSCAN</span>
+<span id="L316"><span class="lineNum">     316</span>              :                 else if (trace_syncscan)</span>
+<span id="L317"><span class="lineNum">     317</span>              :                         elog(LOG,</span>
+<span id="L318"><span class="lineNum">     318</span>              :                                  &quot;SYNC_SCAN: missed update for \&quot;%s\&quot; at %u&quot;,</span>
+<span id="L319"><span class="lineNum">     319</span>              :                                  RelationGetRelationName(rel), location);</span>
+<span id="L320"><span class="lineNum">     320</span>              : #endif</span>
+<span id="L321"><span class="lineNum">     321</span>              :         }</span>
+<span id="L322"><span class="lineNum">     322</span> <span class="tlaUNC">           0 : }</span></span>
+        </pre>
+              </td>
+            </tr>
+          </table>
+          <br>
+
+          <table width="100%" border=0 cellspacing=0 cellpadding=0>
+            <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+            <tr><td class="versionInfo">Generated by: <a href="https://github.com//linux-test-project/lcov" target="_parent">LCOV version 2.0-1</a></td></tr>
+          </table>
+          <br>
+
+</body>
+</html>

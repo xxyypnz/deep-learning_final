@@ -1,0 +1,563 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - coverage_filtered.info - include/executor/tuptable.h</title>
+  <link rel="stylesheet" type="text/css" href="../../gcov.css">
+</head>
+
+<body>
+
+          <table width="100%" border=0 cellspacing=0 cellpadding=0>
+            <tr><td class="title">LCOV - code coverage report</td></tr>
+            <tr><td class="ruler"><img src="../../glass.png" width=3 height=3 alt=""></td></tr>
+
+            <tr>
+              <td width="100%">
+                <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="10%" class="headerValue"><a href="../../index.html">top level</a> - <a href="index.html">include/executor</a> - tuptable.h<span style="font-size: 80%;"> (source / <a href="tuptable.h.func-c.html">functions</a>)</span></td>
+            <td width="5%"></td>
+            <td width="5%"></td>
+            <td width="5%" class="headerCovTableHead">Coverage</td>
+            <td width="5%" class="headerCovTableHead" title="Covered + Uncovered code">Total</td>
+            <td width="5%" class="headerCovTableHead" title="Exercised code only">Hit</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">coverage_filtered.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntryHi">97.3&nbsp;%</td>
+            <td class="headerCovTableEntry">37</td>
+            <td class="headerCovTableEntry">36</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test Date:</td>
+            <td class="headerValue">2026-06-06 04:21:42</td>
+            <td></td>
+            <td class="headerItem">Functions:</td>
+            <td class="headerCovTableEntryHi">100.0&nbsp;%</td>
+            <td class="headerCovTableEntry">10</td>
+            <td class="headerCovTableEntry">10</td>
+          </tr>
+                  <tr><td><img src="../../glass.png" width=3 height=3 alt=""></td></tr>
+                </table>
+              </td>
+            </tr>
+
+            <tr><td class="ruler"><img src="../../glass.png" width=3 height=3 alt=""></td></tr>
+          </table>
+
+          <table cellpadding=0 cellspacing=0 border=0>
+            <tr>
+              <td><br></td>
+            </tr>
+            <tr>
+              <td>
+<pre class="sourceHeading">            Line data    Source code</pre>
+<pre class="source">
+<span id="L1"><span class="lineNum">       1</span>              : /*-------------------------------------------------------------------------</span>
+<span id="L2"><span class="lineNum">       2</span>              :  *</span>
+<span id="L3"><span class="lineNum">       3</span>              :  * tuptable.h</span>
+<span id="L4"><span class="lineNum">       4</span>              :  *        tuple table support stuff</span>
+<span id="L5"><span class="lineNum">       5</span>              :  *</span>
+<span id="L6"><span class="lineNum">       6</span>              :  *</span>
+<span id="L7"><span class="lineNum">       7</span>              :  * Portions Copyright (c) 1996-2020, PostgreSQL Global Development Group</span>
+<span id="L8"><span class="lineNum">       8</span>              :  * Portions Copyright (c) 1994, Regents of the University of California</span>
+<span id="L9"><span class="lineNum">       9</span>              :  *</span>
+<span id="L10"><span class="lineNum">      10</span>              :  * src/include/executor/tuptable.h</span>
+<span id="L11"><span class="lineNum">      11</span>              :  *</span>
+<span id="L12"><span class="lineNum">      12</span>              :  *-------------------------------------------------------------------------</span>
+<span id="L13"><span class="lineNum">      13</span>              :  */</span>
+<span id="L14"><span class="lineNum">      14</span>              : #ifndef TUPTABLE_H</span>
+<span id="L15"><span class="lineNum">      15</span>              : #define TUPTABLE_H</span>
+<span id="L16"><span class="lineNum">      16</span>              : </span>
+<span id="L17"><span class="lineNum">      17</span>              : #include &quot;access/htup.h&quot;</span>
+<span id="L18"><span class="lineNum">      18</span>              : #include &quot;access/htup_details.h&quot;</span>
+<span id="L19"><span class="lineNum">      19</span>              : #include &quot;access/sysattr.h&quot;</span>
+<span id="L20"><span class="lineNum">      20</span>              : #include &quot;access/tupdesc.h&quot;</span>
+<span id="L21"><span class="lineNum">      21</span>              : #include &quot;storage/buf.h&quot;</span>
+<span id="L22"><span class="lineNum">      22</span>              : </span>
+<span id="L23"><span class="lineNum">      23</span>              : /*----------</span>
+<span id="L24"><span class="lineNum">      24</span>              :  * The executor stores tuples in a &quot;tuple table&quot; which is a List of</span>
+<span id="L25"><span class="lineNum">      25</span>              :  * independent TupleTableSlots.</span>
+<span id="L26"><span class="lineNum">      26</span>              :  *</span>
+<span id="L27"><span class="lineNum">      27</span>              :  * There's various different types of tuple table slots, each being able to</span>
+<span id="L28"><span class="lineNum">      28</span>              :  * store different types of tuples. Additional types of slots can be added</span>
+<span id="L29"><span class="lineNum">      29</span>              :  * without modifying core code. The type of a slot is determined by the</span>
+<span id="L30"><span class="lineNum">      30</span>              :  * TupleTableSlotOps* passed to the slot creation routine. The builtin types</span>
+<span id="L31"><span class="lineNum">      31</span>              :  * of slots are</span>
+<span id="L32"><span class="lineNum">      32</span>              :  *</span>
+<span id="L33"><span class="lineNum">      33</span>              :  * 1. physical tuple in a disk buffer page (TTSOpsBufferHeapTuple)</span>
+<span id="L34"><span class="lineNum">      34</span>              :  * 2. physical tuple constructed in palloc'ed memory (TTSOpsHeapTuple)</span>
+<span id="L35"><span class="lineNum">      35</span>              :  * 3. &quot;minimal&quot; physical tuple constructed in palloc'ed memory</span>
+<span id="L36"><span class="lineNum">      36</span>              :  *    (TTSOpsMinimalTuple)</span>
+<span id="L37"><span class="lineNum">      37</span>              :  * 4. &quot;virtual&quot; tuple consisting of Datum/isnull arrays (TTSOpsVirtual)</span>
+<span id="L38"><span class="lineNum">      38</span>              :  *</span>
+<span id="L39"><span class="lineNum">      39</span>              :  *</span>
+<span id="L40"><span class="lineNum">      40</span>              :  * The first two cases are similar in that they both deal with &quot;materialized&quot;</span>
+<span id="L41"><span class="lineNum">      41</span>              :  * tuples, but resource management is different.  For a tuple in a disk page</span>
+<span id="L42"><span class="lineNum">      42</span>              :  * we need to hold a pin on the buffer until the TupleTableSlot's reference</span>
+<span id="L43"><span class="lineNum">      43</span>              :  * to the tuple is dropped; while for a palloc'd tuple we usually want the</span>
+<span id="L44"><span class="lineNum">      44</span>              :  * tuple pfree'd when the TupleTableSlot's reference is dropped.</span>
+<span id="L45"><span class="lineNum">      45</span>              :  *</span>
+<span id="L46"><span class="lineNum">      46</span>              :  * A &quot;minimal&quot; tuple is handled similarly to a palloc'd regular tuple.</span>
+<span id="L47"><span class="lineNum">      47</span>              :  * At present, minimal tuples never are stored in buffers, so there is no</span>
+<span id="L48"><span class="lineNum">      48</span>              :  * parallel to case 1.  Note that a minimal tuple has no &quot;system columns&quot;.</span>
+<span id="L49"><span class="lineNum">      49</span>              :  * (Actually, it could have an OID, but we have no need to access the OID.)</span>
+<span id="L50"><span class="lineNum">      50</span>              :  *</span>
+<span id="L51"><span class="lineNum">      51</span>              :  * A &quot;virtual&quot; tuple is an optimization used to minimize physical data copying</span>
+<span id="L52"><span class="lineNum">      52</span>              :  * in a nest of plan nodes.  Until materialized pass-by-reference Datums in</span>
+<span id="L53"><span class="lineNum">      53</span>              :  * the slot point to storage that is not directly associated with the</span>
+<span id="L54"><span class="lineNum">      54</span>              :  * TupleTableSlot; generally they will point to part of a tuple stored in a</span>
+<span id="L55"><span class="lineNum">      55</span>              :  * lower plan node's output TupleTableSlot, or to a function result</span>
+<span id="L56"><span class="lineNum">      56</span>              :  * constructed in a plan node's per-tuple econtext.  It is the responsibility</span>
+<span id="L57"><span class="lineNum">      57</span>              :  * of the generating plan node to be sure these resources are not released for</span>
+<span id="L58"><span class="lineNum">      58</span>              :  * as long as the virtual tuple needs to be valid or is materialized.  Note</span>
+<span id="L59"><span class="lineNum">      59</span>              :  * also that a virtual tuple does not have any &quot;system columns&quot;.</span>
+<span id="L60"><span class="lineNum">      60</span>              :  *</span>
+<span id="L61"><span class="lineNum">      61</span>              :  * The Datum/isnull arrays of a TupleTableSlot serve double duty.  For virtual</span>
+<span id="L62"><span class="lineNum">      62</span>              :  * slots they are the authoritative data.  For the other builtin slots,</span>
+<span id="L63"><span class="lineNum">      63</span>              :  * the arrays contain data extracted from the tuple.  (In this state, any</span>
+<span id="L64"><span class="lineNum">      64</span>              :  * pass-by-reference Datums point into the physical tuple.)  The extracted</span>
+<span id="L65"><span class="lineNum">      65</span>              :  * information is built &quot;lazily&quot;, ie, only as needed.  This serves to avoid</span>
+<span id="L66"><span class="lineNum">      66</span>              :  * repeated extraction of data from the physical tuple.</span>
+<span id="L67"><span class="lineNum">      67</span>              :  *</span>
+<span id="L68"><span class="lineNum">      68</span>              :  * A TupleTableSlot can also be &quot;empty&quot;, indicated by flag TTS_FLAG_EMPTY set</span>
+<span id="L69"><span class="lineNum">      69</span>              :  * in tts_flags, holding no valid data.  This is the only valid state for a</span>
+<span id="L70"><span class="lineNum">      70</span>              :  * freshly-created slot that has not yet had a tuple descriptor assigned to</span>
+<span id="L71"><span class="lineNum">      71</span>              :  * it.  In this state, TTS_SHOULDFREE should not be set in tts_flags, tts_tuple</span>
+<span id="L72"><span class="lineNum">      72</span>              :  * must be NULL and tts_nvalid zero.</span>
+<span id="L73"><span class="lineNum">      73</span>              :  *</span>
+<span id="L74"><span class="lineNum">      74</span>              :  * The tupleDescriptor is simply referenced, not copied, by the TupleTableSlot</span>
+<span id="L75"><span class="lineNum">      75</span>              :  * code.  The caller of ExecSetSlotDescriptor() is responsible for providing</span>
+<span id="L76"><span class="lineNum">      76</span>              :  * a descriptor that will live as long as the slot does.  (Typically, both</span>
+<span id="L77"><span class="lineNum">      77</span>              :  * slots and descriptors are in per-query memory and are freed by memory</span>
+<span id="L78"><span class="lineNum">      78</span>              :  * context deallocation at query end; so it's not worth providing any extra</span>
+<span id="L79"><span class="lineNum">      79</span>              :  * mechanism to do more.  However, the slot will increment the tupdesc</span>
+<span id="L80"><span class="lineNum">      80</span>              :  * reference count if a reference-counted tupdesc is supplied.)</span>
+<span id="L81"><span class="lineNum">      81</span>              :  *</span>
+<span id="L82"><span class="lineNum">      82</span>              :  * When TTS_SHOULDFREE is set in tts_flags, the physical tuple is &quot;owned&quot; by</span>
+<span id="L83"><span class="lineNum">      83</span>              :  * the slot and should be freed when the slot's reference to the tuple is</span>
+<span id="L84"><span class="lineNum">      84</span>              :  * dropped.</span>
+<span id="L85"><span class="lineNum">      85</span>              :  *</span>
+<span id="L86"><span class="lineNum">      86</span>              :  * tts_values/tts_isnull are allocated either when the slot is created (when</span>
+<span id="L87"><span class="lineNum">      87</span>              :  * the descriptor is provided), or when a descriptor is assigned to the slot;</span>
+<span id="L88"><span class="lineNum">      88</span>              :  * they are of length equal to the descriptor's natts.</span>
+<span id="L89"><span class="lineNum">      89</span>              :  *</span>
+<span id="L90"><span class="lineNum">      90</span>              :  * The TTS_FLAG_SLOW flag is saved state for</span>
+<span id="L91"><span class="lineNum">      91</span>              :  * slot_deform_heap_tuple, and should not be touched by any other code.</span>
+<span id="L92"><span class="lineNum">      92</span>              :  *----------</span>
+<span id="L93"><span class="lineNum">      93</span>              :  */</span>
+<span id="L94"><span class="lineNum">      94</span>              : </span>
+<span id="L95"><span class="lineNum">      95</span>              : /* true = slot is empty */</span>
+<span id="L96"><span class="lineNum">      96</span>              : #define                 TTS_FLAG_EMPTY                  (1 &lt;&lt; 1)</span>
+<span id="L97"><span class="lineNum">      97</span>              : #define TTS_EMPTY(slot) (((slot)-&gt;tts_flags &amp; TTS_FLAG_EMPTY) != 0)</span>
+<span id="L98"><span class="lineNum">      98</span>              : </span>
+<span id="L99"><span class="lineNum">      99</span>              : /* should pfree tuple &quot;owned&quot; by the slot? */</span>
+<span id="L100"><span class="lineNum">     100</span>              : #define                 TTS_FLAG_SHOULDFREE             (1 &lt;&lt; 2)</span>
+<span id="L101"><span class="lineNum">     101</span>              : #define TTS_SHOULDFREE(slot) (((slot)-&gt;tts_flags &amp; TTS_FLAG_SHOULDFREE) != 0)</span>
+<span id="L102"><span class="lineNum">     102</span>              : </span>
+<span id="L103"><span class="lineNum">     103</span>              : /* saved state for slot_deform_heap_tuple */</span>
+<span id="L104"><span class="lineNum">     104</span>              : #define                 TTS_FLAG_SLOW           (1 &lt;&lt; 3)</span>
+<span id="L105"><span class="lineNum">     105</span>              : #define TTS_SLOW(slot) (((slot)-&gt;tts_flags &amp; TTS_FLAG_SLOW) != 0)</span>
+<span id="L106"><span class="lineNum">     106</span>              : </span>
+<span id="L107"><span class="lineNum">     107</span>              : /* fixed tuple descriptor */</span>
+<span id="L108"><span class="lineNum">     108</span>              : #define                 TTS_FLAG_FIXED          (1 &lt;&lt; 4)</span>
+<span id="L109"><span class="lineNum">     109</span>              : #define TTS_FIXED(slot) (((slot)-&gt;tts_flags &amp; TTS_FLAG_FIXED) != 0)</span>
+<span id="L110"><span class="lineNum">     110</span>              : </span>
+<span id="L111"><span class="lineNum">     111</span>              : struct TupleTableSlotOps;</span>
+<span id="L112"><span class="lineNum">     112</span>              : typedef struct TupleTableSlotOps TupleTableSlotOps;</span>
+<span id="L113"><span class="lineNum">     113</span>              : </span>
+<span id="L114"><span class="lineNum">     114</span>              : /* base tuple table slot type */</span>
+<span id="L115"><span class="lineNum">     115</span>              : typedef struct TupleTableSlot</span>
+<span id="L116"><span class="lineNum">     116</span>              : {</span>
+<span id="L117"><span class="lineNum">     117</span>              :         NodeTag         type;</span>
+<span id="L118"><span class="lineNum">     118</span>              : #define FIELDNO_TUPLETABLESLOT_FLAGS 1</span>
+<span id="L119"><span class="lineNum">     119</span>              :         uint16          tts_flags;              /* Boolean states */</span>
+<span id="L120"><span class="lineNum">     120</span>              : #define FIELDNO_TUPLETABLESLOT_NVALID 2</span>
+<span id="L121"><span class="lineNum">     121</span>              :         AttrNumber      tts_nvalid;             /* # of valid values in tts_values */</span>
+<span id="L122"><span class="lineNum">     122</span>              :         const TupleTableSlotOps *const tts_ops; /* implementation of slot */</span>
+<span id="L123"><span class="lineNum">     123</span>              : #define FIELDNO_TUPLETABLESLOT_TUPLEDESCRIPTOR 4</span>
+<span id="L124"><span class="lineNum">     124</span>              :         TupleDesc       tts_tupleDescriptor;    /* slot's tuple descriptor */</span>
+<span id="L125"><span class="lineNum">     125</span>              : #define FIELDNO_TUPLETABLESLOT_VALUES 5</span>
+<span id="L126"><span class="lineNum">     126</span>              :         Datum      *tts_values;         /* current per-attribute values */</span>
+<span id="L127"><span class="lineNum">     127</span>              : #define FIELDNO_TUPLETABLESLOT_ISNULL 6</span>
+<span id="L128"><span class="lineNum">     128</span>              :         bool       *tts_isnull;         /* current per-attribute isnull flags */</span>
+<span id="L129"><span class="lineNum">     129</span>              :         MemoryContext tts_mcxt;         /* slot itself is in this context */</span>
+<span id="L130"><span class="lineNum">     130</span>              :         ItemPointerData tts_tid;        /* stored tuple's tid */</span>
+<span id="L131"><span class="lineNum">     131</span>              :         Oid                     tts_tableOid;   /* table oid of tuple */</span>
+<span id="L132"><span class="lineNum">     132</span>              : } TupleTableSlot;</span>
+<span id="L133"><span class="lineNum">     133</span>              : </span>
+<span id="L134"><span class="lineNum">     134</span>              : /* routines for a TupleTableSlot implementation */</span>
+<span id="L135"><span class="lineNum">     135</span>              : struct TupleTableSlotOps</span>
+<span id="L136"><span class="lineNum">     136</span>              : {</span>
+<span id="L137"><span class="lineNum">     137</span>              :         /* Minimum size of the slot */</span>
+<span id="L138"><span class="lineNum">     138</span>              :         size_t          base_slot_size;</span>
+<span id="L139"><span class="lineNum">     139</span>              : </span>
+<span id="L140"><span class="lineNum">     140</span>              :         /* Initialization. */</span>
+<span id="L141"><span class="lineNum">     141</span>              :         void            (*init) (TupleTableSlot *slot);</span>
+<span id="L142"><span class="lineNum">     142</span>              : </span>
+<span id="L143"><span class="lineNum">     143</span>              :         /* Destruction. */</span>
+<span id="L144"><span class="lineNum">     144</span>              :         void            (*release) (TupleTableSlot *slot);</span>
+<span id="L145"><span class="lineNum">     145</span>              : </span>
+<span id="L146"><span class="lineNum">     146</span>              :         /*</span>
+<span id="L147"><span class="lineNum">     147</span>              :          * Clear the contents of the slot. Only the contents are expected to be</span>
+<span id="L148"><span class="lineNum">     148</span>              :          * cleared and not the tuple descriptor. Typically an implementation of</span>
+<span id="L149"><span class="lineNum">     149</span>              :          * this callback should free the memory allocated for the tuple contained</span>
+<span id="L150"><span class="lineNum">     150</span>              :          * in the slot.</span>
+<span id="L151"><span class="lineNum">     151</span>              :          */</span>
+<span id="L152"><span class="lineNum">     152</span>              :         void            (*clear) (TupleTableSlot *slot);</span>
+<span id="L153"><span class="lineNum">     153</span>              : </span>
+<span id="L154"><span class="lineNum">     154</span>              :         /*</span>
+<span id="L155"><span class="lineNum">     155</span>              :          * Fill up first natts entries of tts_values and tts_isnull arrays with</span>
+<span id="L156"><span class="lineNum">     156</span>              :          * values from the tuple contained in the slot. The function may be called</span>
+<span id="L157"><span class="lineNum">     157</span>              :          * with natts more than the number of attributes available in the tuple,</span>
+<span id="L158"><span class="lineNum">     158</span>              :          * in which case it should set tts_nvalid to the number of returned</span>
+<span id="L159"><span class="lineNum">     159</span>              :          * columns.</span>
+<span id="L160"><span class="lineNum">     160</span>              :          */</span>
+<span id="L161"><span class="lineNum">     161</span>              :         void            (*getsomeattrs) (TupleTableSlot *slot, int natts);</span>
+<span id="L162"><span class="lineNum">     162</span>              : </span>
+<span id="L163"><span class="lineNum">     163</span>              :         /*</span>
+<span id="L164"><span class="lineNum">     164</span>              :          * Returns value of the given system attribute as a datum and sets isnull</span>
+<span id="L165"><span class="lineNum">     165</span>              :          * to false, if it's not NULL. Throws an error if the slot type does not</span>
+<span id="L166"><span class="lineNum">     166</span>              :          * support system attributes.</span>
+<span id="L167"><span class="lineNum">     167</span>              :          */</span>
+<span id="L168"><span class="lineNum">     168</span>              :         Datum           (*getsysattr) (TupleTableSlot *slot, int attnum, bool *isnull);</span>
+<span id="L169"><span class="lineNum">     169</span>              : </span>
+<span id="L170"><span class="lineNum">     170</span>              :         /*</span>
+<span id="L171"><span class="lineNum">     171</span>              :          * Make the contents of the slot solely depend on the slot, and not on</span>
+<span id="L172"><span class="lineNum">     172</span>              :          * underlying resources (like another memory context, buffers, etc).</span>
+<span id="L173"><span class="lineNum">     173</span>              :          */</span>
+<span id="L174"><span class="lineNum">     174</span>              :         void            (*materialize) (TupleTableSlot *slot);</span>
+<span id="L175"><span class="lineNum">     175</span>              : </span>
+<span id="L176"><span class="lineNum">     176</span>              :         /*</span>
+<span id="L177"><span class="lineNum">     177</span>              :          * Copy the contents of the source slot into the destination slot's own</span>
+<span id="L178"><span class="lineNum">     178</span>              :          * context. Invoked using callback of the destination slot.</span>
+<span id="L179"><span class="lineNum">     179</span>              :          */</span>
+<span id="L180"><span class="lineNum">     180</span>              :         void            (*copyslot) (TupleTableSlot *dstslot, TupleTableSlot *srcslot);</span>
+<span id="L181"><span class="lineNum">     181</span>              : </span>
+<span id="L182"><span class="lineNum">     182</span>              :         /*</span>
+<span id="L183"><span class="lineNum">     183</span>              :          * Return a heap tuple &quot;owned&quot; by the slot. It is slot's responsibility to</span>
+<span id="L184"><span class="lineNum">     184</span>              :          * free the memory consumed by the heap tuple. If the slot can not &quot;own&quot; a</span>
+<span id="L185"><span class="lineNum">     185</span>              :          * heap tuple, it should not implement this callback and should set it as</span>
+<span id="L186"><span class="lineNum">     186</span>              :          * NULL.</span>
+<span id="L187"><span class="lineNum">     187</span>              :          */</span>
+<span id="L188"><span class="lineNum">     188</span>              :         HeapTuple       (*get_heap_tuple) (TupleTableSlot *slot);</span>
+<span id="L189"><span class="lineNum">     189</span>              : </span>
+<span id="L190"><span class="lineNum">     190</span>              :         /*</span>
+<span id="L191"><span class="lineNum">     191</span>              :          * Return a minimal tuple &quot;owned&quot; by the slot. It is slot's responsibility</span>
+<span id="L192"><span class="lineNum">     192</span>              :          * to free the memory consumed by the minimal tuple. If the slot can not</span>
+<span id="L193"><span class="lineNum">     193</span>              :          * &quot;own&quot; a minimal tuple, it should not implement this callback and should</span>
+<span id="L194"><span class="lineNum">     194</span>              :          * set it as NULL.</span>
+<span id="L195"><span class="lineNum">     195</span>              :          */</span>
+<span id="L196"><span class="lineNum">     196</span>              :         MinimalTuple (*get_minimal_tuple) (TupleTableSlot *slot);</span>
+<span id="L197"><span class="lineNum">     197</span>              : </span>
+<span id="L198"><span class="lineNum">     198</span>              :         /*</span>
+<span id="L199"><span class="lineNum">     199</span>              :          * Return a copy of heap tuple representing the contents of the slot. The</span>
+<span id="L200"><span class="lineNum">     200</span>              :          * copy needs to be palloc'd in the current memory context. The slot</span>
+<span id="L201"><span class="lineNum">     201</span>              :          * itself is expected to remain unaffected. It is *not* expected to have</span>
+<span id="L202"><span class="lineNum">     202</span>              :          * meaningful &quot;system columns&quot; in the copy. The copy is not be &quot;owned&quot; by</span>
+<span id="L203"><span class="lineNum">     203</span>              :          * the slot i.e. the caller has to take responsibility to free memory</span>
+<span id="L204"><span class="lineNum">     204</span>              :          * consumed by the slot.</span>
+<span id="L205"><span class="lineNum">     205</span>              :          */</span>
+<span id="L206"><span class="lineNum">     206</span>              :         HeapTuple       (*copy_heap_tuple) (TupleTableSlot *slot);</span>
+<span id="L207"><span class="lineNum">     207</span>              : </span>
+<span id="L208"><span class="lineNum">     208</span>              :         /*</span>
+<span id="L209"><span class="lineNum">     209</span>              :          * Return a copy of minimal tuple representing the contents of the slot.</span>
+<span id="L210"><span class="lineNum">     210</span>              :          * The copy needs to be palloc'd in the current memory context. The slot</span>
+<span id="L211"><span class="lineNum">     211</span>              :          * itself is expected to remain unaffected. It is *not* expected to have</span>
+<span id="L212"><span class="lineNum">     212</span>              :          * meaningful &quot;system columns&quot; in the copy. The copy is not be &quot;owned&quot; by</span>
+<span id="L213"><span class="lineNum">     213</span>              :          * the slot i.e. the caller has to take responsibility to free memory</span>
+<span id="L214"><span class="lineNum">     214</span>              :          * consumed by the slot.</span>
+<span id="L215"><span class="lineNum">     215</span>              :          */</span>
+<span id="L216"><span class="lineNum">     216</span>              :         MinimalTuple (*copy_minimal_tuple) (TupleTableSlot *slot);</span>
+<span id="L217"><span class="lineNum">     217</span>              : };</span>
+<span id="L218"><span class="lineNum">     218</span>              : </span>
+<span id="L219"><span class="lineNum">     219</span>              : /*</span>
+<span id="L220"><span class="lineNum">     220</span>              :  * Predefined TupleTableSlotOps for various types of TupleTableSlotOps. The</span>
+<span id="L221"><span class="lineNum">     221</span>              :  * same are used to identify the type of a given slot.</span>
+<span id="L222"><span class="lineNum">     222</span>              :  */</span>
+<span id="L223"><span class="lineNum">     223</span>              : extern PGDLLIMPORT const TupleTableSlotOps TTSOpsVirtual;</span>
+<span id="L224"><span class="lineNum">     224</span>              : extern PGDLLIMPORT const TupleTableSlotOps TTSOpsHeapTuple;</span>
+<span id="L225"><span class="lineNum">     225</span>              : extern PGDLLIMPORT const TupleTableSlotOps TTSOpsMinimalTuple;</span>
+<span id="L226"><span class="lineNum">     226</span>              : extern PGDLLIMPORT const TupleTableSlotOps TTSOpsBufferHeapTuple;</span>
+<span id="L227"><span class="lineNum">     227</span>              : </span>
+<span id="L228"><span class="lineNum">     228</span>              : #define TTS_IS_VIRTUAL(slot) ((slot)-&gt;tts_ops == &amp;TTSOpsVirtual)</span>
+<span id="L229"><span class="lineNum">     229</span>              : #define TTS_IS_HEAPTUPLE(slot) ((slot)-&gt;tts_ops == &amp;TTSOpsHeapTuple)</span>
+<span id="L230"><span class="lineNum">     230</span>              : #define TTS_IS_MINIMALTUPLE(slot) ((slot)-&gt;tts_ops == &amp;TTSOpsMinimalTuple)</span>
+<span id="L231"><span class="lineNum">     231</span>              : #define TTS_IS_BUFFERTUPLE(slot) ((slot)-&gt;tts_ops == &amp;TTSOpsBufferHeapTuple)</span>
+<span id="L232"><span class="lineNum">     232</span>              : </span>
+<span id="L233"><span class="lineNum">     233</span>              : </span>
+<span id="L234"><span class="lineNum">     234</span>              : /*</span>
+<span id="L235"><span class="lineNum">     235</span>              :  * Tuple table slot implementations.</span>
+<span id="L236"><span class="lineNum">     236</span>              :  */</span>
+<span id="L237"><span class="lineNum">     237</span>              : </span>
+<span id="L238"><span class="lineNum">     238</span>              : typedef struct VirtualTupleTableSlot</span>
+<span id="L239"><span class="lineNum">     239</span>              : {</span>
+<span id="L240"><span class="lineNum">     240</span>              :         TupleTableSlot base;</span>
+<span id="L241"><span class="lineNum">     241</span>              : </span>
+<span id="L242"><span class="lineNum">     242</span>              :         char       *data;                       /* data for materialized slots */</span>
+<span id="L243"><span class="lineNum">     243</span>              : } VirtualTupleTableSlot;</span>
+<span id="L244"><span class="lineNum">     244</span>              : </span>
+<span id="L245"><span class="lineNum">     245</span>              : typedef struct HeapTupleTableSlot</span>
+<span id="L246"><span class="lineNum">     246</span>              : {</span>
+<span id="L247"><span class="lineNum">     247</span>              :         TupleTableSlot base;</span>
+<span id="L248"><span class="lineNum">     248</span>              : </span>
+<span id="L249"><span class="lineNum">     249</span>              : #define FIELDNO_HEAPTUPLETABLESLOT_TUPLE 1</span>
+<span id="L250"><span class="lineNum">     250</span>              :         HeapTuple       tuple;                  /* physical tuple */</span>
+<span id="L251"><span class="lineNum">     251</span>              : #define FIELDNO_HEAPTUPLETABLESLOT_OFF 2</span>
+<span id="L252"><span class="lineNum">     252</span>              :         uint32          off;                    /* saved state for slot_deform_heap_tuple */</span>
+<span id="L253"><span class="lineNum">     253</span>              :         HeapTupleData tupdata;          /* optional workspace for storing tuple */</span>
+<span id="L254"><span class="lineNum">     254</span>              : } HeapTupleTableSlot;</span>
+<span id="L255"><span class="lineNum">     255</span>              : </span>
+<span id="L256"><span class="lineNum">     256</span>              : /* heap tuple residing in a buffer */</span>
+<span id="L257"><span class="lineNum">     257</span>              : typedef struct BufferHeapTupleTableSlot</span>
+<span id="L258"><span class="lineNum">     258</span>              : {</span>
+<span id="L259"><span class="lineNum">     259</span>              :         HeapTupleTableSlot base;</span>
+<span id="L260"><span class="lineNum">     260</span>              : </span>
+<span id="L261"><span class="lineNum">     261</span>              :         /*</span>
+<span id="L262"><span class="lineNum">     262</span>              :          * If buffer is not InvalidBuffer, then the slot is holding a pin on the</span>
+<span id="L263"><span class="lineNum">     263</span>              :          * indicated buffer page; drop the pin when we release the slot's</span>
+<span id="L264"><span class="lineNum">     264</span>              :          * reference to that buffer.  (TTS_FLAG_SHOULDFREE should not be set in</span>
+<span id="L265"><span class="lineNum">     265</span>              :          * such a case, since presumably tts_tuple is pointing into the buffer.)</span>
+<span id="L266"><span class="lineNum">     266</span>              :          */</span>
+<span id="L267"><span class="lineNum">     267</span>              :         Buffer          buffer;                 /* tuple's buffer, or InvalidBuffer */</span>
+<span id="L268"><span class="lineNum">     268</span>              : } BufferHeapTupleTableSlot;</span>
+<span id="L269"><span class="lineNum">     269</span>              : </span>
+<span id="L270"><span class="lineNum">     270</span>              : typedef struct MinimalTupleTableSlot</span>
+<span id="L271"><span class="lineNum">     271</span>              : {</span>
+<span id="L272"><span class="lineNum">     272</span>              :         TupleTableSlot base;</span>
+<span id="L273"><span class="lineNum">     273</span>              : </span>
+<span id="L274"><span class="lineNum">     274</span>              :         /*</span>
+<span id="L275"><span class="lineNum">     275</span>              :          * In a minimal slot tuple points at minhdr and the fields of that struct</span>
+<span id="L276"><span class="lineNum">     276</span>              :          * are set correctly for access to the minimal tuple; in particular,</span>
+<span id="L277"><span class="lineNum">     277</span>              :          * minhdr.t_data points MINIMAL_TUPLE_OFFSET bytes before mintuple.  This</span>
+<span id="L278"><span class="lineNum">     278</span>              :          * allows column extraction to treat the case identically to regular</span>
+<span id="L279"><span class="lineNum">     279</span>              :          * physical tuples.</span>
+<span id="L280"><span class="lineNum">     280</span>              :          */</span>
+<span id="L281"><span class="lineNum">     281</span>              : #define FIELDNO_MINIMALTUPLETABLESLOT_TUPLE 1</span>
+<span id="L282"><span class="lineNum">     282</span>              :         HeapTuple       tuple;                  /* tuple wrapper */</span>
+<span id="L283"><span class="lineNum">     283</span>              :         MinimalTuple mintuple;          /* minimal tuple, or NULL if none */</span>
+<span id="L284"><span class="lineNum">     284</span>              :         HeapTupleData minhdr;           /* workspace for minimal-tuple-only case */</span>
+<span id="L285"><span class="lineNum">     285</span>              : #define FIELDNO_MINIMALTUPLETABLESLOT_OFF 4</span>
+<span id="L286"><span class="lineNum">     286</span>              :         uint32          off;                    /* saved state for slot_deform_heap_tuple */</span>
+<span id="L287"><span class="lineNum">     287</span>              : } MinimalTupleTableSlot;</span>
+<span id="L288"><span class="lineNum">     288</span>              : </span>
+<span id="L289"><span class="lineNum">     289</span>              : /*</span>
+<span id="L290"><span class="lineNum">     290</span>              :  * TupIsNull -- is a TupleTableSlot empty?</span>
+<span id="L291"><span class="lineNum">     291</span>              :  */</span>
+<span id="L292"><span class="lineNum">     292</span>              : #define TupIsNull(slot) \</span>
+<span id="L293"><span class="lineNum">     293</span>              :         ((slot) == NULL || TTS_EMPTY(slot))</span>
+<span id="L294"><span class="lineNum">     294</span>              : </span>
+<span id="L295"><span class="lineNum">     295</span>              : /* in executor/execTuples.c */</span>
+<span id="L296"><span class="lineNum">     296</span>              : extern TupleTableSlot *MakeTupleTableSlot(TupleDesc tupleDesc,</span>
+<span id="L297"><span class="lineNum">     297</span>              :                                                                                   const TupleTableSlotOps *tts_ops);</span>
+<span id="L298"><span class="lineNum">     298</span>              : extern TupleTableSlot *ExecAllocTableSlot(List **tupleTable, TupleDesc desc,</span>
+<span id="L299"><span class="lineNum">     299</span>              :                                                                                   const TupleTableSlotOps *tts_ops);</span>
+<span id="L300"><span class="lineNum">     300</span>              : extern void ExecResetTupleTable(List *tupleTable, bool shouldFree);</span>
+<span id="L301"><span class="lineNum">     301</span>              : extern TupleTableSlot *MakeSingleTupleTableSlot(TupleDesc tupdesc,</span>
+<span id="L302"><span class="lineNum">     302</span>              :                                                                                                 const TupleTableSlotOps *tts_ops);</span>
+<span id="L303"><span class="lineNum">     303</span>              : extern void ExecDropSingleTupleTableSlot(TupleTableSlot *slot);</span>
+<span id="L304"><span class="lineNum">     304</span>              : extern void ExecSetSlotDescriptor(TupleTableSlot *slot, TupleDesc tupdesc);</span>
+<span id="L305"><span class="lineNum">     305</span>              : extern TupleTableSlot *ExecStoreHeapTuple(HeapTuple tuple,</span>
+<span id="L306"><span class="lineNum">     306</span>              :                                                                                   TupleTableSlot *slot,</span>
+<span id="L307"><span class="lineNum">     307</span>              :                                                                                   bool shouldFree);</span>
+<span id="L308"><span class="lineNum">     308</span>              : extern void ExecForceStoreHeapTuple(HeapTuple tuple,</span>
+<span id="L309"><span class="lineNum">     309</span>              :                                                                         TupleTableSlot *slot,</span>
+<span id="L310"><span class="lineNum">     310</span>              :                                                                         bool shouldFree);</span>
+<span id="L311"><span class="lineNum">     311</span>              : extern TupleTableSlot *ExecStoreBufferHeapTuple(HeapTuple tuple,</span>
+<span id="L312"><span class="lineNum">     312</span>              :                                                                                                 TupleTableSlot *slot,</span>
+<span id="L313"><span class="lineNum">     313</span>              :                                                                                                 Buffer buffer);</span>
+<span id="L314"><span class="lineNum">     314</span>              : extern TupleTableSlot *ExecStorePinnedBufferHeapTuple(HeapTuple tuple,</span>
+<span id="L315"><span class="lineNum">     315</span>              :                                                                                                           TupleTableSlot *slot,</span>
+<span id="L316"><span class="lineNum">     316</span>              :                                                                                                           Buffer buffer);</span>
+<span id="L317"><span class="lineNum">     317</span>              : extern TupleTableSlot *ExecStoreMinimalTuple(MinimalTuple mtup,</span>
+<span id="L318"><span class="lineNum">     318</span>              :                                                                                          TupleTableSlot *slot,</span>
+<span id="L319"><span class="lineNum">     319</span>              :                                                                                          bool shouldFree);</span>
+<span id="L320"><span class="lineNum">     320</span>              : extern void ExecForceStoreMinimalTuple(MinimalTuple mtup, TupleTableSlot *slot,</span>
+<span id="L321"><span class="lineNum">     321</span>              :                                                                            bool shouldFree);</span>
+<span id="L322"><span class="lineNum">     322</span>              : extern TupleTableSlot *ExecStoreVirtualTuple(TupleTableSlot *slot);</span>
+<span id="L323"><span class="lineNum">     323</span>              : extern TupleTableSlot *ExecStoreAllNullTuple(TupleTableSlot *slot);</span>
+<span id="L324"><span class="lineNum">     324</span>              : extern void ExecStoreHeapTupleDatum(Datum data, TupleTableSlot *slot);</span>
+<span id="L325"><span class="lineNum">     325</span>              : extern HeapTuple ExecFetchSlotHeapTuple(TupleTableSlot *slot, bool materialize, bool *shouldFree);</span>
+<span id="L326"><span class="lineNum">     326</span>              : extern MinimalTuple ExecFetchSlotMinimalTuple(TupleTableSlot *slot,</span>
+<span id="L327"><span class="lineNum">     327</span>              :                                                                                           bool *shouldFree);</span>
+<span id="L328"><span class="lineNum">     328</span>              : extern Datum ExecFetchSlotHeapTupleDatum(TupleTableSlot *slot);</span>
+<span id="L329"><span class="lineNum">     329</span>              : extern void slot_getmissingattrs(TupleTableSlot *slot, int startAttNum,</span>
+<span id="L330"><span class="lineNum">     330</span>              :                                                                  int lastAttNum);</span>
+<span id="L331"><span class="lineNum">     331</span>              : extern void slot_getsomeattrs_int(TupleTableSlot *slot, int attnum);</span>
+<span id="L332"><span class="lineNum">     332</span>              : </span>
+<span id="L333"><span class="lineNum">     333</span>              : </span>
+<span id="L334"><span class="lineNum">     334</span>              : #ifndef FRONTEND</span>
+<span id="L335"><span class="lineNum">     335</span>              : </span>
+<span id="L336"><span class="lineNum">     336</span>              : /*</span>
+<span id="L337"><span class="lineNum">     337</span>              :  * This function forces the entries of the slot's Datum/isnull arrays to be</span>
+<span id="L338"><span class="lineNum">     338</span>              :  * valid at least up through the attnum'th entry.</span>
+<span id="L339"><span class="lineNum">     339</span>              :  */</span>
+<span id="L340"><span class="lineNum">     340</span>              : static inline void</span>
+<span id="L341"><span class="lineNum">     341</span> <span class="tlaGNC tlaBgGNC">      172628 : slot_getsomeattrs(TupleTableSlot *slot, int attnum)</span></span>
+<span id="L342"><span class="lineNum">     342</span>              : {</span>
+<span id="L343"><span class="lineNum">     343</span> <span class="tlaGNC">      172628 :         if (slot-&gt;tts_nvalid &lt; attnum)</span></span>
+<span id="L344"><span class="lineNum">     344</span> <span class="tlaGNC">      169313 :                 slot_getsomeattrs_int(slot, attnum);</span></span>
+<span id="L345"><span class="lineNum">     345</span> <span class="tlaGNC">      172628 : }</span></span>
+<span id="L346"><span class="lineNum">     346</span>              : </span>
+<span id="L347"><span class="lineNum">     347</span>              : /*</span>
+<span id="L348"><span class="lineNum">     348</span>              :  * slot_getallattrs</span>
+<span id="L349"><span class="lineNum">     349</span>              :  *              This function forces all the entries of the slot's Datum/isnull</span>
+<span id="L350"><span class="lineNum">     350</span>              :  *              arrays to be valid.  The caller may then extract data directly</span>
+<span id="L351"><span class="lineNum">     351</span>              :  *              from those arrays instead of using slot_getattr.</span>
+<span id="L352"><span class="lineNum">     352</span>              :  */</span>
+<span id="L353"><span class="lineNum">     353</span>              : static inline void</span>
+<span id="L354"><span class="lineNum">     354</span> <span class="tlaGNC">         604 : slot_getallattrs(TupleTableSlot *slot)</span></span>
+<span id="L355"><span class="lineNum">     355</span>              : {</span>
+<span id="L356"><span class="lineNum">     356</span> <span class="tlaGNC">         604 :         slot_getsomeattrs(slot, slot-&gt;tts_tupleDescriptor-&gt;natts);</span></span>
+<span id="L357"><span class="lineNum">     357</span> <span class="tlaGNC">         604 : }</span></span>
+<span id="L358"><span class="lineNum">     358</span>              : </span>
+<span id="L359"><span class="lineNum">     359</span>              : </span>
+<span id="L360"><span class="lineNum">     360</span>              : /*</span>
+<span id="L361"><span class="lineNum">     361</span>              :  * slot_attisnull</span>
+<span id="L362"><span class="lineNum">     362</span>              :  *</span>
+<span id="L363"><span class="lineNum">     363</span>              :  * Detect whether an attribute of the slot is null, without actually fetching</span>
+<span id="L364"><span class="lineNum">     364</span>              :  * it.</span>
+<span id="L365"><span class="lineNum">     365</span>              :  */</span>
+<span id="L366"><span class="lineNum">     366</span>              : static inline bool</span>
+<span id="L367"><span class="lineNum">     367</span> <span class="tlaGNC">       50758 : slot_attisnull(TupleTableSlot *slot, int attnum)</span></span>
+<span id="L368"><span class="lineNum">     368</span>              : {</span>
+<span id="L369"><span class="lineNum">     369</span>              :         AssertArg(attnum &gt; 0);</span>
+<span id="L370"><span class="lineNum">     370</span>              : </span>
+<span id="L371"><span class="lineNum">     371</span> <span class="tlaGNC">       50758 :         if (attnum &gt; slot-&gt;tts_nvalid)</span></span>
+<span id="L372"><span class="lineNum">     372</span> <span class="tlaGNC">       50745 :                 slot_getsomeattrs(slot, attnum);</span></span>
+<span id="L373"><span class="lineNum">     373</span>              : </span>
+<span id="L374"><span class="lineNum">     374</span> <span class="tlaGNC">       50758 :         return slot-&gt;tts_isnull[attnum - 1];</span></span>
+<span id="L375"><span class="lineNum">     375</span>              : }</span>
+<span id="L376"><span class="lineNum">     376</span>              : </span>
+<span id="L377"><span class="lineNum">     377</span>              : /*</span>
+<span id="L378"><span class="lineNum">     378</span>              :  * slot_getattr - fetch one attribute of the slot's contents.</span>
+<span id="L379"><span class="lineNum">     379</span>              :  */</span>
+<span id="L380"><span class="lineNum">     380</span>              : static inline Datum</span>
+<span id="L381"><span class="lineNum">     381</span> <span class="tlaGNC">      132966 : slot_getattr(TupleTableSlot *slot, int attnum,</span></span>
+<span id="L382"><span class="lineNum">     382</span>              :                          bool *isnull)</span>
+<span id="L383"><span class="lineNum">     383</span>              : {</span>
+<span id="L384"><span class="lineNum">     384</span>              :         AssertArg(attnum &gt; 0);</span>
+<span id="L385"><span class="lineNum">     385</span>              : </span>
+<span id="L386"><span class="lineNum">     386</span> <span class="tlaGNC">      132966 :         if (attnum &gt; slot-&gt;tts_nvalid)</span></span>
+<span id="L387"><span class="lineNum">     387</span> <span class="tlaGNC">       78501 :                 slot_getsomeattrs(slot, attnum);</span></span>
+<span id="L388"><span class="lineNum">     388</span>              : </span>
+<span id="L389"><span class="lineNum">     389</span> <span class="tlaGNC">      132966 :         *isnull = slot-&gt;tts_isnull[attnum - 1];</span></span>
+<span id="L390"><span class="lineNum">     390</span>              : </span>
+<span id="L391"><span class="lineNum">     391</span> <span class="tlaGNC">      132966 :         return slot-&gt;tts_values[attnum - 1];</span></span>
+<span id="L392"><span class="lineNum">     392</span>              : }</span>
+<span id="L393"><span class="lineNum">     393</span>              : </span>
+<span id="L394"><span class="lineNum">     394</span>              : /*</span>
+<span id="L395"><span class="lineNum">     395</span>              :  * slot_getsysattr - fetch a system attribute of the slot's current tuple.</span>
+<span id="L396"><span class="lineNum">     396</span>              :  *</span>
+<span id="L397"><span class="lineNum">     397</span>              :  *  If the slot type does not contain system attributes, this will throw an</span>
+<span id="L398"><span class="lineNum">     398</span>              :  *  error.  Hence before calling this function, callers should make sure that</span>
+<span id="L399"><span class="lineNum">     399</span>              :  *  the slot type is the one that supports system attributes.</span>
+<span id="L400"><span class="lineNum">     400</span>              :  */</span>
+<span id="L401"><span class="lineNum">     401</span>              : static inline Datum</span>
+<span id="L402"><span class="lineNum">     402</span> <span class="tlaGNC">        6312 : slot_getsysattr(TupleTableSlot *slot, int attnum, bool *isnull)</span></span>
+<span id="L403"><span class="lineNum">     403</span>              : {</span>
+<span id="L404"><span class="lineNum">     404</span>              :         AssertArg(attnum &lt; 0);               /* caller error */</span>
+<span id="L405"><span class="lineNum">     405</span>              : </span>
+<span id="L406"><span class="lineNum">     406</span> <span class="tlaGNC">        6312 :         if (attnum == TableOidAttributeNumber)</span></span>
+<span id="L407"><span class="lineNum">     407</span>              :         {</span>
+<span id="L408"><span class="lineNum">     408</span> <span class="tlaGNC">        6143 :                 *isnull = false;</span></span>
+<span id="L409"><span class="lineNum">     409</span> <span class="tlaGNC">        6143 :                 return ObjectIdGetDatum(slot-&gt;tts_tableOid);</span></span>
+<span id="L410"><span class="lineNum">     410</span>              :         }</span>
+<span id="L411"><span class="lineNum">     411</span> <span class="tlaGNC">         169 :         else if (attnum == SelfItemPointerAttributeNumber)</span></span>
+<span id="L412"><span class="lineNum">     412</span>              :         {</span>
+<span id="L413"><span class="lineNum">     413</span> <span class="tlaGNC">         169 :                 *isnull = false;</span></span>
+<span id="L414"><span class="lineNum">     414</span> <span class="tlaGNC">         169 :                 return PointerGetDatum(&amp;slot-&gt;tts_tid);</span></span>
+<span id="L415"><span class="lineNum">     415</span>              :         }</span>
+<span id="L416"><span class="lineNum">     416</span>              : </span>
+<span id="L417"><span class="lineNum">     417</span>              :         /* Fetch the system attribute from the underlying tuple. */</span>
+<span id="L418"><span class="lineNum">     418</span> <span class="tlaUNC tlaBgUNC">           0 :         return slot-&gt;tts_ops-&gt;getsysattr(slot, attnum, isnull);</span></span>
+<span id="L419"><span class="lineNum">     419</span>              : }</span>
+<span id="L420"><span class="lineNum">     420</span>              : </span>
+<span id="L421"><span class="lineNum">     421</span>              : /*</span>
+<span id="L422"><span class="lineNum">     422</span>              :  * ExecClearTuple - clear the slot's contents</span>
+<span id="L423"><span class="lineNum">     423</span>              :  */</span>
+<span id="L424"><span class="lineNum">     424</span>              : static inline TupleTableSlot *</span>
+<span id="L425"><span class="lineNum">     425</span> <span class="tlaGNC tlaBgGNC">       88409 : ExecClearTuple(TupleTableSlot *slot)</span></span>
+<span id="L426"><span class="lineNum">     426</span>              : {</span>
+<span id="L427"><span class="lineNum">     427</span> <span class="tlaGNC">       88409 :         slot-&gt;tts_ops-&gt;clear(slot);</span></span>
+<span id="L428"><span class="lineNum">     428</span>              : </span>
+<span id="L429"><span class="lineNum">     429</span> <span class="tlaGNC">       88409 :         return slot;</span></span>
+<span id="L430"><span class="lineNum">     430</span>              : }</span>
+<span id="L431"><span class="lineNum">     431</span>              : </span>
+<span id="L432"><span class="lineNum">     432</span>              : /* ExecMaterializeSlot - force a slot into the &quot;materialized&quot; state.</span>
+<span id="L433"><span class="lineNum">     433</span>              :  *</span>
+<span id="L434"><span class="lineNum">     434</span>              :  * This causes the slot's tuple to be a local copy not dependent on any</span>
+<span id="L435"><span class="lineNum">     435</span>              :  * external storage (i.e. pointing into a Buffer, or having allocations in</span>
+<span id="L436"><span class="lineNum">     436</span>              :  * another memory context).</span>
+<span id="L437"><span class="lineNum">     437</span>              :  *</span>
+<span id="L438"><span class="lineNum">     438</span>              :  * A typical use for this operation is to prepare a computed tuple for being</span>
+<span id="L439"><span class="lineNum">     439</span>              :  * stored on disk.  The original data may or may not be virtual, but in any</span>
+<span id="L440"><span class="lineNum">     440</span>              :  * case we need a private copy for heap_insert to scribble on.</span>
+<span id="L441"><span class="lineNum">     441</span>              :  */</span>
+<span id="L442"><span class="lineNum">     442</span>              : static inline void</span>
+<span id="L443"><span class="lineNum">     443</span> <span class="tlaGNC">       10024 : ExecMaterializeSlot(TupleTableSlot *slot)</span></span>
+<span id="L444"><span class="lineNum">     444</span>              : {</span>
+<span id="L445"><span class="lineNum">     445</span> <span class="tlaGNC">       10024 :         slot-&gt;tts_ops-&gt;materialize(slot);</span></span>
+<span id="L446"><span class="lineNum">     446</span> <span class="tlaGNC">       10024 : }</span></span>
+<span id="L447"><span class="lineNum">     447</span>              : </span>
+<span id="L448"><span class="lineNum">     448</span>              : /*</span>
+<span id="L449"><span class="lineNum">     449</span>              :  * ExecCopySlotHeapTuple - return HeapTuple allocated in caller's context</span>
+<span id="L450"><span class="lineNum">     450</span>              :  */</span>
+<span id="L451"><span class="lineNum">     451</span>              : static inline HeapTuple</span>
+<span id="L452"><span class="lineNum">     452</span> <span class="tlaGNC">       43701 : ExecCopySlotHeapTuple(TupleTableSlot *slot)</span></span>
+<span id="L453"><span class="lineNum">     453</span>              : {</span>
+<span id="L454"><span class="lineNum">     454</span>              :         Assert(!TTS_EMPTY(slot));</span>
+<span id="L455"><span class="lineNum">     455</span>              : </span>
+<span id="L456"><span class="lineNum">     456</span> <span class="tlaGNC">       43701 :         return slot-&gt;tts_ops-&gt;copy_heap_tuple(slot);</span></span>
+<span id="L457"><span class="lineNum">     457</span>              : }</span>
+<span id="L458"><span class="lineNum">     458</span>              : </span>
+<span id="L459"><span class="lineNum">     459</span>              : /*</span>
+<span id="L460"><span class="lineNum">     460</span>              :  * ExecCopySlotMinimalTuple - return MinimalTuple allocated in caller's context</span>
+<span id="L461"><span class="lineNum">     461</span>              :  */</span>
+<span id="L462"><span class="lineNum">     462</span>              : static inline MinimalTuple</span>
+<span id="L463"><span class="lineNum">     463</span> <span class="tlaGNC">        1202 : ExecCopySlotMinimalTuple(TupleTableSlot *slot)</span></span>
+<span id="L464"><span class="lineNum">     464</span>              : {</span>
+<span id="L465"><span class="lineNum">     465</span> <span class="tlaGNC">        1202 :         return slot-&gt;tts_ops-&gt;copy_minimal_tuple(slot);</span></span>
+<span id="L466"><span class="lineNum">     466</span>              : }</span>
+<span id="L467"><span class="lineNum">     467</span>              : </span>
+<span id="L468"><span class="lineNum">     468</span>              : /*</span>
+<span id="L469"><span class="lineNum">     469</span>              :  * ExecCopySlot - copy one slot's contents into another.</span>
+<span id="L470"><span class="lineNum">     470</span>              :  *</span>
+<span id="L471"><span class="lineNum">     471</span>              :  * If a source's system attributes are supposed to be accessed in the target</span>
+<span id="L472"><span class="lineNum">     472</span>              :  * slot, the target slot and source slot types need to match.</span>
+<span id="L473"><span class="lineNum">     473</span>              :  */</span>
+<span id="L474"><span class="lineNum">     474</span>              : static inline TupleTableSlot *</span>
+<span id="L475"><span class="lineNum">     475</span> <span class="tlaGNC">        9382 : ExecCopySlot(TupleTableSlot *dstslot, TupleTableSlot *srcslot)</span></span>
+<span id="L476"><span class="lineNum">     476</span>              : {</span>
+<span id="L477"><span class="lineNum">     477</span>              :         Assert(!TTS_EMPTY(srcslot));</span>
+<span id="L478"><span class="lineNum">     478</span>              :         AssertArg(srcslot != dstslot);</span>
+<span id="L479"><span class="lineNum">     479</span>              : </span>
+<span id="L480"><span class="lineNum">     480</span> <span class="tlaGNC">        9382 :         dstslot-&gt;tts_ops-&gt;copyslot(dstslot, srcslot);</span></span>
+<span id="L481"><span class="lineNum">     481</span>              : </span>
+<span id="L482"><span class="lineNum">     482</span> <span class="tlaGNC">        9382 :         return dstslot;</span></span>
+<span id="L483"><span class="lineNum">     483</span>              : }</span>
+<span id="L484"><span class="lineNum">     484</span>              : </span>
+<span id="L485"><span class="lineNum">     485</span>              : #endif                                                  /* FRONTEND */</span>
+<span id="L486"><span class="lineNum">     486</span>              : </span>
+<span id="L487"><span class="lineNum">     487</span>              : #endif                                                  /* TUPTABLE_H */</span>
+        </pre>
+              </td>
+            </tr>
+          </table>
+          <br>
+
+          <table width="100%" border=0 cellspacing=0 cellpadding=0>
+            <tr><td class="ruler"><img src="../../glass.png" width=3 height=3 alt=""></td></tr>
+            <tr><td class="versionInfo">Generated by: <a href="https://github.com//linux-test-project/lcov" target="_parent">LCOV version 2.0-1</a></td></tr>
+          </table>
+          <br>
+
+</body>
+</html>

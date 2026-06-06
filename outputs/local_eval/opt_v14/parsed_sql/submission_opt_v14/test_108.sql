@@ -1,0 +1,56 @@
+-- ===== Commit 108 =====
+-- Source:  - 
+
+-- --- Test Case 1 ---
+-- Setup
+DROP TABLE IF EXISTS t1 CASCADE;
+DROP TABLE IF EXISTS t2 CASCADE;
+CREATE TABLE t1 (a int);
+CREATE TABLE t2 (a int);
+INSERT INTO t1 VALUES (1), (2);
+INSERT INTO t2 VALUES (3), (4);
+
+-- Execution: UNION ALL query that triggers pull-up of leaf subqueries
+SELECT * FROM (SELECT a FROM t1 UNION ALL SELECT a FROM t2) AS u;
+
+-- Teardown
+DROP TABLE IF EXISTS t1 CASCADE;
+DROP TABLE IF EXISTS t2 CASCADE;
+
+-- --- Test Case 2 ---
+-- Setup
+DROP TABLE IF EXISTS t1 CASCADE;
+DROP TABLE IF EXISTS t2 CASCADE;
+CREATE TABLE t1 (a int);
+CREATE TABLE t2 (a int);
+INSERT INTO t1 VALUES (1);
+INSERT INTO t2 VALUES (2);
+
+-- Execution: UNION ALL with a lateral join that introduces PlaceHolderVars
+SELECT * FROM (SELECT a FROM t1 UNION ALL SELECT a FROM t2) AS u
+WHERE EXISTS (SELECT 1 FROM t1 WHERE t1.a = u.a);
+
+-- Teardown
+DROP TABLE IF EXISTS t1 CASCADE;
+DROP TABLE IF EXISTS t2 CASCADE;
+
+-- --- Test Case 3 ---
+-- Setup
+DROP TABLE IF EXISTS t1 CASCADE;
+DROP TABLE IF EXISTS t2 CASCADE;
+DROP TABLE IF EXISTS t3 CASCADE;
+CREATE TABLE t1 (a int);
+CREATE TABLE t2 (a int);
+CREATE TABLE t3 (a int);
+INSERT INTO t1 VALUES (1);
+INSERT INTO t2 VALUES (2);
+INSERT INTO t3 VALUES (3);
+
+-- Execution: Multiple UNION ALL subqueries to trigger the O(N^2) avoidance path
+SELECT * FROM (SELECT a FROM t1 UNION ALL SELECT a FROM t2 UNION ALL SELECT a FROM t3) AS u;
+
+-- Teardown
+DROP TABLE IF EXISTS t1 CASCADE;
+DROP TABLE IF EXISTS t2 CASCADE;
+DROP TABLE IF EXISTS t3 CASCADE;
+

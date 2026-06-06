@@ -1,0 +1,463 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - coverage_filtered.info - backend/replication/backup_manifest.c</title>
+  <link rel="stylesheet" type="text/css" href="../../gcov.css">
+</head>
+
+<body>
+
+          <table width="100%" border=0 cellspacing=0 cellpadding=0>
+            <tr><td class="title">LCOV - code coverage report</td></tr>
+            <tr><td class="ruler"><img src="../../glass.png" width=3 height=3 alt=""></td></tr>
+
+            <tr>
+              <td width="100%">
+                <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="10%" class="headerValue"><a href="../../index.html">top level</a> - <a href="index.html">backend/replication</a> - backup_manifest.c<span style="font-size: 80%;"> (source / <a href="backup_manifest.c.func-c.html">functions</a>)</span></td>
+            <td width="5%"></td>
+            <td width="5%"></td>
+            <td width="5%" class="headerCovTableHead">Coverage</td>
+            <td width="5%" class="headerCovTableHead" title="Covered + Uncovered code">Total</td>
+            <td width="5%" class="headerCovTableHead" title="Exercised code only">Hit</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">coverage_filtered.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntryLo">0.0&nbsp;%</td>
+            <td class="headerCovTableEntry">115</td>
+            <td class="headerCovTableEntry">0</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test Date:</td>
+            <td class="headerValue">2026-06-06 04:57:02</td>
+            <td></td>
+            <td class="headerItem">Functions:</td>
+            <td class="headerCovTableEntryLo">0.0&nbsp;%</td>
+            <td class="headerCovTableEntry">6</td>
+            <td class="headerCovTableEntry">0</td>
+          </tr>
+                  <tr><td><img src="../../glass.png" width=3 height=3 alt=""></td></tr>
+                </table>
+              </td>
+            </tr>
+
+            <tr><td class="ruler"><img src="../../glass.png" width=3 height=3 alt=""></td></tr>
+          </table>
+
+          <table cellpadding=0 cellspacing=0 border=0>
+            <tr>
+              <td><br></td>
+            </tr>
+            <tr>
+              <td>
+<pre class="sourceHeading">            Line data    Source code</pre>
+<pre class="source">
+<span id="L1"><span class="lineNum">       1</span>              : /*-------------------------------------------------------------------------</span>
+<span id="L2"><span class="lineNum">       2</span>              :  *</span>
+<span id="L3"><span class="lineNum">       3</span>              :  * backup_manifest.c</span>
+<span id="L4"><span class="lineNum">       4</span>              :  *        code for generating and sending a backup manifest</span>
+<span id="L5"><span class="lineNum">       5</span>              :  *</span>
+<span id="L6"><span class="lineNum">       6</span>              :  * Portions Copyright (c) 2010-2020, PostgreSQL Global Development Group</span>
+<span id="L7"><span class="lineNum">       7</span>              :  *</span>
+<span id="L8"><span class="lineNum">       8</span>              :  * IDENTIFICATION</span>
+<span id="L9"><span class="lineNum">       9</span>              :  *        src/backend/replication/backup_manifest.c</span>
+<span id="L10"><span class="lineNum">      10</span>              :  *</span>
+<span id="L11"><span class="lineNum">      11</span>              :  *-------------------------------------------------------------------------</span>
+<span id="L12"><span class="lineNum">      12</span>              :  */</span>
+<span id="L13"><span class="lineNum">      13</span>              : #include &quot;postgres.h&quot;</span>
+<span id="L14"><span class="lineNum">      14</span>              : </span>
+<span id="L15"><span class="lineNum">      15</span>              : #include &quot;access/timeline.h&quot;</span>
+<span id="L16"><span class="lineNum">      16</span>              : #include &quot;libpq/libpq.h&quot;</span>
+<span id="L17"><span class="lineNum">      17</span>              : #include &quot;libpq/pqformat.h&quot;</span>
+<span id="L18"><span class="lineNum">      18</span>              : #include &quot;mb/pg_wchar.h&quot;</span>
+<span id="L19"><span class="lineNum">      19</span>              : #include &quot;replication/backup_manifest.h&quot;</span>
+<span id="L20"><span class="lineNum">      20</span>              : #include &quot;utils/builtins.h&quot;</span>
+<span id="L21"><span class="lineNum">      21</span>              : #include &quot;utils/json.h&quot;</span>
+<span id="L22"><span class="lineNum">      22</span>              : </span>
+<span id="L23"><span class="lineNum">      23</span>              : static void AppendStringToManifest(backup_manifest_info *manifest, char *s);</span>
+<span id="L24"><span class="lineNum">      24</span>              : </span>
+<span id="L25"><span class="lineNum">      25</span>              : /*</span>
+<span id="L26"><span class="lineNum">      26</span>              :  * Does the user want a backup manifest?</span>
+<span id="L27"><span class="lineNum">      27</span>              :  *</span>
+<span id="L28"><span class="lineNum">      28</span>              :  * It's simplest to always have a manifest_info object, so that we don't need</span>
+<span id="L29"><span class="lineNum">      29</span>              :  * checks for NULL pointers in too many places. However, if the user doesn't</span>
+<span id="L30"><span class="lineNum">      30</span>              :  * want a manifest, we set manifest-&gt;buffile to NULL.</span>
+<span id="L31"><span class="lineNum">      31</span>              :  */</span>
+<span id="L32"><span class="lineNum">      32</span>              : static inline bool</span>
+<span id="L33"><span class="lineNum">      33</span> <span class="tlaUNC tlaBgUNC">           0 : IsManifestEnabled(backup_manifest_info *manifest)</span></span>
+<span id="L34"><span class="lineNum">      34</span>              : {</span>
+<span id="L35"><span class="lineNum">      35</span> <span class="tlaUNC">           0 :         return (manifest-&gt;buffile != NULL);</span></span>
+<span id="L36"><span class="lineNum">      36</span>              : }</span>
+<span id="L37"><span class="lineNum">      37</span>              : </span>
+<span id="L38"><span class="lineNum">      38</span>              : /*</span>
+<span id="L39"><span class="lineNum">      39</span>              :  * Convenience macro for appending data to the backup manifest.</span>
+<span id="L40"><span class="lineNum">      40</span>              :  */</span>
+<span id="L41"><span class="lineNum">      41</span>              : #define AppendToManifest(manifest, ...) \</span>
+<span id="L42"><span class="lineNum">      42</span>              :         { \</span>
+<span id="L43"><span class="lineNum">      43</span>              :                 char *_manifest_s = psprintf(__VA_ARGS__);      \</span>
+<span id="L44"><span class="lineNum">      44</span>              :                 AppendStringToManifest(manifest, _manifest_s);  \</span>
+<span id="L45"><span class="lineNum">      45</span>              :                 pfree(_manifest_s);     \</span>
+<span id="L46"><span class="lineNum">      46</span>              :         }</span>
+<span id="L47"><span class="lineNum">      47</span>              : </span>
+<span id="L48"><span class="lineNum">      48</span>              : /*</span>
+<span id="L49"><span class="lineNum">      49</span>              :  * Initialize state so that we can construct a backup manifest.</span>
+<span id="L50"><span class="lineNum">      50</span>              :  *</span>
+<span id="L51"><span class="lineNum">      51</span>              :  * NB: Although the checksum type for the data files is configurable, the</span>
+<span id="L52"><span class="lineNum">      52</span>              :  * checksum for the manifest itself always uses SHA-256. See comments in</span>
+<span id="L53"><span class="lineNum">      53</span>              :  * SendBackupManifest.</span>
+<span id="L54"><span class="lineNum">      54</span>              :  */</span>
+<span id="L55"><span class="lineNum">      55</span>              : void</span>
+<span id="L56"><span class="lineNum">      56</span> <span class="tlaUNC">           0 : InitializeBackupManifest(backup_manifest_info *manifest,</span></span>
+<span id="L57"><span class="lineNum">      57</span>              :                                                  backup_manifest_option want_manifest,</span>
+<span id="L58"><span class="lineNum">      58</span>              :                                                  pg_checksum_type manifest_checksum_type)</span>
+<span id="L59"><span class="lineNum">      59</span>              : {</span>
+<span id="L60"><span class="lineNum">      60</span> <span class="tlaUNC">           0 :         memset(manifest, 0, sizeof(backup_manifest_info));</span></span>
+<span id="L61"><span class="lineNum">      61</span> <span class="tlaUNC">           0 :         manifest-&gt;checksum_type = manifest_checksum_type;</span></span>
+<span id="L62"><span class="lineNum">      62</span>              : </span>
+<span id="L63"><span class="lineNum">      63</span> <span class="tlaUNC">           0 :         if (want_manifest == MANIFEST_OPTION_NO)</span></span>
+<span id="L64"><span class="lineNum">      64</span> <span class="tlaUNC">           0 :                 manifest-&gt;buffile = NULL;</span></span>
+<span id="L65"><span class="lineNum">      65</span>              :         else</span>
+<span id="L66"><span class="lineNum">      66</span>              :         {</span>
+<span id="L67"><span class="lineNum">      67</span> <span class="tlaUNC">           0 :                 manifest-&gt;buffile = BufFileCreateTemp(false);</span></span>
+<span id="L68"><span class="lineNum">      68</span> <span class="tlaUNC">           0 :                 pg_sha256_init(&amp;manifest-&gt;manifest_ctx);</span></span>
+<span id="L69"><span class="lineNum">      69</span>              :         }</span>
+<span id="L70"><span class="lineNum">      70</span>              : </span>
+<span id="L71"><span class="lineNum">      71</span> <span class="tlaUNC">           0 :         manifest-&gt;manifest_size = UINT64CONST(0);</span></span>
+<span id="L72"><span class="lineNum">      72</span> <span class="tlaUNC">           0 :         manifest-&gt;force_encode = (want_manifest == MANIFEST_OPTION_FORCE_ENCODE);</span></span>
+<span id="L73"><span class="lineNum">      73</span> <span class="tlaUNC">           0 :         manifest-&gt;first_file = true;</span></span>
+<span id="L74"><span class="lineNum">      74</span> <span class="tlaUNC">           0 :         manifest-&gt;still_checksumming = true;</span></span>
+<span id="L75"><span class="lineNum">      75</span>              : </span>
+<span id="L76"><span class="lineNum">      76</span> <span class="tlaUNC">           0 :         if (want_manifest != MANIFEST_OPTION_NO)</span></span>
+<span id="L77"><span class="lineNum">      77</span> <span class="tlaUNC">           0 :                 AppendToManifest(manifest,</span></span>
+<span id="L78"><span class="lineNum">      78</span>              :                                                  &quot;{ \&quot;PostgreSQL-Backup-Manifest-Version\&quot;: 1,\n&quot;</span>
+<span id="L79"><span class="lineNum">      79</span>              :                                                  &quot;\&quot;Files\&quot;: [&quot;);</span>
+<span id="L80"><span class="lineNum">      80</span> <span class="tlaUNC">           0 : }</span></span>
+<span id="L81"><span class="lineNum">      81</span>              : </span>
+<span id="L82"><span class="lineNum">      82</span>              : /*</span>
+<span id="L83"><span class="lineNum">      83</span>              :  * Add an entry to the backup manifest for a file.</span>
+<span id="L84"><span class="lineNum">      84</span>              :  */</span>
+<span id="L85"><span class="lineNum">      85</span>              : void</span>
+<span id="L86"><span class="lineNum">      86</span> <span class="tlaUNC">           0 : AddFileToBackupManifest(backup_manifest_info *manifest, const char *spcoid,</span></span>
+<span id="L87"><span class="lineNum">      87</span>              :                                                 const char *pathname, size_t size, pg_time_t mtime,</span>
+<span id="L88"><span class="lineNum">      88</span>              :                                                 pg_checksum_context *checksum_ctx)</span>
+<span id="L89"><span class="lineNum">      89</span>              : {</span>
+<span id="L90"><span class="lineNum">      90</span>              :         char            pathbuf[MAXPGPATH];</span>
+<span id="L91"><span class="lineNum">      91</span>              :         int                     pathlen;</span>
+<span id="L92"><span class="lineNum">      92</span>              :         StringInfoData buf;</span>
+<span id="L93"><span class="lineNum">      93</span>              : </span>
+<span id="L94"><span class="lineNum">      94</span> <span class="tlaUNC">           0 :         if (!IsManifestEnabled(manifest))</span></span>
+<span id="L95"><span class="lineNum">      95</span> <span class="tlaUNC">           0 :                 return;</span></span>
+<span id="L96"><span class="lineNum">      96</span>              : </span>
+<span id="L97"><span class="lineNum">      97</span>              :         /*</span>
+<span id="L98"><span class="lineNum">      98</span>              :          * If this file is part of a tablespace, the pathname passed to this</span>
+<span id="L99"><span class="lineNum">      99</span>              :          * function will be relative to the tar file that contains it. We want the</span>
+<span id="L100"><span class="lineNum">     100</span>              :          * pathname relative to the data directory (ignoring the intermediate</span>
+<span id="L101"><span class="lineNum">     101</span>              :          * symlink traversal).</span>
+<span id="L102"><span class="lineNum">     102</span>              :          */</span>
+<span id="L103"><span class="lineNum">     103</span> <span class="tlaUNC">           0 :         if (spcoid != NULL)</span></span>
+<span id="L104"><span class="lineNum">     104</span>              :         {</span>
+<span id="L105"><span class="lineNum">     105</span> <span class="tlaUNC">           0 :                 snprintf(pathbuf, sizeof(pathbuf), &quot;pg_tblspc/%s/%s&quot;, spcoid,</span></span>
+<span id="L106"><span class="lineNum">     106</span>              :                                  pathname);</span>
+<span id="L107"><span class="lineNum">     107</span> <span class="tlaUNC">           0 :                 pathname = pathbuf;</span></span>
+<span id="L108"><span class="lineNum">     108</span>              :         }</span>
+<span id="L109"><span class="lineNum">     109</span>              : </span>
+<span id="L110"><span class="lineNum">     110</span>              :         /*</span>
+<span id="L111"><span class="lineNum">     111</span>              :          * Each file's entry needs to be separated from any entry that follows by</span>
+<span id="L112"><span class="lineNum">     112</span>              :          * a comma, but there's no comma before the first one or after the last</span>
+<span id="L113"><span class="lineNum">     113</span>              :          * one. To make that work, adding a file to the manifest starts by</span>
+<span id="L114"><span class="lineNum">     114</span>              :          * terminating the most recently added line, with a comma if appropriate,</span>
+<span id="L115"><span class="lineNum">     115</span>              :          * but does not terminate the line inserted for this file.</span>
+<span id="L116"><span class="lineNum">     116</span>              :          */</span>
+<span id="L117"><span class="lineNum">     117</span> <span class="tlaUNC">           0 :         initStringInfo(&amp;buf);</span></span>
+<span id="L118"><span class="lineNum">     118</span> <span class="tlaUNC">           0 :         if (manifest-&gt;first_file)</span></span>
+<span id="L119"><span class="lineNum">     119</span>              :         {</span>
+<span id="L120"><span class="lineNum">     120</span> <span class="tlaUNC">           0 :                 appendStringInfoString(&amp;buf, &quot;\n&quot;);</span></span>
+<span id="L121"><span class="lineNum">     121</span> <span class="tlaUNC">           0 :                 manifest-&gt;first_file = false;</span></span>
+<span id="L122"><span class="lineNum">     122</span>              :         }</span>
+<span id="L123"><span class="lineNum">     123</span>              :         else</span>
+<span id="L124"><span class="lineNum">     124</span> <span class="tlaUNC">           0 :                 appendStringInfoString(&amp;buf, &quot;,\n&quot;);</span></span>
+<span id="L125"><span class="lineNum">     125</span>              : </span>
+<span id="L126"><span class="lineNum">     126</span>              :         /*</span>
+<span id="L127"><span class="lineNum">     127</span>              :          * Write the relative pathname to this file out to the manifest. The</span>
+<span id="L128"><span class="lineNum">     128</span>              :          * manifest is always stored in UTF-8, so we have to encode paths that are</span>
+<span id="L129"><span class="lineNum">     129</span>              :          * not valid in that encoding.</span>
+<span id="L130"><span class="lineNum">     130</span>              :          */</span>
+<span id="L131"><span class="lineNum">     131</span> <span class="tlaUNC">           0 :         pathlen = strlen(pathname);</span></span>
+<span id="L132"><span class="lineNum">     132</span> <span class="tlaUNC">           0 :         if (!manifest-&gt;force_encode &amp;&amp;</span></span>
+<span id="L133"><span class="lineNum">     133</span> <span class="tlaUNC">           0 :                 pg_verify_mbstr(PG_UTF8, pathname, pathlen, true))</span></span>
+<span id="L134"><span class="lineNum">     134</span>              :         {</span>
+<span id="L135"><span class="lineNum">     135</span> <span class="tlaUNC">           0 :                 appendStringInfoString(&amp;buf, &quot;{ \&quot;Path\&quot;: &quot;);</span></span>
+<span id="L136"><span class="lineNum">     136</span> <span class="tlaUNC">           0 :                 escape_json(&amp;buf, pathname);</span></span>
+<span id="L137"><span class="lineNum">     137</span> <span class="tlaUNC">           0 :                 appendStringInfoString(&amp;buf, &quot;, &quot;);</span></span>
+<span id="L138"><span class="lineNum">     138</span>              :         }</span>
+<span id="L139"><span class="lineNum">     139</span>              :         else</span>
+<span id="L140"><span class="lineNum">     140</span>              :         {</span>
+<span id="L141"><span class="lineNum">     141</span> <span class="tlaUNC">           0 :                 appendStringInfoString(&amp;buf, &quot;{ \&quot;Encoded-Path\&quot;: \&quot;&quot;);</span></span>
+<span id="L142"><span class="lineNum">     142</span> <span class="tlaUNC">           0 :                 enlargeStringInfo(&amp;buf, 2 * pathlen);</span></span>
+<span id="L143"><span class="lineNum">     143</span> <span class="tlaUNC">           0 :                 buf.len += hex_encode(pathname, pathlen,</span></span>
+<span id="L144"><span class="lineNum">     144</span> <span class="tlaUNC">           0 :                                                           &amp;buf.data[buf.len]);</span></span>
+<span id="L145"><span class="lineNum">     145</span> <span class="tlaUNC">           0 :                 appendStringInfoString(&amp;buf, &quot;\&quot;, &quot;);</span></span>
+<span id="L146"><span class="lineNum">     146</span>              :         }</span>
+<span id="L147"><span class="lineNum">     147</span>              : </span>
+<span id="L148"><span class="lineNum">     148</span> <span class="tlaUNC">           0 :         appendStringInfo(&amp;buf, &quot;\&quot;Size\&quot;: %zu, &quot;, size);</span></span>
+<span id="L149"><span class="lineNum">     149</span>              : </span>
+<span id="L150"><span class="lineNum">     150</span>              :         /*</span>
+<span id="L151"><span class="lineNum">     151</span>              :          * Convert last modification time to a string and append it to the</span>
+<span id="L152"><span class="lineNum">     152</span>              :          * manifest. Since it's not clear what time zone to use and since time</span>
+<span id="L153"><span class="lineNum">     153</span>              :          * zone definitions can change, possibly causing confusion, use GMT</span>
+<span id="L154"><span class="lineNum">     154</span>              :          * always.</span>
+<span id="L155"><span class="lineNum">     155</span>              :          */</span>
+<span id="L156"><span class="lineNum">     156</span> <span class="tlaUNC">           0 :         appendStringInfoString(&amp;buf, &quot;\&quot;Last-Modified\&quot;: \&quot;&quot;);</span></span>
+<span id="L157"><span class="lineNum">     157</span> <span class="tlaUNC">           0 :         enlargeStringInfo(&amp;buf, 128);</span></span>
+<span id="L158"><span class="lineNum">     158</span> <span class="tlaUNC">           0 :         buf.len += pg_strftime(&amp;buf.data[buf.len], 128, &quot;%Y-%m-%d %H:%M:%S %Z&quot;,</span></span>
+<span id="L159"><span class="lineNum">     159</span> <span class="tlaUNC">           0 :                                                    pg_gmtime(&amp;mtime));</span></span>
+<span id="L160"><span class="lineNum">     160</span> <span class="tlaUNC">           0 :         appendStringInfoString(&amp;buf, &quot;\&quot;&quot;);</span></span>
+<span id="L161"><span class="lineNum">     161</span>              : </span>
+<span id="L162"><span class="lineNum">     162</span>              :         /* Add checksum information. */</span>
+<span id="L163"><span class="lineNum">     163</span> <span class="tlaUNC">           0 :         if (checksum_ctx-&gt;type != CHECKSUM_TYPE_NONE)</span></span>
+<span id="L164"><span class="lineNum">     164</span>              :         {</span>
+<span id="L165"><span class="lineNum">     165</span>              :                 uint8           checksumbuf[PG_CHECKSUM_MAX_LENGTH];</span>
+<span id="L166"><span class="lineNum">     166</span>              :                 int                     checksumlen;</span>
+<span id="L167"><span class="lineNum">     167</span>              : </span>
+<span id="L168"><span class="lineNum">     168</span> <span class="tlaUNC">           0 :                 checksumlen = pg_checksum_final(checksum_ctx, checksumbuf);</span></span>
+<span id="L169"><span class="lineNum">     169</span>              : </span>
+<span id="L170"><span class="lineNum">     170</span> <span class="tlaUNC">           0 :                 appendStringInfo(&amp;buf,</span></span>
+<span id="L171"><span class="lineNum">     171</span>              :                                                  &quot;, \&quot;Checksum-Algorithm\&quot;: \&quot;%s\&quot;, \&quot;Checksum\&quot;: \&quot;&quot;,</span>
+<span id="L172"><span class="lineNum">     172</span>              :                                                  pg_checksum_type_name(checksum_ctx-&gt;type));</span>
+<span id="L173"><span class="lineNum">     173</span> <span class="tlaUNC">           0 :                 enlargeStringInfo(&amp;buf, 2 * checksumlen);</span></span>
+<span id="L174"><span class="lineNum">     174</span> <span class="tlaUNC">           0 :                 buf.len += hex_encode((char *) checksumbuf, checksumlen,</span></span>
+<span id="L175"><span class="lineNum">     175</span> <span class="tlaUNC">           0 :                                                           &amp;buf.data[buf.len]);</span></span>
+<span id="L176"><span class="lineNum">     176</span> <span class="tlaUNC">           0 :                 appendStringInfoString(&amp;buf, &quot;\&quot;&quot;);</span></span>
+<span id="L177"><span class="lineNum">     177</span>              :         }</span>
+<span id="L178"><span class="lineNum">     178</span>              : </span>
+<span id="L179"><span class="lineNum">     179</span>              :         /* Close out the object. */</span>
+<span id="L180"><span class="lineNum">     180</span> <span class="tlaUNC">           0 :         appendStringInfoString(&amp;buf, &quot; }&quot;);</span></span>
+<span id="L181"><span class="lineNum">     181</span>              : </span>
+<span id="L182"><span class="lineNum">     182</span>              :         /* OK, add it to the manifest. */</span>
+<span id="L183"><span class="lineNum">     183</span> <span class="tlaUNC">           0 :         AppendStringToManifest(manifest, buf.data);</span></span>
+<span id="L184"><span class="lineNum">     184</span>              : </span>
+<span id="L185"><span class="lineNum">     185</span>              :         /* Avoid leaking memory. */</span>
+<span id="L186"><span class="lineNum">     186</span> <span class="tlaUNC">           0 :         pfree(buf.data);</span></span>
+<span id="L187"><span class="lineNum">     187</span>              : }</span>
+<span id="L188"><span class="lineNum">     188</span>              : </span>
+<span id="L189"><span class="lineNum">     189</span>              : /*</span>
+<span id="L190"><span class="lineNum">     190</span>              :  * Add information about the WAL that will need to be replayed when restoring</span>
+<span id="L191"><span class="lineNum">     191</span>              :  * this backup to the manifest.</span>
+<span id="L192"><span class="lineNum">     192</span>              :  */</span>
+<span id="L193"><span class="lineNum">     193</span>              : void</span>
+<span id="L194"><span class="lineNum">     194</span> <span class="tlaUNC">           0 : AddWALInfoToBackupManifest(backup_manifest_info *manifest, XLogRecPtr startptr,</span></span>
+<span id="L195"><span class="lineNum">     195</span>              :                                                    TimeLineID starttli, XLogRecPtr endptr,</span>
+<span id="L196"><span class="lineNum">     196</span>              :                                                    TimeLineID endtli)</span>
+<span id="L197"><span class="lineNum">     197</span>              : {</span>
+<span id="L198"><span class="lineNum">     198</span>              :         List       *timelines;</span>
+<span id="L199"><span class="lineNum">     199</span>              :         ListCell   *lc;</span>
+<span id="L200"><span class="lineNum">     200</span> <span class="tlaUNC">           0 :         bool            first_wal_range = true;</span></span>
+<span id="L201"><span class="lineNum">     201</span> <span class="tlaUNC">           0 :         bool            found_start_timeline = false;</span></span>
+<span id="L202"><span class="lineNum">     202</span>              : </span>
+<span id="L203"><span class="lineNum">     203</span> <span class="tlaUNC">           0 :         if (!IsManifestEnabled(manifest))</span></span>
+<span id="L204"><span class="lineNum">     204</span> <span class="tlaUNC">           0 :                 return;</span></span>
+<span id="L205"><span class="lineNum">     205</span>              : </span>
+<span id="L206"><span class="lineNum">     206</span>              :         /* Terminate the list of files. */</span>
+<span id="L207"><span class="lineNum">     207</span> <span class="tlaUNC">           0 :         AppendStringToManifest(manifest, &quot;\n],\n&quot;);</span></span>
+<span id="L208"><span class="lineNum">     208</span>              : </span>
+<span id="L209"><span class="lineNum">     209</span>              :         /* Read the timeline history for the ending timeline. */</span>
+<span id="L210"><span class="lineNum">     210</span> <span class="tlaUNC">           0 :         timelines = readTimeLineHistory(endtli);</span></span>
+<span id="L211"><span class="lineNum">     211</span>              : </span>
+<span id="L212"><span class="lineNum">     212</span>              :         /* Start a list of LSN ranges. */</span>
+<span id="L213"><span class="lineNum">     213</span> <span class="tlaUNC">           0 :         AppendStringToManifest(manifest, &quot;\&quot;WAL-Ranges\&quot;: [\n&quot;);</span></span>
+<span id="L214"><span class="lineNum">     214</span>              : </span>
+<span id="L215"><span class="lineNum">     215</span> <span class="tlaUNC">           0 :         foreach(lc, timelines)</span></span>
+<span id="L216"><span class="lineNum">     216</span>              :         {</span>
+<span id="L217"><span class="lineNum">     217</span> <span class="tlaUNC">           0 :                 TimeLineHistoryEntry *entry = lfirst(lc);</span></span>
+<span id="L218"><span class="lineNum">     218</span>              :                 XLogRecPtr      tl_beginptr;</span>
+<span id="L219"><span class="lineNum">     219</span>              : </span>
+<span id="L220"><span class="lineNum">     220</span>              :                 /*</span>
+<span id="L221"><span class="lineNum">     221</span>              :                  * We only care about timelines that were active during the backup.</span>
+<span id="L222"><span class="lineNum">     222</span>              :                  * Skip any that ended before the backup started. (Note that if</span>
+<span id="L223"><span class="lineNum">     223</span>              :                  * entry-&gt;end is InvalidXLogRecPtr, it means that the timeline has not</span>
+<span id="L224"><span class="lineNum">     224</span>              :                  * yet ended.)</span>
+<span id="L225"><span class="lineNum">     225</span>              :                  */</span>
+<span id="L226"><span class="lineNum">     226</span> <span class="tlaUNC">           0 :                 if (!XLogRecPtrIsInvalid(entry-&gt;end) &amp;&amp; entry-&gt;end &lt; startptr)</span></span>
+<span id="L227"><span class="lineNum">     227</span> <span class="tlaUNC">           0 :                         continue;</span></span>
+<span id="L228"><span class="lineNum">     228</span>              : </span>
+<span id="L229"><span class="lineNum">     229</span>              :                 /*</span>
+<span id="L230"><span class="lineNum">     230</span>              :                  * Because the timeline history file lists newer timelines before</span>
+<span id="L231"><span class="lineNum">     231</span>              :                  * older ones, the first timeline we encounter that is new enough to</span>
+<span id="L232"><span class="lineNum">     232</span>              :                  * matter ought to match the ending timeline of the backup.</span>
+<span id="L233"><span class="lineNum">     233</span>              :                  */</span>
+<span id="L234"><span class="lineNum">     234</span> <span class="tlaUNC">           0 :                 if (first_wal_range &amp;&amp; endtli != entry-&gt;tli)</span></span>
+<span id="L235"><span class="lineNum">     235</span> <span class="tlaUNC">           0 :                         ereport(ERROR,</span></span>
+<span id="L236"><span class="lineNum">     236</span>              :                                         errmsg(&quot;expected end timeline %u but found timeline %u&quot;,</span>
+<span id="L237"><span class="lineNum">     237</span>              :                                                    starttli, entry-&gt;tli));</span>
+<span id="L238"><span class="lineNum">     238</span>              : </span>
+<span id="L239"><span class="lineNum">     239</span>              :                 /*</span>
+<span id="L240"><span class="lineNum">     240</span>              :                  * If this timeline entry matches with the timeline on which the</span>
+<span id="L241"><span class="lineNum">     241</span>              :                  * backup started, WAL needs to be checked from the start LSN of the</span>
+<span id="L242"><span class="lineNum">     242</span>              :                  * backup.  If this entry refers to a newer timeline, WAL needs to be</span>
+<span id="L243"><span class="lineNum">     243</span>              :                  * checked since the beginning of this timeline, so use the LSN where</span>
+<span id="L244"><span class="lineNum">     244</span>              :                  * the timeline began.</span>
+<span id="L245"><span class="lineNum">     245</span>              :                  */</span>
+<span id="L246"><span class="lineNum">     246</span> <span class="tlaUNC">           0 :                 if (starttli == entry-&gt;tli)</span></span>
+<span id="L247"><span class="lineNum">     247</span> <span class="tlaUNC">           0 :                         tl_beginptr = startptr;</span></span>
+<span id="L248"><span class="lineNum">     248</span>              :                 else</span>
+<span id="L249"><span class="lineNum">     249</span>              :                 {</span>
+<span id="L250"><span class="lineNum">     250</span> <span class="tlaUNC">           0 :                         tl_beginptr = entry-&gt;begin;</span></span>
+<span id="L251"><span class="lineNum">     251</span>              : </span>
+<span id="L252"><span class="lineNum">     252</span>              :                         /*</span>
+<span id="L253"><span class="lineNum">     253</span>              :                          * If we reach a TLI that has no valid beginning LSN, there can't</span>
+<span id="L254"><span class="lineNum">     254</span>              :                          * be any more timelines in the history after this point, so we'd</span>
+<span id="L255"><span class="lineNum">     255</span>              :                          * better have arrived at the expected starting TLI. If not,</span>
+<span id="L256"><span class="lineNum">     256</span>              :                          * something's gone horribly wrong.</span>
+<span id="L257"><span class="lineNum">     257</span>              :                          */</span>
+<span id="L258"><span class="lineNum">     258</span> <span class="tlaUNC">           0 :                         if (XLogRecPtrIsInvalid(entry-&gt;begin))</span></span>
+<span id="L259"><span class="lineNum">     259</span> <span class="tlaUNC">           0 :                                 ereport(ERROR,</span></span>
+<span id="L260"><span class="lineNum">     260</span>              :                                                 errmsg(&quot;expected start timeline %u but found timeline %u&quot;,</span>
+<span id="L261"><span class="lineNum">     261</span>              :                                                            starttli, entry-&gt;tli));</span>
+<span id="L262"><span class="lineNum">     262</span>              :                 }</span>
+<span id="L263"><span class="lineNum">     263</span>              : </span>
+<span id="L264"><span class="lineNum">     264</span> <span class="tlaUNC">           0 :                 AppendToManifest(manifest,</span></span>
+<span id="L265"><span class="lineNum">     265</span>              :                                                  &quot;%s{ \&quot;Timeline\&quot;: %u, \&quot;Start-LSN\&quot;: \&quot;%X/%X\&quot;, \&quot;End-LSN\&quot;: \&quot;%X/%X\&quot; }&quot;,</span>
+<span id="L266"><span class="lineNum">     266</span>              :                                                  first_wal_range ? &quot;&quot; : &quot;,\n&quot;,</span>
+<span id="L267"><span class="lineNum">     267</span>              :                                                  entry-&gt;tli,</span>
+<span id="L268"><span class="lineNum">     268</span>              :                                                  (uint32) (tl_beginptr &gt;&gt; 32), (uint32) tl_beginptr,</span>
+<span id="L269"><span class="lineNum">     269</span>              :                                                  (uint32) (endptr &gt;&gt; 32), (uint32) endptr);</span>
+<span id="L270"><span class="lineNum">     270</span>              : </span>
+<span id="L271"><span class="lineNum">     271</span> <span class="tlaUNC">           0 :                 if (starttli == entry-&gt;tli)</span></span>
+<span id="L272"><span class="lineNum">     272</span>              :                 {</span>
+<span id="L273"><span class="lineNum">     273</span> <span class="tlaUNC">           0 :                         found_start_timeline = true;</span></span>
+<span id="L274"><span class="lineNum">     274</span> <span class="tlaUNC">           0 :                         break;</span></span>
+<span id="L275"><span class="lineNum">     275</span>              :                 }</span>
+<span id="L276"><span class="lineNum">     276</span>              : </span>
+<span id="L277"><span class="lineNum">     277</span> <span class="tlaUNC">           0 :                 endptr = entry-&gt;begin;</span></span>
+<span id="L278"><span class="lineNum">     278</span> <span class="tlaUNC">           0 :                 first_wal_range = false;</span></span>
+<span id="L279"><span class="lineNum">     279</span>              :         }</span>
+<span id="L280"><span class="lineNum">     280</span>              : </span>
+<span id="L281"><span class="lineNum">     281</span>              :         /*</span>
+<span id="L282"><span class="lineNum">     282</span>              :          * The last entry in the timeline history for the ending timeline should</span>
+<span id="L283"><span class="lineNum">     283</span>              :          * be the ending timeline itself. Verify that this is what we observed.</span>
+<span id="L284"><span class="lineNum">     284</span>              :          */</span>
+<span id="L285"><span class="lineNum">     285</span> <span class="tlaUNC">           0 :         if (!found_start_timeline)</span></span>
+<span id="L286"><span class="lineNum">     286</span> <span class="tlaUNC">           0 :                 ereport(ERROR,</span></span>
+<span id="L287"><span class="lineNum">     287</span>              :                                 errmsg(&quot;start timeline %u not found in history of timeline %u&quot;,</span>
+<span id="L288"><span class="lineNum">     288</span>              :                                            starttli, endtli));</span>
+<span id="L289"><span class="lineNum">     289</span>              : </span>
+<span id="L290"><span class="lineNum">     290</span>              :         /* Terminate the list of WAL ranges. */</span>
+<span id="L291"><span class="lineNum">     291</span> <span class="tlaUNC">           0 :         AppendStringToManifest(manifest, &quot;\n],\n&quot;);</span></span>
+<span id="L292"><span class="lineNum">     292</span>              : }</span>
+<span id="L293"><span class="lineNum">     293</span>              : </span>
+<span id="L294"><span class="lineNum">     294</span>              : /*</span>
+<span id="L295"><span class="lineNum">     295</span>              :  * Finalize the backup manifest, and send it to the client.</span>
+<span id="L296"><span class="lineNum">     296</span>              :  */</span>
+<span id="L297"><span class="lineNum">     297</span>              : void</span>
+<span id="L298"><span class="lineNum">     298</span> <span class="tlaUNC">           0 : SendBackupManifest(backup_manifest_info *manifest)</span></span>
+<span id="L299"><span class="lineNum">     299</span>              : {</span>
+<span id="L300"><span class="lineNum">     300</span>              :         StringInfoData protobuf;</span>
+<span id="L301"><span class="lineNum">     301</span>              :         uint8           checksumbuf[PG_SHA256_DIGEST_LENGTH];</span>
+<span id="L302"><span class="lineNum">     302</span>              :         char            checksumstringbuf[PG_SHA256_DIGEST_STRING_LENGTH];</span>
+<span id="L303"><span class="lineNum">     303</span> <span class="tlaUNC">           0 :         size_t          manifest_bytes_done = 0;</span></span>
+<span id="L304"><span class="lineNum">     304</span>              : </span>
+<span id="L305"><span class="lineNum">     305</span> <span class="tlaUNC">           0 :         if (!IsManifestEnabled(manifest))</span></span>
+<span id="L306"><span class="lineNum">     306</span> <span class="tlaUNC">           0 :                 return;</span></span>
+<span id="L307"><span class="lineNum">     307</span>              : </span>
+<span id="L308"><span class="lineNum">     308</span>              :         /*</span>
+<span id="L309"><span class="lineNum">     309</span>              :          * Append manifest checksum, so that the problems with the manifest itself</span>
+<span id="L310"><span class="lineNum">     310</span>              :          * can be detected.</span>
+<span id="L311"><span class="lineNum">     311</span>              :          *</span>
+<span id="L312"><span class="lineNum">     312</span>              :          * We always use SHA-256 for this, regardless of what algorithm is chosen</span>
+<span id="L313"><span class="lineNum">     313</span>              :          * for checksumming the files.  If we ever want to make the checksum</span>
+<span id="L314"><span class="lineNum">     314</span>              :          * algorithm used for the manifest file variable, the client will need a</span>
+<span id="L315"><span class="lineNum">     315</span>              :          * way to figure out which algorithm to use as close to the beginning of</span>
+<span id="L316"><span class="lineNum">     316</span>              :          * the manifest file as possible, to avoid having to read the whole thing</span>
+<span id="L317"><span class="lineNum">     317</span>              :          * twice.</span>
+<span id="L318"><span class="lineNum">     318</span>              :          */</span>
+<span id="L319"><span class="lineNum">     319</span> <span class="tlaUNC">           0 :         manifest-&gt;still_checksumming = false;</span></span>
+<span id="L320"><span class="lineNum">     320</span> <span class="tlaUNC">           0 :         pg_sha256_final(&amp;manifest-&gt;manifest_ctx, checksumbuf);</span></span>
+<span id="L321"><span class="lineNum">     321</span> <span class="tlaUNC">           0 :         AppendStringToManifest(manifest, &quot;\&quot;Manifest-Checksum\&quot;: \&quot;&quot;);</span></span>
+<span id="L322"><span class="lineNum">     322</span> <span class="tlaUNC">           0 :         hex_encode((char *) checksumbuf, sizeof checksumbuf, checksumstringbuf);</span></span>
+<span id="L323"><span class="lineNum">     323</span> <span class="tlaUNC">           0 :         checksumstringbuf[PG_SHA256_DIGEST_STRING_LENGTH - 1] = '\0';</span></span>
+<span id="L324"><span class="lineNum">     324</span> <span class="tlaUNC">           0 :         AppendStringToManifest(manifest, checksumstringbuf);</span></span>
+<span id="L325"><span class="lineNum">     325</span> <span class="tlaUNC">           0 :         AppendStringToManifest(manifest, &quot;\&quot;}\n&quot;);</span></span>
+<span id="L326"><span class="lineNum">     326</span>              : </span>
+<span id="L327"><span class="lineNum">     327</span>              :         /*</span>
+<span id="L328"><span class="lineNum">     328</span>              :          * We've written all the data to the manifest file.  Rewind the file so</span>
+<span id="L329"><span class="lineNum">     329</span>              :          * that we can read it all back.</span>
+<span id="L330"><span class="lineNum">     330</span>              :          */</span>
+<span id="L331"><span class="lineNum">     331</span> <span class="tlaUNC">           0 :         if (BufFileSeek(manifest-&gt;buffile, 0, 0L, SEEK_SET))</span></span>
+<span id="L332"><span class="lineNum">     332</span> <span class="tlaUNC">           0 :                 ereport(ERROR,</span></span>
+<span id="L333"><span class="lineNum">     333</span>              :                                 (errcode_for_file_access(),</span>
+<span id="L334"><span class="lineNum">     334</span>              :                                  errmsg(&quot;could not rewind temporary file&quot;)));</span>
+<span id="L335"><span class="lineNum">     335</span>              : </span>
+<span id="L336"><span class="lineNum">     336</span>              :         /* Send CopyOutResponse message */</span>
+<span id="L337"><span class="lineNum">     337</span> <span class="tlaUNC">           0 :         pq_beginmessage(&amp;protobuf, 'H');</span></span>
+<span id="L338"><span class="lineNum">     338</span> <span class="tlaUNC">           0 :         pq_sendbyte(&amp;protobuf, 0);  /* overall format */</span></span>
+<span id="L339"><span class="lineNum">     339</span> <span class="tlaUNC">           0 :         pq_sendint16(&amp;protobuf, 0); /* natts */</span></span>
+<span id="L340"><span class="lineNum">     340</span> <span class="tlaUNC">           0 :         pq_endmessage(&amp;protobuf);</span></span>
+<span id="L341"><span class="lineNum">     341</span>              : </span>
+<span id="L342"><span class="lineNum">     342</span>              :         /*</span>
+<span id="L343"><span class="lineNum">     343</span>              :          * Send CopyData messages.</span>
+<span id="L344"><span class="lineNum">     344</span>              :          *</span>
+<span id="L345"><span class="lineNum">     345</span>              :          * We choose to read back the data from the temporary file in chunks of</span>
+<span id="L346"><span class="lineNum">     346</span>              :          * size BLCKSZ; this isn't necessary, but buffile.c uses that as the I/O</span>
+<span id="L347"><span class="lineNum">     347</span>              :          * size, so it seems to make sense to match that value here.</span>
+<span id="L348"><span class="lineNum">     348</span>              :          */</span>
+<span id="L349"><span class="lineNum">     349</span> <span class="tlaUNC">           0 :         while (manifest_bytes_done &lt; manifest-&gt;manifest_size)</span></span>
+<span id="L350"><span class="lineNum">     350</span>              :         {</span>
+<span id="L351"><span class="lineNum">     351</span>              :                 char            manifestbuf[BLCKSZ];</span>
+<span id="L352"><span class="lineNum">     352</span>              :                 size_t          bytes_to_read;</span>
+<span id="L353"><span class="lineNum">     353</span>              :                 size_t          rc;</span>
+<span id="L354"><span class="lineNum">     354</span>              : </span>
+<span id="L355"><span class="lineNum">     355</span> <span class="tlaUNC">           0 :                 bytes_to_read = Min(sizeof(manifestbuf),</span></span>
+<span id="L356"><span class="lineNum">     356</span>              :                                                         manifest-&gt;manifest_size - manifest_bytes_done);</span>
+<span id="L357"><span class="lineNum">     357</span> <span class="tlaUNC">           0 :                 rc = BufFileRead(manifest-&gt;buffile, manifestbuf, bytes_to_read);</span></span>
+<span id="L358"><span class="lineNum">     358</span> <span class="tlaUNC">           0 :                 if (rc != bytes_to_read)</span></span>
+<span id="L359"><span class="lineNum">     359</span> <span class="tlaUNC">           0 :                         ereport(ERROR,</span></span>
+<span id="L360"><span class="lineNum">     360</span>              :                                         (errcode_for_file_access(),</span>
+<span id="L361"><span class="lineNum">     361</span>              :                                          errmsg(&quot;could not read from temporary file: read only %zu of %zu bytes&quot;,</span>
+<span id="L362"><span class="lineNum">     362</span>              :                                                         rc, bytes_to_read)));</span>
+<span id="L363"><span class="lineNum">     363</span> <span class="tlaUNC">           0 :                 pq_putmessage('d', manifestbuf, bytes_to_read);</span></span>
+<span id="L364"><span class="lineNum">     364</span> <span class="tlaUNC">           0 :                 manifest_bytes_done += bytes_to_read;</span></span>
+<span id="L365"><span class="lineNum">     365</span>              :         }</span>
+<span id="L366"><span class="lineNum">     366</span>              : </span>
+<span id="L367"><span class="lineNum">     367</span>              :         /* No more data, so send CopyDone message */</span>
+<span id="L368"><span class="lineNum">     368</span> <span class="tlaUNC">           0 :         pq_putemptymessage('c');</span></span>
+<span id="L369"><span class="lineNum">     369</span>              : </span>
+<span id="L370"><span class="lineNum">     370</span>              :         /* Release resources */</span>
+<span id="L371"><span class="lineNum">     371</span> <span class="tlaUNC">           0 :         BufFileClose(manifest-&gt;buffile);</span></span>
+<span id="L372"><span class="lineNum">     372</span>              : }</span>
+<span id="L373"><span class="lineNum">     373</span>              : </span>
+<span id="L374"><span class="lineNum">     374</span>              : /*</span>
+<span id="L375"><span class="lineNum">     375</span>              :  * Append a cstring to the manifest.</span>
+<span id="L376"><span class="lineNum">     376</span>              :  */</span>
+<span id="L377"><span class="lineNum">     377</span>              : static void</span>
+<span id="L378"><span class="lineNum">     378</span> <span class="tlaUNC">           0 : AppendStringToManifest(backup_manifest_info *manifest, char *s)</span></span>
+<span id="L379"><span class="lineNum">     379</span>              : {</span>
+<span id="L380"><span class="lineNum">     380</span> <span class="tlaUNC">           0 :         int                     len = strlen(s);</span></span>
+<span id="L381"><span class="lineNum">     381</span>              : </span>
+<span id="L382"><span class="lineNum">     382</span>              :         Assert(manifest != NULL);</span>
+<span id="L383"><span class="lineNum">     383</span> <span class="tlaUNC">           0 :         if (manifest-&gt;still_checksumming)</span></span>
+<span id="L384"><span class="lineNum">     384</span> <span class="tlaUNC">           0 :                 pg_sha256_update(&amp;manifest-&gt;manifest_ctx, (uint8 *) s, len);</span></span>
+<span id="L385"><span class="lineNum">     385</span> <span class="tlaUNC">           0 :         BufFileWrite(manifest-&gt;buffile, s, len);</span></span>
+<span id="L386"><span class="lineNum">     386</span> <span class="tlaUNC">           0 :         manifest-&gt;manifest_size += len;</span></span>
+<span id="L387"><span class="lineNum">     387</span> <span class="tlaUNC">           0 : }</span></span>
+        </pre>
+              </td>
+            </tr>
+          </table>
+          <br>
+
+          <table width="100%" border=0 cellspacing=0 cellpadding=0>
+            <tr><td class="ruler"><img src="../../glass.png" width=3 height=3 alt=""></td></tr>
+            <tr><td class="versionInfo">Generated by: <a href="https://github.com//linux-test-project/lcov" target="_parent">LCOV version 2.0-1</a></td></tr>
+          </table>
+          <br>
+
+</body>
+</html>
