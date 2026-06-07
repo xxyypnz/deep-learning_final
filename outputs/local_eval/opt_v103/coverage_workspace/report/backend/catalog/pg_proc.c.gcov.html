@@ -1,0 +1,1244 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - coverage_filtered.info - backend/catalog/pg_proc.c</title>
+  <link rel="stylesheet" type="text/css" href="../../gcov.css">
+</head>
+
+<body>
+
+          <table width="100%" border=0 cellspacing=0 cellpadding=0>
+            <tr><td class="title">LCOV - code coverage report</td></tr>
+            <tr><td class="ruler"><img src="../../glass.png" width=3 height=3 alt=""></td></tr>
+
+            <tr>
+              <td width="100%">
+                <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="10%" class="headerValue"><a href="../../index.html">top level</a> - <a href="index.html">backend/catalog</a> - pg_proc.c<span style="font-size: 80%;"> (source / <a href="pg_proc.c.func-c.html">functions</a>)</span></td>
+            <td width="5%"></td>
+            <td width="5%"></td>
+            <td width="5%" class="headerCovTableHead">Coverage</td>
+            <td width="5%" class="headerCovTableHead" title="Covered + Uncovered code">Total</td>
+            <td width="5%" class="headerCovTableHead" title="Exercised code only">Hit</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">coverage_filtered.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntryLo">70.5&nbsp;%</td>
+            <td class="headerCovTableEntry">404</td>
+            <td class="headerCovTableEntry">285</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test Date:</td>
+            <td class="headerValue">2026-06-07 07:44:49</td>
+            <td></td>
+            <td class="headerItem">Functions:</td>
+            <td class="headerCovTableEntryMed">77.8&nbsp;%</td>
+            <td class="headerCovTableEntry">9</td>
+            <td class="headerCovTableEntry">7</td>
+          </tr>
+                  <tr><td><img src="../../glass.png" width=3 height=3 alt=""></td></tr>
+                </table>
+              </td>
+            </tr>
+
+            <tr><td class="ruler"><img src="../../glass.png" width=3 height=3 alt=""></td></tr>
+          </table>
+
+          <table cellpadding=0 cellspacing=0 border=0>
+            <tr>
+              <td><br></td>
+            </tr>
+            <tr>
+              <td>
+<pre class="sourceHeading">            Line data    Source code</pre>
+<pre class="source">
+<span id="L1"><span class="lineNum">       1</span>              : /*-------------------------------------------------------------------------</span>
+<span id="L2"><span class="lineNum">       2</span>              :  *</span>
+<span id="L3"><span class="lineNum">       3</span>              :  * pg_proc.c</span>
+<span id="L4"><span class="lineNum">       4</span>              :  *        routines to support manipulation of the pg_proc relation</span>
+<span id="L5"><span class="lineNum">       5</span>              :  *</span>
+<span id="L6"><span class="lineNum">       6</span>              :  * Portions Copyright (c) 1996-2020, PostgreSQL Global Development Group</span>
+<span id="L7"><span class="lineNum">       7</span>              :  * Portions Copyright (c) 1994, Regents of the University of California</span>
+<span id="L8"><span class="lineNum">       8</span>              :  *</span>
+<span id="L9"><span class="lineNum">       9</span>              :  *</span>
+<span id="L10"><span class="lineNum">      10</span>              :  * IDENTIFICATION</span>
+<span id="L11"><span class="lineNum">      11</span>              :  *        src/backend/catalog/pg_proc.c</span>
+<span id="L12"><span class="lineNum">      12</span>              :  *</span>
+<span id="L13"><span class="lineNum">      13</span>              :  *-------------------------------------------------------------------------</span>
+<span id="L14"><span class="lineNum">      14</span>              :  */</span>
+<span id="L15"><span class="lineNum">      15</span>              : #include &quot;postgres.h&quot;</span>
+<span id="L16"><span class="lineNum">      16</span>              : </span>
+<span id="L17"><span class="lineNum">      17</span>              : #include &quot;access/htup_details.h&quot;</span>
+<span id="L18"><span class="lineNum">      18</span>              : #include &quot;access/table.h&quot;</span>
+<span id="L19"><span class="lineNum">      19</span>              : #include &quot;access/xact.h&quot;</span>
+<span id="L20"><span class="lineNum">      20</span>              : #include &quot;catalog/catalog.h&quot;</span>
+<span id="L21"><span class="lineNum">      21</span>              : #include &quot;catalog/dependency.h&quot;</span>
+<span id="L22"><span class="lineNum">      22</span>              : #include &quot;catalog/indexing.h&quot;</span>
+<span id="L23"><span class="lineNum">      23</span>              : #include &quot;catalog/objectaccess.h&quot;</span>
+<span id="L24"><span class="lineNum">      24</span>              : #include &quot;catalog/pg_language.h&quot;</span>
+<span id="L25"><span class="lineNum">      25</span>              : #include &quot;catalog/pg_namespace.h&quot;</span>
+<span id="L26"><span class="lineNum">      26</span>              : #include &quot;catalog/pg_proc.h&quot;</span>
+<span id="L27"><span class="lineNum">      27</span>              : #include &quot;catalog/pg_transform.h&quot;</span>
+<span id="L28"><span class="lineNum">      28</span>              : #include &quot;catalog/pg_type.h&quot;</span>
+<span id="L29"><span class="lineNum">      29</span>              : #include &quot;commands/defrem.h&quot;</span>
+<span id="L30"><span class="lineNum">      30</span>              : #include &quot;executor/functions.h&quot;</span>
+<span id="L31"><span class="lineNum">      31</span>              : #include &quot;funcapi.h&quot;</span>
+<span id="L32"><span class="lineNum">      32</span>              : #include &quot;mb/pg_wchar.h&quot;</span>
+<span id="L33"><span class="lineNum">      33</span>              : #include &quot;miscadmin.h&quot;</span>
+<span id="L34"><span class="lineNum">      34</span>              : #include &quot;nodes/nodeFuncs.h&quot;</span>
+<span id="L35"><span class="lineNum">      35</span>              : #include &quot;parser/parse_coerce.h&quot;</span>
+<span id="L36"><span class="lineNum">      36</span>              : #include &quot;parser/parse_type.h&quot;</span>
+<span id="L37"><span class="lineNum">      37</span>              : #include &quot;tcop/pquery.h&quot;</span>
+<span id="L38"><span class="lineNum">      38</span>              : #include &quot;tcop/tcopprot.h&quot;</span>
+<span id="L39"><span class="lineNum">      39</span>              : #include &quot;utils/acl.h&quot;</span>
+<span id="L40"><span class="lineNum">      40</span>              : #include &quot;utils/builtins.h&quot;</span>
+<span id="L41"><span class="lineNum">      41</span>              : #include &quot;utils/lsyscache.h&quot;</span>
+<span id="L42"><span class="lineNum">      42</span>              : #include &quot;utils/regproc.h&quot;</span>
+<span id="L43"><span class="lineNum">      43</span>              : #include &quot;utils/rel.h&quot;</span>
+<span id="L44"><span class="lineNum">      44</span>              : #include &quot;utils/syscache.h&quot;</span>
+<span id="L45"><span class="lineNum">      45</span>              : </span>
+<span id="L46"><span class="lineNum">      46</span>              : </span>
+<span id="L47"><span class="lineNum">      47</span>              : typedef struct</span>
+<span id="L48"><span class="lineNum">      48</span>              : {</span>
+<span id="L49"><span class="lineNum">      49</span>              :         char       *proname;</span>
+<span id="L50"><span class="lineNum">      50</span>              :         char       *prosrc;</span>
+<span id="L51"><span class="lineNum">      51</span>              : } parse_error_callback_arg;</span>
+<span id="L52"><span class="lineNum">      52</span>              : </span>
+<span id="L53"><span class="lineNum">      53</span>              : static void sql_function_parse_error_callback(void *arg);</span>
+<span id="L54"><span class="lineNum">      54</span>              : static int      match_prosrc_to_query(const char *prosrc, const char *queryText,</span>
+<span id="L55"><span class="lineNum">      55</span>              :                                                                   int cursorpos);</span>
+<span id="L56"><span class="lineNum">      56</span>              : static bool match_prosrc_to_literal(const char *prosrc, const char *literal,</span>
+<span id="L57"><span class="lineNum">      57</span>              :                                                                         int cursorpos, int *newcursorpos);</span>
+<span id="L58"><span class="lineNum">      58</span>              : </span>
+<span id="L59"><span class="lineNum">      59</span>              : </span>
+<span id="L60"><span class="lineNum">      60</span>              : /* ----------------------------------------------------------------</span>
+<span id="L61"><span class="lineNum">      61</span>              :  *              ProcedureCreate</span>
+<span id="L62"><span class="lineNum">      62</span>              :  *</span>
+<span id="L63"><span class="lineNum">      63</span>              :  * Note: allParameterTypes, parameterModes, parameterNames, trftypes, and proconfig</span>
+<span id="L64"><span class="lineNum">      64</span>              :  * are either arrays of the proper types or NULL.  We declare them Datum,</span>
+<span id="L65"><span class="lineNum">      65</span>              :  * not &quot;ArrayType *&quot;, to avoid importing array.h into pg_proc.h.</span>
+<span id="L66"><span class="lineNum">      66</span>              :  * ----------------------------------------------------------------</span>
+<span id="L67"><span class="lineNum">      67</span>              :  */</span>
+<span id="L68"><span class="lineNum">      68</span>              : ObjectAddress</span>
+<span id="L69"><span class="lineNum">      69</span> <span class="tlaGNC tlaBgGNC">          52 : ProcedureCreate(const char *procedureName,</span></span>
+<span id="L70"><span class="lineNum">      70</span>              :                                 Oid procNamespace,</span>
+<span id="L71"><span class="lineNum">      71</span>              :                                 bool replace,</span>
+<span id="L72"><span class="lineNum">      72</span>              :                                 bool returnsSet,</span>
+<span id="L73"><span class="lineNum">      73</span>              :                                 Oid returnType,</span>
+<span id="L74"><span class="lineNum">      74</span>              :                                 Oid proowner,</span>
+<span id="L75"><span class="lineNum">      75</span>              :                                 Oid languageObjectId,</span>
+<span id="L76"><span class="lineNum">      76</span>              :                                 Oid languageValidator,</span>
+<span id="L77"><span class="lineNum">      77</span>              :                                 const char *prosrc,</span>
+<span id="L78"><span class="lineNum">      78</span>              :                                 const char *probin,</span>
+<span id="L79"><span class="lineNum">      79</span>              :                                 char prokind,</span>
+<span id="L80"><span class="lineNum">      80</span>              :                                 bool security_definer,</span>
+<span id="L81"><span class="lineNum">      81</span>              :                                 bool isLeakProof,</span>
+<span id="L82"><span class="lineNum">      82</span>              :                                 bool isStrict,</span>
+<span id="L83"><span class="lineNum">      83</span>              :                                 char volatility,</span>
+<span id="L84"><span class="lineNum">      84</span>              :                                 char parallel,</span>
+<span id="L85"><span class="lineNum">      85</span>              :                                 oidvector *parameterTypes,</span>
+<span id="L86"><span class="lineNum">      86</span>              :                                 Datum allParameterTypes,</span>
+<span id="L87"><span class="lineNum">      87</span>              :                                 Datum parameterModes,</span>
+<span id="L88"><span class="lineNum">      88</span>              :                                 Datum parameterNames,</span>
+<span id="L89"><span class="lineNum">      89</span>              :                                 List *parameterDefaults,</span>
+<span id="L90"><span class="lineNum">      90</span>              :                                 Datum trftypes,</span>
+<span id="L91"><span class="lineNum">      91</span>              :                                 Datum proconfig,</span>
+<span id="L92"><span class="lineNum">      92</span>              :                                 Oid prosupport,</span>
+<span id="L93"><span class="lineNum">      93</span>              :                                 float4 procost,</span>
+<span id="L94"><span class="lineNum">      94</span>              :                                 float4 prorows)</span>
+<span id="L95"><span class="lineNum">      95</span>              : {</span>
+<span id="L96"><span class="lineNum">      96</span>              :         Oid                     retval;</span>
+<span id="L97"><span class="lineNum">      97</span>              :         int                     parameterCount;</span>
+<span id="L98"><span class="lineNum">      98</span>              :         int                     allParamCount;</span>
+<span id="L99"><span class="lineNum">      99</span>              :         Oid                *allParams;</span>
+<span id="L100"><span class="lineNum">     100</span> <span class="tlaGNC">          52 :         char       *paramModes = NULL;</span></span>
+<span id="L101"><span class="lineNum">     101</span> <span class="tlaGNC">          52 :         Oid                     variadicType = InvalidOid;</span></span>
+<span id="L102"><span class="lineNum">     102</span> <span class="tlaGNC">          52 :         Acl                *proacl = NULL;</span></span>
+<span id="L103"><span class="lineNum">     103</span>              :         Relation        rel;</span>
+<span id="L104"><span class="lineNum">     104</span>              :         HeapTuple       tup;</span>
+<span id="L105"><span class="lineNum">     105</span>              :         HeapTuple       oldtup;</span>
+<span id="L106"><span class="lineNum">     106</span>              :         bool            nulls[Natts_pg_proc];</span>
+<span id="L107"><span class="lineNum">     107</span>              :         Datum           values[Natts_pg_proc];</span>
+<span id="L108"><span class="lineNum">     108</span>              :         bool            replaces[Natts_pg_proc];</span>
+<span id="L109"><span class="lineNum">     109</span>              :         NameData        procname;</span>
+<span id="L110"><span class="lineNum">     110</span>              :         TupleDesc       tupDesc;</span>
+<span id="L111"><span class="lineNum">     111</span>              :         bool            is_update;</span>
+<span id="L112"><span class="lineNum">     112</span>              :         ObjectAddress myself,</span>
+<span id="L113"><span class="lineNum">     113</span>              :                                 referenced;</span>
+<span id="L114"><span class="lineNum">     114</span>              :         char       *detailmsg;</span>
+<span id="L115"><span class="lineNum">     115</span>              :         int                     i;</span>
+<span id="L116"><span class="lineNum">     116</span>              :         Oid                     trfid;</span>
+<span id="L117"><span class="lineNum">     117</span>              : </span>
+<span id="L118"><span class="lineNum">     118</span>              :         /*</span>
+<span id="L119"><span class="lineNum">     119</span>              :          * sanity checks</span>
+<span id="L120"><span class="lineNum">     120</span>              :          */</span>
+<span id="L121"><span class="lineNum">     121</span>              :         Assert(PointerIsValid(prosrc));</span>
+<span id="L122"><span class="lineNum">     122</span>              : </span>
+<span id="L123"><span class="lineNum">     123</span> <span class="tlaGNC">          52 :         parameterCount = parameterTypes-&gt;dim1;</span></span>
+<span id="L124"><span class="lineNum">     124</span> <span class="tlaGNC">          52 :         if (parameterCount &lt; 0 || parameterCount &gt; FUNC_MAX_ARGS)</span></span>
+<span id="L125"><span class="lineNum">     125</span> <span class="tlaUNC tlaBgUNC">           0 :                 ereport(ERROR,</span></span>
+<span id="L126"><span class="lineNum">     126</span>              :                                 (errcode(ERRCODE_TOO_MANY_ARGUMENTS),</span>
+<span id="L127"><span class="lineNum">     127</span>              :                                  errmsg_plural(&quot;functions cannot have more than %d argument&quot;,</span>
+<span id="L128"><span class="lineNum">     128</span>              :                                                            &quot;functions cannot have more than %d arguments&quot;,</span>
+<span id="L129"><span class="lineNum">     129</span>              :                                                            FUNC_MAX_ARGS,</span>
+<span id="L130"><span class="lineNum">     130</span>              :                                                            FUNC_MAX_ARGS)));</span>
+<span id="L131"><span class="lineNum">     131</span>              :         /* note: the above is correct, we do NOT count output arguments */</span>
+<span id="L132"><span class="lineNum">     132</span>              : </span>
+<span id="L133"><span class="lineNum">     133</span>              :         /* Deconstruct array inputs */</span>
+<span id="L134"><span class="lineNum">     134</span> <span class="tlaGNC tlaBgGNC">          52 :         if (allParameterTypes != PointerGetDatum(NULL))</span></span>
+<span id="L135"><span class="lineNum">     135</span>              :         {</span>
+<span id="L136"><span class="lineNum">     136</span>              :                 /*</span>
+<span id="L137"><span class="lineNum">     137</span>              :                  * We expect the array to be a 1-D OID array; verify that. We don't</span>
+<span id="L138"><span class="lineNum">     138</span>              :                  * need to use deconstruct_array() since the array data is just going</span>
+<span id="L139"><span class="lineNum">     139</span>              :                  * to look like a C array of OID values.</span>
+<span id="L140"><span class="lineNum">     140</span>              :                  */</span>
+<span id="L141"><span class="lineNum">     141</span> <span class="tlaGNC">          11 :                 ArrayType  *allParamArray = (ArrayType *) DatumGetPointer(allParameterTypes);</span></span>
+<span id="L142"><span class="lineNum">     142</span>              : </span>
+<span id="L143"><span class="lineNum">     143</span> <span class="tlaGNC">          11 :                 allParamCount = ARR_DIMS(allParamArray)[0];</span></span>
+<span id="L144"><span class="lineNum">     144</span> <span class="tlaGNC">          11 :                 if (ARR_NDIM(allParamArray) != 1 ||</span></span>
+<span id="L145"><span class="lineNum">     145</span> <span class="tlaGNC">          11 :                         allParamCount &lt;= 0 ||</span></span>
+<span id="L146"><span class="lineNum">     146</span> <span class="tlaGNC">          11 :                         ARR_HASNULL(allParamArray) ||</span></span>
+<span id="L147"><span class="lineNum">     147</span> <span class="tlaGNC">          11 :                         ARR_ELEMTYPE(allParamArray) != OIDOID)</span></span>
+<span id="L148"><span class="lineNum">     148</span> <span class="tlaUNC tlaBgUNC">           0 :                         elog(ERROR, &quot;allParameterTypes is not a 1-D Oid array&quot;);</span></span>
+<span id="L149"><span class="lineNum">     149</span> <span class="tlaGNC tlaBgGNC">          11 :                 allParams = (Oid *) ARR_DATA_PTR(allParamArray);</span></span>
+<span id="L150"><span class="lineNum">     150</span>              :                 Assert(allParamCount &gt;= parameterCount);</span>
+<span id="L151"><span class="lineNum">     151</span>              :                 /* we assume caller got the contents right */</span>
+<span id="L152"><span class="lineNum">     152</span>              :         }</span>
+<span id="L153"><span class="lineNum">     153</span>              :         else</span>
+<span id="L154"><span class="lineNum">     154</span>              :         {</span>
+<span id="L155"><span class="lineNum">     155</span> <span class="tlaGNC">          41 :                 allParamCount = parameterCount;</span></span>
+<span id="L156"><span class="lineNum">     156</span> <span class="tlaGNC">          41 :                 allParams = parameterTypes-&gt;values;</span></span>
+<span id="L157"><span class="lineNum">     157</span>              :         }</span>
+<span id="L158"><span class="lineNum">     158</span>              : </span>
+<span id="L159"><span class="lineNum">     159</span> <span class="tlaGNC">          52 :         if (parameterModes != PointerGetDatum(NULL))</span></span>
+<span id="L160"><span class="lineNum">     160</span>              :         {</span>
+<span id="L161"><span class="lineNum">     161</span>              :                 /*</span>
+<span id="L162"><span class="lineNum">     162</span>              :                  * We expect the array to be a 1-D CHAR array; verify that. We don't</span>
+<span id="L163"><span class="lineNum">     163</span>              :                  * need to use deconstruct_array() since the array data is just going</span>
+<span id="L164"><span class="lineNum">     164</span>              :                  * to look like a C array of char values.</span>
+<span id="L165"><span class="lineNum">     165</span>              :                  */</span>
+<span id="L166"><span class="lineNum">     166</span> <span class="tlaGNC">          11 :                 ArrayType  *modesArray = (ArrayType *) DatumGetPointer(parameterModes);</span></span>
+<span id="L167"><span class="lineNum">     167</span>              : </span>
+<span id="L168"><span class="lineNum">     168</span> <span class="tlaGNC">          11 :                 if (ARR_NDIM(modesArray) != 1 ||</span></span>
+<span id="L169"><span class="lineNum">     169</span> <span class="tlaGNC">          11 :                         ARR_DIMS(modesArray)[0] != allParamCount ||</span></span>
+<span id="L170"><span class="lineNum">     170</span> <span class="tlaGNC">          11 :                         ARR_HASNULL(modesArray) ||</span></span>
+<span id="L171"><span class="lineNum">     171</span> <span class="tlaGNC">          11 :                         ARR_ELEMTYPE(modesArray) != CHAROID)</span></span>
+<span id="L172"><span class="lineNum">     172</span> <span class="tlaUNC tlaBgUNC">           0 :                         elog(ERROR, &quot;parameterModes is not a 1-D char array&quot;);</span></span>
+<span id="L173"><span class="lineNum">     173</span> <span class="tlaGNC tlaBgGNC">          11 :                 paramModes = (char *) ARR_DATA_PTR(modesArray);</span></span>
+<span id="L174"><span class="lineNum">     174</span>              :         }</span>
+<span id="L175"><span class="lineNum">     175</span>              : </span>
+<span id="L176"><span class="lineNum">     176</span>              :         /*</span>
+<span id="L177"><span class="lineNum">     177</span>              :          * Do not allow polymorphic return type unless there is a polymorphic</span>
+<span id="L178"><span class="lineNum">     178</span>              :          * input argument that we can use to deduce the actual return type.</span>
+<span id="L179"><span class="lineNum">     179</span>              :          */</span>
+<span id="L180"><span class="lineNum">     180</span> <span class="tlaGNC">          52 :         detailmsg = check_valid_polymorphic_signature(returnType,</span></span>
+<span id="L181"><span class="lineNum">     181</span> <span class="tlaGNC">          52 :                                                                                                   parameterTypes-&gt;values,</span></span>
+<span id="L182"><span class="lineNum">     182</span>              :                                                                                                   parameterCount);</span>
+<span id="L183"><span class="lineNum">     183</span> <span class="tlaGNC">          52 :         if (detailmsg)</span></span>
+<span id="L184"><span class="lineNum">     184</span> <span class="tlaUNC tlaBgUNC">           0 :                 ereport(ERROR,</span></span>
+<span id="L185"><span class="lineNum">     185</span>              :                                 (errcode(ERRCODE_INVALID_FUNCTION_DEFINITION),</span>
+<span id="L186"><span class="lineNum">     186</span>              :                                  errmsg(&quot;cannot determine result data type&quot;),</span>
+<span id="L187"><span class="lineNum">     187</span>              :                                  errdetail_internal(&quot;%s&quot;, detailmsg)));</span>
+<span id="L188"><span class="lineNum">     188</span>              : </span>
+<span id="L189"><span class="lineNum">     189</span>              :         /*</span>
+<span id="L190"><span class="lineNum">     190</span>              :          * Also, do not allow return type INTERNAL unless at least one input</span>
+<span id="L191"><span class="lineNum">     191</span>              :          * argument is INTERNAL.</span>
+<span id="L192"><span class="lineNum">     192</span>              :          */</span>
+<span id="L193"><span class="lineNum">     193</span> <span class="tlaGNC tlaBgGNC">          52 :         detailmsg = check_valid_internal_signature(returnType,</span></span>
+<span id="L194"><span class="lineNum">     194</span> <span class="tlaGNC">          52 :                                                                                            parameterTypes-&gt;values,</span></span>
+<span id="L195"><span class="lineNum">     195</span>              :                                                                                            parameterCount);</span>
+<span id="L196"><span class="lineNum">     196</span> <span class="tlaGNC">          52 :         if (detailmsg)</span></span>
+<span id="L197"><span class="lineNum">     197</span> <span class="tlaUNC tlaBgUNC">           0 :                 ereport(ERROR,</span></span>
+<span id="L198"><span class="lineNum">     198</span>              :                                 (errcode(ERRCODE_INVALID_FUNCTION_DEFINITION),</span>
+<span id="L199"><span class="lineNum">     199</span>              :                                  errmsg(&quot;unsafe use of pseudo-type \&quot;internal\&quot;&quot;),</span>
+<span id="L200"><span class="lineNum">     200</span>              :                                  errdetail_internal(&quot;%s&quot;, detailmsg)));</span>
+<span id="L201"><span class="lineNum">     201</span>              : </span>
+<span id="L202"><span class="lineNum">     202</span>              :         /*</span>
+<span id="L203"><span class="lineNum">     203</span>              :          * Apply the same tests to any OUT arguments.</span>
+<span id="L204"><span class="lineNum">     204</span>              :          */</span>
+<span id="L205"><span class="lineNum">     205</span> <span class="tlaGNC tlaBgGNC">          52 :         if (allParameterTypes != PointerGetDatum(NULL))</span></span>
+<span id="L206"><span class="lineNum">     206</span>              :         {</span>
+<span id="L207"><span class="lineNum">     207</span> <span class="tlaGNC">          74 :                 for (i = 0; i &lt; allParamCount; i++)</span></span>
+<span id="L208"><span class="lineNum">     208</span>              :                 {</span>
+<span id="L209"><span class="lineNum">     209</span> <span class="tlaGNC">          63 :                         if (paramModes == NULL ||</span></span>
+<span id="L210"><span class="lineNum">     210</span> <span class="tlaGNC">          63 :                                 paramModes[i] == PROARGMODE_IN ||</span></span>
+<span id="L211"><span class="lineNum">     211</span> <span class="tlaGNC">          39 :                                 paramModes[i] == PROARGMODE_VARIADIC)</span></span>
+<span id="L212"><span class="lineNum">     212</span> <span class="tlaGNC">          28 :                                 continue;               /* ignore input-only params */</span></span>
+<span id="L213"><span class="lineNum">     213</span>              : </span>
+<span id="L214"><span class="lineNum">     214</span> <span class="tlaGNC">          35 :                         detailmsg = check_valid_polymorphic_signature(allParams[i],</span></span>
+<span id="L215"><span class="lineNum">     215</span> <span class="tlaGNC">          35 :                                                                                                                   parameterTypes-&gt;values,</span></span>
+<span id="L216"><span class="lineNum">     216</span>              :                                                                                                                   parameterCount);</span>
+<span id="L217"><span class="lineNum">     217</span> <span class="tlaGNC">          35 :                         if (detailmsg)</span></span>
+<span id="L218"><span class="lineNum">     218</span> <span class="tlaUNC tlaBgUNC">           0 :                                 ereport(ERROR,</span></span>
+<span id="L219"><span class="lineNum">     219</span>              :                                                 (errcode(ERRCODE_INVALID_FUNCTION_DEFINITION),</span>
+<span id="L220"><span class="lineNum">     220</span>              :                                                  errmsg(&quot;cannot determine result data type&quot;),</span>
+<span id="L221"><span class="lineNum">     221</span>              :                                                  errdetail_internal(&quot;%s&quot;, detailmsg)));</span>
+<span id="L222"><span class="lineNum">     222</span> <span class="tlaGNC tlaBgGNC">          35 :                         detailmsg = check_valid_internal_signature(allParams[i],</span></span>
+<span id="L223"><span class="lineNum">     223</span> <span class="tlaGNC">          35 :                                                                                                            parameterTypes-&gt;values,</span></span>
+<span id="L224"><span class="lineNum">     224</span>              :                                                                                                            parameterCount);</span>
+<span id="L225"><span class="lineNum">     225</span> <span class="tlaGNC">          35 :                         if (detailmsg)</span></span>
+<span id="L226"><span class="lineNum">     226</span> <span class="tlaUNC tlaBgUNC">           0 :                                 ereport(ERROR,</span></span>
+<span id="L227"><span class="lineNum">     227</span>              :                                                 (errcode(ERRCODE_INVALID_FUNCTION_DEFINITION),</span>
+<span id="L228"><span class="lineNum">     228</span>              :                                                  errmsg(&quot;unsafe use of pseudo-type \&quot;internal\&quot;&quot;),</span>
+<span id="L229"><span class="lineNum">     229</span>              :                                                  errdetail_internal(&quot;%s&quot;, detailmsg)));</span>
+<span id="L230"><span class="lineNum">     230</span>              :                 }</span>
+<span id="L231"><span class="lineNum">     231</span>              :         }</span>
+<span id="L232"><span class="lineNum">     232</span>              : </span>
+<span id="L233"><span class="lineNum">     233</span>              :         /* Identify variadic argument type, if any */</span>
+<span id="L234"><span class="lineNum">     234</span> <span class="tlaGNC tlaBgGNC">          52 :         if (paramModes != NULL)</span></span>
+<span id="L235"><span class="lineNum">     235</span>              :         {</span>
+<span id="L236"><span class="lineNum">     236</span>              :                 /*</span>
+<span id="L237"><span class="lineNum">     237</span>              :                  * Only the last input parameter can be variadic; if it is, save its</span>
+<span id="L238"><span class="lineNum">     238</span>              :                  * element type.  Errors here are just elog since caller should have</span>
+<span id="L239"><span class="lineNum">     239</span>              :                  * checked this already.</span>
+<span id="L240"><span class="lineNum">     240</span>              :                  */</span>
+<span id="L241"><span class="lineNum">     241</span> <span class="tlaGNC">          74 :                 for (i = 0; i &lt; allParamCount; i++)</span></span>
+<span id="L242"><span class="lineNum">     242</span>              :                 {</span>
+<span id="L243"><span class="lineNum">     243</span> <span class="tlaGNC">          63 :                         switch (paramModes[i])</span></span>
+<span id="L244"><span class="lineNum">     244</span>              :                         {</span>
+<span id="L245"><span class="lineNum">     245</span> <span class="tlaGNC">          24 :                                 case PROARGMODE_IN:</span></span>
+<span id="L246"><span class="lineNum">     246</span>              :                                 case PROARGMODE_INOUT:</span>
+<span id="L247"><span class="lineNum">     247</span> <span class="tlaGNC">          24 :                                         if (OidIsValid(variadicType))</span></span>
+<span id="L248"><span class="lineNum">     248</span> <span class="tlaUNC tlaBgUNC">           0 :                                                 elog(ERROR, &quot;variadic parameter must be last&quot;);</span></span>
+<span id="L249"><span class="lineNum">     249</span> <span class="tlaGNC tlaBgGNC">          24 :                                         break;</span></span>
+<span id="L250"><span class="lineNum">     250</span> <span class="tlaGNC">          35 :                                 case PROARGMODE_OUT:</span></span>
+<span id="L251"><span class="lineNum">     251</span>              :                                 case PROARGMODE_TABLE:</span>
+<span id="L252"><span class="lineNum">     252</span>              :                                         /* okay */</span>
+<span id="L253"><span class="lineNum">     253</span> <span class="tlaGNC">          35 :                                         break;</span></span>
+<span id="L254"><span class="lineNum">     254</span> <span class="tlaGNC">           4 :                                 case PROARGMODE_VARIADIC:</span></span>
+<span id="L255"><span class="lineNum">     255</span> <span class="tlaGNC">           4 :                                         if (OidIsValid(variadicType))</span></span>
+<span id="L256"><span class="lineNum">     256</span> <span class="tlaUNC tlaBgUNC">           0 :                                                 elog(ERROR, &quot;variadic parameter must be last&quot;);</span></span>
+<span id="L257"><span class="lineNum">     257</span> <span class="tlaGNC tlaBgGNC">           4 :                                         switch (allParams[i])</span></span>
+<span id="L258"><span class="lineNum">     258</span>              :                                         {</span>
+<span id="L259"><span class="lineNum">     259</span> <span class="tlaUNC tlaBgUNC">           0 :                                                 case ANYOID:</span></span>
+<span id="L260"><span class="lineNum">     260</span> <span class="tlaUNC">           0 :                                                         variadicType = ANYOID;</span></span>
+<span id="L261"><span class="lineNum">     261</span> <span class="tlaUNC">           0 :                                                         break;</span></span>
+<span id="L262"><span class="lineNum">     262</span> <span class="tlaUNC">           0 :                                                 case ANYARRAYOID:</span></span>
+<span id="L263"><span class="lineNum">     263</span> <span class="tlaUNC">           0 :                                                         variadicType = ANYELEMENTOID;</span></span>
+<span id="L264"><span class="lineNum">     264</span> <span class="tlaUNC">           0 :                                                         break;</span></span>
+<span id="L265"><span class="lineNum">     265</span> <span class="tlaUNC">           0 :                                                 case ANYCOMPATIBLEARRAYOID:</span></span>
+<span id="L266"><span class="lineNum">     266</span> <span class="tlaUNC">           0 :                                                         variadicType = ANYCOMPATIBLEOID;</span></span>
+<span id="L267"><span class="lineNum">     267</span> <span class="tlaUNC">           0 :                                                         break;</span></span>
+<span id="L268"><span class="lineNum">     268</span> <span class="tlaGNC tlaBgGNC">           4 :                                                 default:</span></span>
+<span id="L269"><span class="lineNum">     269</span> <span class="tlaGNC">           4 :                                                         variadicType = get_element_type(allParams[i]);</span></span>
+<span id="L270"><span class="lineNum">     270</span> <span class="tlaGNC">           4 :                                                         if (!OidIsValid(variadicType))</span></span>
+<span id="L271"><span class="lineNum">     271</span> <span class="tlaUNC tlaBgUNC">           0 :                                                                 elog(ERROR, &quot;variadic parameter is not an array&quot;);</span></span>
+<span id="L272"><span class="lineNum">     272</span> <span class="tlaGNC tlaBgGNC">           4 :                                                         break;</span></span>
+<span id="L273"><span class="lineNum">     273</span>              :                                         }</span>
+<span id="L274"><span class="lineNum">     274</span> <span class="tlaGNC">           4 :                                         break;</span></span>
+<span id="L275"><span class="lineNum">     275</span> <span class="tlaUNC tlaBgUNC">           0 :                                 default:</span></span>
+<span id="L276"><span class="lineNum">     276</span> <span class="tlaUNC">           0 :                                         elog(ERROR, &quot;invalid parameter mode '%c'&quot;, paramModes[i]);</span></span>
+<span id="L277"><span class="lineNum">     277</span>              :                                         break;</span>
+<span id="L278"><span class="lineNum">     278</span>              :                         }</span>
+<span id="L279"><span class="lineNum">     279</span>              :                 }</span>
+<span id="L280"><span class="lineNum">     280</span>              :         }</span>
+<span id="L281"><span class="lineNum">     281</span>              : </span>
+<span id="L282"><span class="lineNum">     282</span>              :         /*</span>
+<span id="L283"><span class="lineNum">     283</span>              :          * All seems OK; prepare the data to be inserted into pg_proc.</span>
+<span id="L284"><span class="lineNum">     284</span>              :          */</span>
+<span id="L285"><span class="lineNum">     285</span>              : </span>
+<span id="L286"><span class="lineNum">     286</span> <span class="tlaGNC tlaBgGNC">        1560 :         for (i = 0; i &lt; Natts_pg_proc; ++i)</span></span>
+<span id="L287"><span class="lineNum">     287</span>              :         {</span>
+<span id="L288"><span class="lineNum">     288</span> <span class="tlaGNC">        1508 :                 nulls[i] = false;</span></span>
+<span id="L289"><span class="lineNum">     289</span> <span class="tlaGNC">        1508 :                 values[i] = (Datum) 0;</span></span>
+<span id="L290"><span class="lineNum">     290</span> <span class="tlaGNC">        1508 :                 replaces[i] = true;</span></span>
+<span id="L291"><span class="lineNum">     291</span>              :         }</span>
+<span id="L292"><span class="lineNum">     292</span>              : </span>
+<span id="L293"><span class="lineNum">     293</span> <span class="tlaGNC">          52 :         namestrcpy(&amp;procname, procedureName);</span></span>
+<span id="L294"><span class="lineNum">     294</span> <span class="tlaGNC">          52 :         values[Anum_pg_proc_proname - 1] = NameGetDatum(&amp;procname);</span></span>
+<span id="L295"><span class="lineNum">     295</span> <span class="tlaGNC">          52 :         values[Anum_pg_proc_pronamespace - 1] = ObjectIdGetDatum(procNamespace);</span></span>
+<span id="L296"><span class="lineNum">     296</span> <span class="tlaGNC">          52 :         values[Anum_pg_proc_proowner - 1] = ObjectIdGetDatum(proowner);</span></span>
+<span id="L297"><span class="lineNum">     297</span> <span class="tlaGNC">          52 :         values[Anum_pg_proc_prolang - 1] = ObjectIdGetDatum(languageObjectId);</span></span>
+<span id="L298"><span class="lineNum">     298</span> <span class="tlaGNC">          52 :         values[Anum_pg_proc_procost - 1] = Float4GetDatum(procost);</span></span>
+<span id="L299"><span class="lineNum">     299</span> <span class="tlaGNC">          52 :         values[Anum_pg_proc_prorows - 1] = Float4GetDatum(prorows);</span></span>
+<span id="L300"><span class="lineNum">     300</span> <span class="tlaGNC">          52 :         values[Anum_pg_proc_provariadic - 1] = ObjectIdGetDatum(variadicType);</span></span>
+<span id="L301"><span class="lineNum">     301</span> <span class="tlaGNC">          52 :         values[Anum_pg_proc_prosupport - 1] = ObjectIdGetDatum(prosupport);</span></span>
+<span id="L302"><span class="lineNum">     302</span> <span class="tlaGNC">          52 :         values[Anum_pg_proc_prokind - 1] = CharGetDatum(prokind);</span></span>
+<span id="L303"><span class="lineNum">     303</span> <span class="tlaGNC">          52 :         values[Anum_pg_proc_prosecdef - 1] = BoolGetDatum(security_definer);</span></span>
+<span id="L304"><span class="lineNum">     304</span> <span class="tlaGNC">          52 :         values[Anum_pg_proc_proleakproof - 1] = BoolGetDatum(isLeakProof);</span></span>
+<span id="L305"><span class="lineNum">     305</span> <span class="tlaGNC">          52 :         values[Anum_pg_proc_proisstrict - 1] = BoolGetDatum(isStrict);</span></span>
+<span id="L306"><span class="lineNum">     306</span> <span class="tlaGNC">          52 :         values[Anum_pg_proc_proretset - 1] = BoolGetDatum(returnsSet);</span></span>
+<span id="L307"><span class="lineNum">     307</span> <span class="tlaGNC">          52 :         values[Anum_pg_proc_provolatile - 1] = CharGetDatum(volatility);</span></span>
+<span id="L308"><span class="lineNum">     308</span> <span class="tlaGNC">          52 :         values[Anum_pg_proc_proparallel - 1] = CharGetDatum(parallel);</span></span>
+<span id="L309"><span class="lineNum">     309</span> <span class="tlaGNC">          52 :         values[Anum_pg_proc_pronargs - 1] = UInt16GetDatum(parameterCount);</span></span>
+<span id="L310"><span class="lineNum">     310</span> <span class="tlaGNC">          52 :         values[Anum_pg_proc_pronargdefaults - 1] = UInt16GetDatum(list_length(parameterDefaults));</span></span>
+<span id="L311"><span class="lineNum">     311</span> <span class="tlaGNC">          52 :         values[Anum_pg_proc_prorettype - 1] = ObjectIdGetDatum(returnType);</span></span>
+<span id="L312"><span class="lineNum">     312</span> <span class="tlaGNC">          52 :         values[Anum_pg_proc_proargtypes - 1] = PointerGetDatum(parameterTypes);</span></span>
+<span id="L313"><span class="lineNum">     313</span> <span class="tlaGNC">          52 :         if (allParameterTypes != PointerGetDatum(NULL))</span></span>
+<span id="L314"><span class="lineNum">     314</span> <span class="tlaGNC">          11 :                 values[Anum_pg_proc_proallargtypes - 1] = allParameterTypes;</span></span>
+<span id="L315"><span class="lineNum">     315</span>              :         else</span>
+<span id="L316"><span class="lineNum">     316</span> <span class="tlaGNC">          41 :                 nulls[Anum_pg_proc_proallargtypes - 1] = true;</span></span>
+<span id="L317"><span class="lineNum">     317</span> <span class="tlaGNC">          52 :         if (parameterModes != PointerGetDatum(NULL))</span></span>
+<span id="L318"><span class="lineNum">     318</span> <span class="tlaGNC">          11 :                 values[Anum_pg_proc_proargmodes - 1] = parameterModes;</span></span>
+<span id="L319"><span class="lineNum">     319</span>              :         else</span>
+<span id="L320"><span class="lineNum">     320</span> <span class="tlaGNC">          41 :                 nulls[Anum_pg_proc_proargmodes - 1] = true;</span></span>
+<span id="L321"><span class="lineNum">     321</span> <span class="tlaGNC">          52 :         if (parameterNames != PointerGetDatum(NULL))</span></span>
+<span id="L322"><span class="lineNum">     322</span> <span class="tlaGNC">          37 :                 values[Anum_pg_proc_proargnames - 1] = parameterNames;</span></span>
+<span id="L323"><span class="lineNum">     323</span>              :         else</span>
+<span id="L324"><span class="lineNum">     324</span> <span class="tlaGNC">          15 :                 nulls[Anum_pg_proc_proargnames - 1] = true;</span></span>
+<span id="L325"><span class="lineNum">     325</span> <span class="tlaGNC">          52 :         if (parameterDefaults != NIL)</span></span>
+<span id="L326"><span class="lineNum">     326</span> <span class="tlaGNC">          28 :                 values[Anum_pg_proc_proargdefaults - 1] = CStringGetTextDatum(nodeToString(parameterDefaults));</span></span>
+<span id="L327"><span class="lineNum">     327</span>              :         else</span>
+<span id="L328"><span class="lineNum">     328</span> <span class="tlaGNC">          24 :                 nulls[Anum_pg_proc_proargdefaults - 1] = true;</span></span>
+<span id="L329"><span class="lineNum">     329</span> <span class="tlaGNC">          52 :         if (trftypes != PointerGetDatum(NULL))</span></span>
+<span id="L330"><span class="lineNum">     330</span> <span class="tlaUNC tlaBgUNC">           0 :                 values[Anum_pg_proc_protrftypes - 1] = trftypes;</span></span>
+<span id="L331"><span class="lineNum">     331</span>              :         else</span>
+<span id="L332"><span class="lineNum">     332</span> <span class="tlaGNC tlaBgGNC">          52 :                 nulls[Anum_pg_proc_protrftypes - 1] = true;</span></span>
+<span id="L333"><span class="lineNum">     333</span> <span class="tlaGNC">          52 :         values[Anum_pg_proc_prosrc - 1] = CStringGetTextDatum(prosrc);</span></span>
+<span id="L334"><span class="lineNum">     334</span> <span class="tlaGNC">          52 :         if (probin)</span></span>
+<span id="L335"><span class="lineNum">     335</span> <span class="tlaGNC">           5 :                 values[Anum_pg_proc_probin - 1] = CStringGetTextDatum(probin);</span></span>
+<span id="L336"><span class="lineNum">     336</span>              :         else</span>
+<span id="L337"><span class="lineNum">     337</span> <span class="tlaGNC">          47 :                 nulls[Anum_pg_proc_probin - 1] = true;</span></span>
+<span id="L338"><span class="lineNum">     338</span> <span class="tlaGNC">          52 :         if (proconfig != PointerGetDatum(NULL))</span></span>
+<span id="L339"><span class="lineNum">     339</span> <span class="tlaUNC tlaBgUNC">           0 :                 values[Anum_pg_proc_proconfig - 1] = proconfig;</span></span>
+<span id="L340"><span class="lineNum">     340</span>              :         else</span>
+<span id="L341"><span class="lineNum">     341</span> <span class="tlaGNC tlaBgGNC">          52 :                 nulls[Anum_pg_proc_proconfig - 1] = true;</span></span>
+<span id="L342"><span class="lineNum">     342</span>              :         /* proacl will be determined later */</span>
+<span id="L343"><span class="lineNum">     343</span>              : </span>
+<span id="L344"><span class="lineNum">     344</span> <span class="tlaGNC">          52 :         rel = table_open(ProcedureRelationId, RowExclusiveLock);</span></span>
+<span id="L345"><span class="lineNum">     345</span> <span class="tlaGNC">          52 :         tupDesc = RelationGetDescr(rel);</span></span>
+<span id="L346"><span class="lineNum">     346</span>              : </span>
+<span id="L347"><span class="lineNum">     347</span>              :         /* Check for pre-existing definition */</span>
+<span id="L348"><span class="lineNum">     348</span> <span class="tlaGNC">          52 :         oldtup = SearchSysCache3(PROCNAMEARGSNSP,</span></span>
+<span id="L349"><span class="lineNum">     349</span>              :                                                          PointerGetDatum(procedureName),</span>
+<span id="L350"><span class="lineNum">     350</span>              :                                                          PointerGetDatum(parameterTypes),</span>
+<span id="L351"><span class="lineNum">     351</span>              :                                                          ObjectIdGetDatum(procNamespace));</span>
+<span id="L352"><span class="lineNum">     352</span>              : </span>
+<span id="L353"><span class="lineNum">     353</span> <span class="tlaGNC">          52 :         if (HeapTupleIsValid(oldtup))</span></span>
+<span id="L354"><span class="lineNum">     354</span>              :         {</span>
+<span id="L355"><span class="lineNum">     355</span>              :                 /* There is one; okay to replace it? */</span>
+<span id="L356"><span class="lineNum">     356</span> <span class="tlaGNC">          28 :                 Form_pg_proc oldproc = (Form_pg_proc) GETSTRUCT(oldtup);</span></span>
+<span id="L357"><span class="lineNum">     357</span>              :                 Datum           proargnames;</span>
+<span id="L358"><span class="lineNum">     358</span>              :                 bool            isnull;</span>
+<span id="L359"><span class="lineNum">     359</span>              :                 const char *dropcmd;</span>
+<span id="L360"><span class="lineNum">     360</span>              : </span>
+<span id="L361"><span class="lineNum">     361</span> <span class="tlaGNC">          28 :                 if (!replace)</span></span>
+<span id="L362"><span class="lineNum">     362</span> <span class="tlaUNC tlaBgUNC">           0 :                         ereport(ERROR,</span></span>
+<span id="L363"><span class="lineNum">     363</span>              :                                         (errcode(ERRCODE_DUPLICATE_FUNCTION),</span>
+<span id="L364"><span class="lineNum">     364</span>              :                                          errmsg(&quot;function \&quot;%s\&quot; already exists with same argument types&quot;,</span>
+<span id="L365"><span class="lineNum">     365</span>              :                                                         procedureName)));</span>
+<span id="L366"><span class="lineNum">     366</span> <span class="tlaGNC tlaBgGNC">          28 :                 if (!pg_proc_ownercheck(oldproc-&gt;oid, proowner))</span></span>
+<span id="L367"><span class="lineNum">     367</span> <span class="tlaUNC tlaBgUNC">           0 :                         aclcheck_error(ACLCHECK_NOT_OWNER, OBJECT_FUNCTION,</span></span>
+<span id="L368"><span class="lineNum">     368</span>              :                                                    procedureName);</span>
+<span id="L369"><span class="lineNum">     369</span>              : </span>
+<span id="L370"><span class="lineNum">     370</span>              :                 /* Not okay to change routine kind */</span>
+<span id="L371"><span class="lineNum">     371</span> <span class="tlaGNC tlaBgGNC">          28 :                 if (oldproc-&gt;prokind != prokind)</span></span>
+<span id="L372"><span class="lineNum">     372</span> <span class="tlaUNC tlaBgUNC">           0 :                         ereport(ERROR,</span></span>
+<span id="L373"><span class="lineNum">     373</span>              :                                         (errcode(ERRCODE_WRONG_OBJECT_TYPE),</span>
+<span id="L374"><span class="lineNum">     374</span>              :                                          errmsg(&quot;cannot change routine kind&quot;),</span>
+<span id="L375"><span class="lineNum">     375</span>              :                                          (oldproc-&gt;prokind == PROKIND_AGGREGATE ?</span>
+<span id="L376"><span class="lineNum">     376</span>              :                                           errdetail(&quot;\&quot;%s\&quot; is an aggregate function.&quot;, procedureName) :</span>
+<span id="L377"><span class="lineNum">     377</span>              :                                           oldproc-&gt;prokind == PROKIND_FUNCTION ?</span>
+<span id="L378"><span class="lineNum">     378</span>              :                                           errdetail(&quot;\&quot;%s\&quot; is a function.&quot;, procedureName) :</span>
+<span id="L379"><span class="lineNum">     379</span>              :                                           oldproc-&gt;prokind == PROKIND_PROCEDURE ?</span>
+<span id="L380"><span class="lineNum">     380</span>              :                                           errdetail(&quot;\&quot;%s\&quot; is a procedure.&quot;, procedureName) :</span>
+<span id="L381"><span class="lineNum">     381</span>              :                                           oldproc-&gt;prokind == PROKIND_WINDOW ?</span>
+<span id="L382"><span class="lineNum">     382</span>              :                                           errdetail(&quot;\&quot;%s\&quot; is a window function.&quot;, procedureName) :</span>
+<span id="L383"><span class="lineNum">     383</span>              :                                           0)));</span>
+<span id="L384"><span class="lineNum">     384</span>              : </span>
+<span id="L385"><span class="lineNum">     385</span> <span class="tlaGNC tlaBgGNC">          28 :                 dropcmd = (prokind == PROKIND_PROCEDURE ? &quot;DROP PROCEDURE&quot; :</span></span>
+<span id="L386"><span class="lineNum">     386</span>              :                                    prokind == PROKIND_AGGREGATE ? &quot;DROP AGGREGATE&quot; :</span>
+<span id="L387"><span class="lineNum">     387</span>              :                                    &quot;DROP FUNCTION&quot;);</span>
+<span id="L388"><span class="lineNum">     388</span>              : </span>
+<span id="L389"><span class="lineNum">     389</span>              :                 /*</span>
+<span id="L390"><span class="lineNum">     390</span>              :                  * Not okay to change the return type of the existing proc, since</span>
+<span id="L391"><span class="lineNum">     391</span>              :                  * existing rules, views, etc may depend on the return type.</span>
+<span id="L392"><span class="lineNum">     392</span>              :                  *</span>
+<span id="L393"><span class="lineNum">     393</span>              :                  * In case of a procedure, a changing return type means that whether</span>
+<span id="L394"><span class="lineNum">     394</span>              :                  * the procedure has output parameters was changed.  Since there is no</span>
+<span id="L395"><span class="lineNum">     395</span>              :                  * user visible return type, we produce a more specific error message.</span>
+<span id="L396"><span class="lineNum">     396</span>              :                  */</span>
+<span id="L397"><span class="lineNum">     397</span> <span class="tlaGNC">          28 :                 if (returnType != oldproc-&gt;prorettype ||</span></span>
+<span id="L398"><span class="lineNum">     398</span> <span class="tlaGNC">          28 :                         returnsSet != oldproc-&gt;proretset)</span></span>
+<span id="L399"><span class="lineNum">     399</span> <span class="tlaUNC tlaBgUNC">           0 :                         ereport(ERROR,</span></span>
+<span id="L400"><span class="lineNum">     400</span>              :                                         (errcode(ERRCODE_INVALID_FUNCTION_DEFINITION),</span>
+<span id="L401"><span class="lineNum">     401</span>              :                                          prokind == PROKIND_PROCEDURE</span>
+<span id="L402"><span class="lineNum">     402</span>              :                                          ? errmsg(&quot;cannot change whether a procedure has output parameters&quot;)</span>
+<span id="L403"><span class="lineNum">     403</span>              :                                          : errmsg(&quot;cannot change return type of existing function&quot;),</span>
+<span id="L404"><span class="lineNum">     404</span>              : </span>
+<span id="L405"><span class="lineNum">     405</span>              :                         /*</span>
+<span id="L406"><span class="lineNum">     406</span>              :                          * translator: first %s is DROP FUNCTION, DROP PROCEDURE, or DROP</span>
+<span id="L407"><span class="lineNum">     407</span>              :                          * AGGREGATE</span>
+<span id="L408"><span class="lineNum">     408</span>              :                          */</span>
+<span id="L409"><span class="lineNum">     409</span>              :                                          errhint(&quot;Use %s %s first.&quot;,</span>
+<span id="L410"><span class="lineNum">     410</span>              :                                                          dropcmd,</span>
+<span id="L411"><span class="lineNum">     411</span>              :                                                          format_procedure(oldproc-&gt;oid))));</span>
+<span id="L412"><span class="lineNum">     412</span>              : </span>
+<span id="L413"><span class="lineNum">     413</span>              :                 /*</span>
+<span id="L414"><span class="lineNum">     414</span>              :                  * If it returns RECORD, check for possible change of record type</span>
+<span id="L415"><span class="lineNum">     415</span>              :                  * implied by OUT parameters</span>
+<span id="L416"><span class="lineNum">     416</span>              :                  */</span>
+<span id="L417"><span class="lineNum">     417</span> <span class="tlaGNC tlaBgGNC">          28 :                 if (returnType == RECORDOID)</span></span>
+<span id="L418"><span class="lineNum">     418</span>              :                 {</span>
+<span id="L419"><span class="lineNum">     419</span>              :                         TupleDesc       olddesc;</span>
+<span id="L420"><span class="lineNum">     420</span>              :                         TupleDesc       newdesc;</span>
+<span id="L421"><span class="lineNum">     421</span>              : </span>
+<span id="L422"><span class="lineNum">     422</span> <span class="tlaGNC">           7 :                         olddesc = build_function_result_tupdesc_t(oldtup);</span></span>
+<span id="L423"><span class="lineNum">     423</span> <span class="tlaGNC">           7 :                         newdesc = build_function_result_tupdesc_d(prokind,</span></span>
+<span id="L424"><span class="lineNum">     424</span>              :                                                                                                           allParameterTypes,</span>
+<span id="L425"><span class="lineNum">     425</span>              :                                                                                                           parameterModes,</span>
+<span id="L426"><span class="lineNum">     426</span>              :                                                                                                           parameterNames);</span>
+<span id="L427"><span class="lineNum">     427</span> <span class="tlaGNC">           7 :                         if (olddesc == NULL &amp;&amp; newdesc == NULL)</span></span>
+<span id="L428"><span class="lineNum">     428</span>              :                                  /* ok, both are runtime-defined RECORDs */ ;</span>
+<span id="L429"><span class="lineNum">     429</span> <span class="tlaGNC">           7 :                         else if (olddesc == NULL || newdesc == NULL ||</span></span>
+<span id="L430"><span class="lineNum">     430</span> <span class="tlaGNC">           7 :                                          !equalTupleDescs(olddesc, newdesc))</span></span>
+<span id="L431"><span class="lineNum">     431</span> <span class="tlaUNC tlaBgUNC">           0 :                                 ereport(ERROR,</span></span>
+<span id="L432"><span class="lineNum">     432</span>              :                                                 (errcode(ERRCODE_INVALID_FUNCTION_DEFINITION),</span>
+<span id="L433"><span class="lineNum">     433</span>              :                                                  errmsg(&quot;cannot change return type of existing function&quot;),</span>
+<span id="L434"><span class="lineNum">     434</span>              :                                                  errdetail(&quot;Row type defined by OUT parameters is different.&quot;),</span>
+<span id="L435"><span class="lineNum">     435</span>              :                                 /* translator: first %s is DROP FUNCTION or DROP PROCEDURE */</span>
+<span id="L436"><span class="lineNum">     436</span>              :                                                  errhint(&quot;Use %s %s first.&quot;,</span>
+<span id="L437"><span class="lineNum">     437</span>              :                                                                  dropcmd,</span>
+<span id="L438"><span class="lineNum">     438</span>              :                                                                  format_procedure(oldproc-&gt;oid))));</span>
+<span id="L439"><span class="lineNum">     439</span>              :                 }</span>
+<span id="L440"><span class="lineNum">     440</span>              : </span>
+<span id="L441"><span class="lineNum">     441</span>              :                 /*</span>
+<span id="L442"><span class="lineNum">     442</span>              :                  * If there were any named input parameters, check to make sure the</span>
+<span id="L443"><span class="lineNum">     443</span>              :                  * names have not been changed, as this could break existing calls. We</span>
+<span id="L444"><span class="lineNum">     444</span>              :                  * allow adding names to formerly unnamed parameters, though.</span>
+<span id="L445"><span class="lineNum">     445</span>              :                  */</span>
+<span id="L446"><span class="lineNum">     446</span> <span class="tlaGNC tlaBgGNC">          28 :                 proargnames = SysCacheGetAttr(PROCNAMEARGSNSP, oldtup,</span></span>
+<span id="L447"><span class="lineNum">     447</span>              :                                                                           Anum_pg_proc_proargnames,</span>
+<span id="L448"><span class="lineNum">     448</span>              :                                                                           &amp;isnull);</span>
+<span id="L449"><span class="lineNum">     449</span> <span class="tlaGNC">          28 :                 if (!isnull)</span></span>
+<span id="L450"><span class="lineNum">     450</span>              :                 {</span>
+<span id="L451"><span class="lineNum">     451</span>              :                         Datum           proargmodes;</span>
+<span id="L452"><span class="lineNum">     452</span>              :                         char      **old_arg_names;</span>
+<span id="L453"><span class="lineNum">     453</span>              :                         char      **new_arg_names;</span>
+<span id="L454"><span class="lineNum">     454</span>              :                         int                     n_old_arg_names;</span>
+<span id="L455"><span class="lineNum">     455</span>              :                         int                     n_new_arg_names;</span>
+<span id="L456"><span class="lineNum">     456</span>              :                         int                     j;</span>
+<span id="L457"><span class="lineNum">     457</span>              : </span>
+<span id="L458"><span class="lineNum">     458</span> <span class="tlaGNC">          10 :                         proargmodes = SysCacheGetAttr(PROCNAMEARGSNSP, oldtup,</span></span>
+<span id="L459"><span class="lineNum">     459</span>              :                                                                                   Anum_pg_proc_proargmodes,</span>
+<span id="L460"><span class="lineNum">     460</span>              :                                                                                   &amp;isnull);</span>
+<span id="L461"><span class="lineNum">     461</span> <span class="tlaGNC">          10 :                         if (isnull)</span></span>
+<span id="L462"><span class="lineNum">     462</span> <span class="tlaGNC">           3 :                                 proargmodes = PointerGetDatum(NULL);    /* just to be sure */</span></span>
+<span id="L463"><span class="lineNum">     463</span>              : </span>
+<span id="L464"><span class="lineNum">     464</span> <span class="tlaGNC">          10 :                         n_old_arg_names = get_func_input_arg_names(proargnames,</span></span>
+<span id="L465"><span class="lineNum">     465</span>              :                                                                                                            proargmodes,</span>
+<span id="L466"><span class="lineNum">     466</span>              :                                                                                                            &amp;old_arg_names);</span>
+<span id="L467"><span class="lineNum">     467</span> <span class="tlaGNC">          10 :                         n_new_arg_names = get_func_input_arg_names(parameterNames,</span></span>
+<span id="L468"><span class="lineNum">     468</span>              :                                                                                                            parameterModes,</span>
+<span id="L469"><span class="lineNum">     469</span>              :                                                                                                            &amp;new_arg_names);</span>
+<span id="L470"><span class="lineNum">     470</span> <span class="tlaGNC">          45 :                         for (j = 0; j &lt; n_old_arg_names; j++)</span></span>
+<span id="L471"><span class="lineNum">     471</span>              :                         {</span>
+<span id="L472"><span class="lineNum">     472</span> <span class="tlaGNC">          35 :                                 if (old_arg_names[j] == NULL)</span></span>
+<span id="L473"><span class="lineNum">     473</span> <span class="tlaUNC tlaBgUNC">           0 :                                         continue;</span></span>
+<span id="L474"><span class="lineNum">     474</span> <span class="tlaGNC tlaBgGNC">          35 :                                 if (j &gt;= n_new_arg_names || new_arg_names[j] == NULL ||</span></span>
+<span id="L475"><span class="lineNum">     475</span> <span class="tlaGNC">          35 :                                         strcmp(old_arg_names[j], new_arg_names[j]) != 0)</span></span>
+<span id="L476"><span class="lineNum">     476</span> <span class="tlaUNC tlaBgUNC">           0 :                                         ereport(ERROR,</span></span>
+<span id="L477"><span class="lineNum">     477</span>              :                                                         (errcode(ERRCODE_INVALID_FUNCTION_DEFINITION),</span>
+<span id="L478"><span class="lineNum">     478</span>              :                                                          errmsg(&quot;cannot change name of input parameter \&quot;%s\&quot;&quot;,</span>
+<span id="L479"><span class="lineNum">     479</span>              :                                                                         old_arg_names[j]),</span>
+<span id="L480"><span class="lineNum">     480</span>              :                                         /* translator: first %s is DROP FUNCTION or DROP PROCEDURE */</span>
+<span id="L481"><span class="lineNum">     481</span>              :                                                          errhint(&quot;Use %s %s first.&quot;,</span>
+<span id="L482"><span class="lineNum">     482</span>              :                                                                          dropcmd,</span>
+<span id="L483"><span class="lineNum">     483</span>              :                                                                          format_procedure(oldproc-&gt;oid))));</span>
+<span id="L484"><span class="lineNum">     484</span>              :                         }</span>
+<span id="L485"><span class="lineNum">     485</span>              :                 }</span>
+<span id="L486"><span class="lineNum">     486</span>              : </span>
+<span id="L487"><span class="lineNum">     487</span>              :                 /*</span>
+<span id="L488"><span class="lineNum">     488</span>              :                  * If there are existing defaults, check compatibility: redefinition</span>
+<span id="L489"><span class="lineNum">     489</span>              :                  * must not remove any defaults nor change their types.  (Removing a</span>
+<span id="L490"><span class="lineNum">     490</span>              :                  * default might cause a function to fail to satisfy an existing call.</span>
+<span id="L491"><span class="lineNum">     491</span>              :                  * Changing type would only be possible if the associated parameter is</span>
+<span id="L492"><span class="lineNum">     492</span>              :                  * polymorphic, and in such cases a change of default type might alter</span>
+<span id="L493"><span class="lineNum">     493</span>              :                  * the resolved output type of existing calls.)</span>
+<span id="L494"><span class="lineNum">     494</span>              :                  */</span>
+<span id="L495"><span class="lineNum">     495</span> <span class="tlaGNC tlaBgGNC">          28 :                 if (oldproc-&gt;pronargdefaults != 0)</span></span>
+<span id="L496"><span class="lineNum">     496</span>              :                 {</span>
+<span id="L497"><span class="lineNum">     497</span>              :                         Datum           proargdefaults;</span>
+<span id="L498"><span class="lineNum">     498</span>              :                         List       *oldDefaults;</span>
+<span id="L499"><span class="lineNum">     499</span>              :                         ListCell   *oldlc;</span>
+<span id="L500"><span class="lineNum">     500</span>              :                         ListCell   *newlc;</span>
+<span id="L501"><span class="lineNum">     501</span>              : </span>
+<span id="L502"><span class="lineNum">     502</span> <span class="tlaUNC tlaBgUNC">           0 :                         if (list_length(parameterDefaults) &lt; oldproc-&gt;pronargdefaults)</span></span>
+<span id="L503"><span class="lineNum">     503</span> <span class="tlaUNC">           0 :                                 ereport(ERROR,</span></span>
+<span id="L504"><span class="lineNum">     504</span>              :                                                 (errcode(ERRCODE_INVALID_FUNCTION_DEFINITION),</span>
+<span id="L505"><span class="lineNum">     505</span>              :                                                  errmsg(&quot;cannot remove parameter defaults from existing function&quot;),</span>
+<span id="L506"><span class="lineNum">     506</span>              :                                 /* translator: first %s is DROP FUNCTION or DROP PROCEDURE */</span>
+<span id="L507"><span class="lineNum">     507</span>              :                                                  errhint(&quot;Use %s %s first.&quot;,</span>
+<span id="L508"><span class="lineNum">     508</span>              :                                                                  dropcmd,</span>
+<span id="L509"><span class="lineNum">     509</span>              :                                                                  format_procedure(oldproc-&gt;oid))));</span>
+<span id="L510"><span class="lineNum">     510</span>              : </span>
+<span id="L511"><span class="lineNum">     511</span> <span class="tlaUNC">           0 :                         proargdefaults = SysCacheGetAttr(PROCNAMEARGSNSP, oldtup,</span></span>
+<span id="L512"><span class="lineNum">     512</span>              :                                                                                          Anum_pg_proc_proargdefaults,</span>
+<span id="L513"><span class="lineNum">     513</span>              :                                                                                          &amp;isnull);</span>
+<span id="L514"><span class="lineNum">     514</span>              :                         Assert(!isnull);</span>
+<span id="L515"><span class="lineNum">     515</span> <span class="tlaUNC">           0 :                         oldDefaults = castNode(List, stringToNode(TextDatumGetCString(proargdefaults)));</span></span>
+<span id="L516"><span class="lineNum">     516</span>              :                         Assert(list_length(oldDefaults) == oldproc-&gt;pronargdefaults);</span>
+<span id="L517"><span class="lineNum">     517</span>              : </span>
+<span id="L518"><span class="lineNum">     518</span>              :                         /* new list can have more defaults than old, advance over 'em */</span>
+<span id="L519"><span class="lineNum">     519</span> <span class="tlaUNC">           0 :                         newlc = list_nth_cell(parameterDefaults,</span></span>
+<span id="L520"><span class="lineNum">     520</span> <span class="tlaUNC">           0 :                                                                   list_length(parameterDefaults) -</span></span>
+<span id="L521"><span class="lineNum">     521</span> <span class="tlaUNC">           0 :                                                                   oldproc-&gt;pronargdefaults);</span></span>
+<span id="L522"><span class="lineNum">     522</span>              : </span>
+<span id="L523"><span class="lineNum">     523</span> <span class="tlaUNC">           0 :                         foreach(oldlc, oldDefaults)</span></span>
+<span id="L524"><span class="lineNum">     524</span>              :                         {</span>
+<span id="L525"><span class="lineNum">     525</span> <span class="tlaUNC">           0 :                                 Node       *oldDef = (Node *) lfirst(oldlc);</span></span>
+<span id="L526"><span class="lineNum">     526</span> <span class="tlaUNC">           0 :                                 Node       *newDef = (Node *) lfirst(newlc);</span></span>
+<span id="L527"><span class="lineNum">     527</span>              : </span>
+<span id="L528"><span class="lineNum">     528</span> <span class="tlaUNC">           0 :                                 if (exprType(oldDef) != exprType(newDef))</span></span>
+<span id="L529"><span class="lineNum">     529</span> <span class="tlaUNC">           0 :                                         ereport(ERROR,</span></span>
+<span id="L530"><span class="lineNum">     530</span>              :                                                         (errcode(ERRCODE_INVALID_FUNCTION_DEFINITION),</span>
+<span id="L531"><span class="lineNum">     531</span>              :                                                          errmsg(&quot;cannot change data type of existing parameter default value&quot;),</span>
+<span id="L532"><span class="lineNum">     532</span>              :                                         /* translator: first %s is DROP FUNCTION or DROP PROCEDURE */</span>
+<span id="L533"><span class="lineNum">     533</span>              :                                                          errhint(&quot;Use %s %s first.&quot;,</span>
+<span id="L534"><span class="lineNum">     534</span>              :                                                                          dropcmd,</span>
+<span id="L535"><span class="lineNum">     535</span>              :                                                                          format_procedure(oldproc-&gt;oid))));</span>
+<span id="L536"><span class="lineNum">     536</span> <span class="tlaUNC">           0 :                                 newlc = lnext(parameterDefaults, newlc);</span></span>
+<span id="L537"><span class="lineNum">     537</span>              :                         }</span>
+<span id="L538"><span class="lineNum">     538</span>              :                 }</span>
+<span id="L539"><span class="lineNum">     539</span>              : </span>
+<span id="L540"><span class="lineNum">     540</span>              :                 /*</span>
+<span id="L541"><span class="lineNum">     541</span>              :                  * Do not change existing oid, ownership or permissions, either.  Note</span>
+<span id="L542"><span class="lineNum">     542</span>              :                  * dependency-update code below has to agree with this decision.</span>
+<span id="L543"><span class="lineNum">     543</span>              :                  */</span>
+<span id="L544"><span class="lineNum">     544</span> <span class="tlaGNC tlaBgGNC">          28 :                 replaces[Anum_pg_proc_oid - 1] = false;</span></span>
+<span id="L545"><span class="lineNum">     545</span> <span class="tlaGNC">          28 :                 replaces[Anum_pg_proc_proowner - 1] = false;</span></span>
+<span id="L546"><span class="lineNum">     546</span> <span class="tlaGNC">          28 :                 replaces[Anum_pg_proc_proacl - 1] = false;</span></span>
+<span id="L547"><span class="lineNum">     547</span>              : </span>
+<span id="L548"><span class="lineNum">     548</span>              :                 /* Okay, do it... */</span>
+<span id="L549"><span class="lineNum">     549</span> <span class="tlaGNC">          28 :                 tup = heap_modify_tuple(oldtup, tupDesc, values, nulls, replaces);</span></span>
+<span id="L550"><span class="lineNum">     550</span> <span class="tlaGNC">          28 :                 CatalogTupleUpdate(rel, &amp;tup-&gt;t_self, tup);</span></span>
+<span id="L551"><span class="lineNum">     551</span>              : </span>
+<span id="L552"><span class="lineNum">     552</span> <span class="tlaGNC">          28 :                 ReleaseSysCache(oldtup);</span></span>
+<span id="L553"><span class="lineNum">     553</span> <span class="tlaGNC">          28 :                 is_update = true;</span></span>
+<span id="L554"><span class="lineNum">     554</span>              :         }</span>
+<span id="L555"><span class="lineNum">     555</span>              :         else</span>
+<span id="L556"><span class="lineNum">     556</span>              :         {</span>
+<span id="L557"><span class="lineNum">     557</span>              :                 /* Creating a new procedure */</span>
+<span id="L558"><span class="lineNum">     558</span>              :                 Oid                     newOid;</span>
+<span id="L559"><span class="lineNum">     559</span>              : </span>
+<span id="L560"><span class="lineNum">     560</span>              :                 /* First, get default permissions and set up proacl */</span>
+<span id="L561"><span class="lineNum">     561</span> <span class="tlaGNC">          24 :                 proacl = get_user_default_acl(OBJECT_FUNCTION, proowner,</span></span>
+<span id="L562"><span class="lineNum">     562</span>              :                                                                           procNamespace);</span>
+<span id="L563"><span class="lineNum">     563</span> <span class="tlaGNC">          24 :                 if (proacl != NULL)</span></span>
+<span id="L564"><span class="lineNum">     564</span> <span class="tlaUNC tlaBgUNC">           0 :                         values[Anum_pg_proc_proacl - 1] = PointerGetDatum(proacl);</span></span>
+<span id="L565"><span class="lineNum">     565</span>              :                 else</span>
+<span id="L566"><span class="lineNum">     566</span> <span class="tlaGNC tlaBgGNC">          24 :                         nulls[Anum_pg_proc_proacl - 1] = true;</span></span>
+<span id="L567"><span class="lineNum">     567</span>              : </span>
+<span id="L568"><span class="lineNum">     568</span> <span class="tlaGNC">          24 :                 newOid = GetNewOidWithIndex(rel, ProcedureOidIndexId,</span></span>
+<span id="L569"><span class="lineNum">     569</span>              :                                                                         Anum_pg_proc_oid);</span>
+<span id="L570"><span class="lineNum">     570</span> <span class="tlaGNC">          24 :                 values[Anum_pg_proc_oid - 1] = ObjectIdGetDatum(newOid);</span></span>
+<span id="L571"><span class="lineNum">     571</span> <span class="tlaGNC">          24 :                 tup = heap_form_tuple(tupDesc, values, nulls);</span></span>
+<span id="L572"><span class="lineNum">     572</span> <span class="tlaGNC">          24 :                 CatalogTupleInsert(rel, tup);</span></span>
+<span id="L573"><span class="lineNum">     573</span> <span class="tlaGNC">          24 :                 is_update = false;</span></span>
+<span id="L574"><span class="lineNum">     574</span>              :         }</span>
+<span id="L575"><span class="lineNum">     575</span>              : </span>
+<span id="L576"><span class="lineNum">     576</span>              : </span>
+<span id="L577"><span class="lineNum">     577</span> <span class="tlaGNC">          52 :         retval = ((Form_pg_proc) GETSTRUCT(tup))-&gt;oid;</span></span>
+<span id="L578"><span class="lineNum">     578</span>              : </span>
+<span id="L579"><span class="lineNum">     579</span>              :         /*</span>
+<span id="L580"><span class="lineNum">     580</span>              :          * Create dependencies for the new function.  If we are updating an</span>
+<span id="L581"><span class="lineNum">     581</span>              :          * existing function, first delete any existing pg_depend entries.</span>
+<span id="L582"><span class="lineNum">     582</span>              :          * (However, since we are not changing ownership or permissions, the</span>
+<span id="L583"><span class="lineNum">     583</span>              :          * shared dependencies do *not* need to change, and we leave them alone.)</span>
+<span id="L584"><span class="lineNum">     584</span>              :          */</span>
+<span id="L585"><span class="lineNum">     585</span> <span class="tlaGNC">          52 :         if (is_update)</span></span>
+<span id="L586"><span class="lineNum">     586</span> <span class="tlaGNC">          28 :                 deleteDependencyRecordsFor(ProcedureRelationId, retval, true);</span></span>
+<span id="L587"><span class="lineNum">     587</span>              : </span>
+<span id="L588"><span class="lineNum">     588</span> <span class="tlaGNC">          52 :         myself.classId = ProcedureRelationId;</span></span>
+<span id="L589"><span class="lineNum">     589</span> <span class="tlaGNC">          52 :         myself.objectId = retval;</span></span>
+<span id="L590"><span class="lineNum">     590</span> <span class="tlaGNC">          52 :         myself.objectSubId = 0;</span></span>
+<span id="L591"><span class="lineNum">     591</span>              : </span>
+<span id="L592"><span class="lineNum">     592</span>              :         /* dependency on namespace */</span>
+<span id="L593"><span class="lineNum">     593</span> <span class="tlaGNC">          52 :         referenced.classId = NamespaceRelationId;</span></span>
+<span id="L594"><span class="lineNum">     594</span> <span class="tlaGNC">          52 :         referenced.objectId = procNamespace;</span></span>
+<span id="L595"><span class="lineNum">     595</span> <span class="tlaGNC">          52 :         referenced.objectSubId = 0;</span></span>
+<span id="L596"><span class="lineNum">     596</span> <span class="tlaGNC">          52 :         recordDependencyOn(&amp;myself, &amp;referenced, DEPENDENCY_NORMAL);</span></span>
+<span id="L597"><span class="lineNum">     597</span>              : </span>
+<span id="L598"><span class="lineNum">     598</span>              :         /* dependency on implementation language */</span>
+<span id="L599"><span class="lineNum">     599</span> <span class="tlaGNC">          52 :         referenced.classId = LanguageRelationId;</span></span>
+<span id="L600"><span class="lineNum">     600</span> <span class="tlaGNC">          52 :         referenced.objectId = languageObjectId;</span></span>
+<span id="L601"><span class="lineNum">     601</span> <span class="tlaGNC">          52 :         referenced.objectSubId = 0;</span></span>
+<span id="L602"><span class="lineNum">     602</span> <span class="tlaGNC">          52 :         recordDependencyOn(&amp;myself, &amp;referenced, DEPENDENCY_NORMAL);</span></span>
+<span id="L603"><span class="lineNum">     603</span>              : </span>
+<span id="L604"><span class="lineNum">     604</span>              :         /* dependency on return type */</span>
+<span id="L605"><span class="lineNum">     605</span> <span class="tlaGNC">          52 :         referenced.classId = TypeRelationId;</span></span>
+<span id="L606"><span class="lineNum">     606</span> <span class="tlaGNC">          52 :         referenced.objectId = returnType;</span></span>
+<span id="L607"><span class="lineNum">     607</span> <span class="tlaGNC">          52 :         referenced.objectSubId = 0;</span></span>
+<span id="L608"><span class="lineNum">     608</span> <span class="tlaGNC">          52 :         recordDependencyOn(&amp;myself, &amp;referenced, DEPENDENCY_NORMAL);</span></span>
+<span id="L609"><span class="lineNum">     609</span>              : </span>
+<span id="L610"><span class="lineNum">     610</span>              :         /* dependency on transform used by return type, if any */</span>
+<span id="L611"><span class="lineNum">     611</span> <span class="tlaGNC">          52 :         if ((trfid = get_transform_oid(returnType, languageObjectId, true)))</span></span>
+<span id="L612"><span class="lineNum">     612</span>              :         {</span>
+<span id="L613"><span class="lineNum">     613</span> <span class="tlaUNC tlaBgUNC">           0 :                 referenced.classId = TransformRelationId;</span></span>
+<span id="L614"><span class="lineNum">     614</span> <span class="tlaUNC">           0 :                 referenced.objectId = trfid;</span></span>
+<span id="L615"><span class="lineNum">     615</span> <span class="tlaUNC">           0 :                 referenced.objectSubId = 0;</span></span>
+<span id="L616"><span class="lineNum">     616</span> <span class="tlaUNC">           0 :                 recordDependencyOn(&amp;myself, &amp;referenced, DEPENDENCY_NORMAL);</span></span>
+<span id="L617"><span class="lineNum">     617</span>              :         }</span>
+<span id="L618"><span class="lineNum">     618</span>              : </span>
+<span id="L619"><span class="lineNum">     619</span>              :         /* dependency on parameter types */</span>
+<span id="L620"><span class="lineNum">     620</span> <span class="tlaGNC tlaBgGNC">         219 :         for (i = 0; i &lt; allParamCount; i++)</span></span>
+<span id="L621"><span class="lineNum">     621</span>              :         {</span>
+<span id="L622"><span class="lineNum">     622</span> <span class="tlaGNC">         167 :                 referenced.classId = TypeRelationId;</span></span>
+<span id="L623"><span class="lineNum">     623</span> <span class="tlaGNC">         167 :                 referenced.objectId = allParams[i];</span></span>
+<span id="L624"><span class="lineNum">     624</span> <span class="tlaGNC">         167 :                 referenced.objectSubId = 0;</span></span>
+<span id="L625"><span class="lineNum">     625</span> <span class="tlaGNC">         167 :                 recordDependencyOn(&amp;myself, &amp;referenced, DEPENDENCY_NORMAL);</span></span>
+<span id="L626"><span class="lineNum">     626</span>              : </span>
+<span id="L627"><span class="lineNum">     627</span>              :                 /* dependency on transform used by parameter type, if any */</span>
+<span id="L628"><span class="lineNum">     628</span> <span class="tlaGNC">         167 :                 if ((trfid = get_transform_oid(allParams[i], languageObjectId, true)))</span></span>
+<span id="L629"><span class="lineNum">     629</span>              :                 {</span>
+<span id="L630"><span class="lineNum">     630</span> <span class="tlaUNC tlaBgUNC">           0 :                         referenced.classId = TransformRelationId;</span></span>
+<span id="L631"><span class="lineNum">     631</span> <span class="tlaUNC">           0 :                         referenced.objectId = trfid;</span></span>
+<span id="L632"><span class="lineNum">     632</span> <span class="tlaUNC">           0 :                         referenced.objectSubId = 0;</span></span>
+<span id="L633"><span class="lineNum">     633</span> <span class="tlaUNC">           0 :                         recordDependencyOn(&amp;myself, &amp;referenced, DEPENDENCY_NORMAL);</span></span>
+<span id="L634"><span class="lineNum">     634</span>              :                 }</span>
+<span id="L635"><span class="lineNum">     635</span>              :         }</span>
+<span id="L636"><span class="lineNum">     636</span>              : </span>
+<span id="L637"><span class="lineNum">     637</span>              :         /* dependency on parameter default expressions */</span>
+<span id="L638"><span class="lineNum">     638</span> <span class="tlaGNC tlaBgGNC">          52 :         if (parameterDefaults)</span></span>
+<span id="L639"><span class="lineNum">     639</span> <span class="tlaGNC">          28 :                 recordDependencyOnExpr(&amp;myself, (Node *) parameterDefaults,</span></span>
+<span id="L640"><span class="lineNum">     640</span>              :                                                            NIL, DEPENDENCY_NORMAL);</span>
+<span id="L641"><span class="lineNum">     641</span>              : </span>
+<span id="L642"><span class="lineNum">     642</span>              :         /* dependency on support function, if any */</span>
+<span id="L643"><span class="lineNum">     643</span> <span class="tlaGNC">          52 :         if (OidIsValid(prosupport))</span></span>
+<span id="L644"><span class="lineNum">     644</span>              :         {</span>
+<span id="L645"><span class="lineNum">     645</span> <span class="tlaUNC tlaBgUNC">           0 :                 referenced.classId = ProcedureRelationId;</span></span>
+<span id="L646"><span class="lineNum">     646</span> <span class="tlaUNC">           0 :                 referenced.objectId = prosupport;</span></span>
+<span id="L647"><span class="lineNum">     647</span> <span class="tlaUNC">           0 :                 referenced.objectSubId = 0;</span></span>
+<span id="L648"><span class="lineNum">     648</span> <span class="tlaUNC">           0 :                 recordDependencyOn(&amp;myself, &amp;referenced, DEPENDENCY_NORMAL);</span></span>
+<span id="L649"><span class="lineNum">     649</span>              :         }</span>
+<span id="L650"><span class="lineNum">     650</span>              : </span>
+<span id="L651"><span class="lineNum">     651</span>              :         /* dependency on owner */</span>
+<span id="L652"><span class="lineNum">     652</span> <span class="tlaGNC tlaBgGNC">          52 :         if (!is_update)</span></span>
+<span id="L653"><span class="lineNum">     653</span> <span class="tlaGNC">          24 :                 recordDependencyOnOwner(ProcedureRelationId, retval, proowner);</span></span>
+<span id="L654"><span class="lineNum">     654</span>              : </span>
+<span id="L655"><span class="lineNum">     655</span>              :         /* dependency on any roles mentioned in ACL */</span>
+<span id="L656"><span class="lineNum">     656</span> <span class="tlaGNC">          52 :         if (!is_update)</span></span>
+<span id="L657"><span class="lineNum">     657</span> <span class="tlaGNC">          24 :                 recordDependencyOnNewAcl(ProcedureRelationId, retval, 0,</span></span>
+<span id="L658"><span class="lineNum">     658</span>              :                                                                  proowner, proacl);</span>
+<span id="L659"><span class="lineNum">     659</span>              : </span>
+<span id="L660"><span class="lineNum">     660</span>              :         /* dependency on extension */</span>
+<span id="L661"><span class="lineNum">     661</span> <span class="tlaGNC">          52 :         recordDependencyOnCurrentExtension(&amp;myself, is_update);</span></span>
+<span id="L662"><span class="lineNum">     662</span>              : </span>
+<span id="L663"><span class="lineNum">     663</span> <span class="tlaGNC">          52 :         heap_freetuple(tup);</span></span>
+<span id="L664"><span class="lineNum">     664</span>              : </span>
+<span id="L665"><span class="lineNum">     665</span>              :         /* Post creation hook for new function */</span>
+<span id="L666"><span class="lineNum">     666</span> <span class="tlaGNC">          52 :         InvokeObjectPostCreateHook(ProcedureRelationId, retval, 0);</span></span>
+<span id="L667"><span class="lineNum">     667</span>              : </span>
+<span id="L668"><span class="lineNum">     668</span> <span class="tlaGNC">          52 :         table_close(rel, RowExclusiveLock);</span></span>
+<span id="L669"><span class="lineNum">     669</span>              : </span>
+<span id="L670"><span class="lineNum">     670</span>              :         /* Verify function body */</span>
+<span id="L671"><span class="lineNum">     671</span> <span class="tlaGNC">          52 :         if (OidIsValid(languageValidator))</span></span>
+<span id="L672"><span class="lineNum">     672</span>              :         {</span>
+<span id="L673"><span class="lineNum">     673</span> <span class="tlaGNC">          52 :                 ArrayType  *set_items = NULL;</span></span>
+<span id="L674"><span class="lineNum">     674</span> <span class="tlaGNC">          52 :                 int                     save_nestlevel = 0;</span></span>
+<span id="L675"><span class="lineNum">     675</span>              : </span>
+<span id="L676"><span class="lineNum">     676</span>              :                 /* Advance command counter so new tuple can be seen by validator */</span>
+<span id="L677"><span class="lineNum">     677</span> <span class="tlaGNC">          52 :                 CommandCounterIncrement();</span></span>
+<span id="L678"><span class="lineNum">     678</span>              : </span>
+<span id="L679"><span class="lineNum">     679</span>              :                 /*</span>
+<span id="L680"><span class="lineNum">     680</span>              :                  * Set per-function configuration parameters so that the validation is</span>
+<span id="L681"><span class="lineNum">     681</span>              :                  * done with the environment the function expects.  However, if</span>
+<span id="L682"><span class="lineNum">     682</span>              :                  * check_function_bodies is off, we don't do this, because that would</span>
+<span id="L683"><span class="lineNum">     683</span>              :                  * create dump ordering hazards that pg_dump doesn't know how to deal</span>
+<span id="L684"><span class="lineNum">     684</span>              :                  * with.  (For example, a SET clause might refer to a not-yet-created</span>
+<span id="L685"><span class="lineNum">     685</span>              :                  * text search configuration.)  This means that the validator</span>
+<span id="L686"><span class="lineNum">     686</span>              :                  * shouldn't complain about anything that might depend on a GUC</span>
+<span id="L687"><span class="lineNum">     687</span>              :                  * parameter when check_function_bodies is off.</span>
+<span id="L688"><span class="lineNum">     688</span>              :                  */</span>
+<span id="L689"><span class="lineNum">     689</span> <span class="tlaGNC">          52 :                 if (check_function_bodies)</span></span>
+<span id="L690"><span class="lineNum">     690</span>              :                 {</span>
+<span id="L691"><span class="lineNum">     691</span> <span class="tlaGNC">          49 :                         set_items = (ArrayType *) DatumGetPointer(proconfig);</span></span>
+<span id="L692"><span class="lineNum">     692</span> <span class="tlaGNC">          49 :                         if (set_items)          /* Need a new GUC nesting level */</span></span>
+<span id="L693"><span class="lineNum">     693</span>              :                         {</span>
+<span id="L694"><span class="lineNum">     694</span> <span class="tlaUNC tlaBgUNC">           0 :                                 save_nestlevel = NewGUCNestLevel();</span></span>
+<span id="L695"><span class="lineNum">     695</span> <span class="tlaUNC">           0 :                                 ProcessGUCArray(set_items,</span></span>
+<span id="L696"><span class="lineNum">     696</span> <span class="tlaUNC">           0 :                                                                 (superuser() ? PGC_SUSET : PGC_USERSET),</span></span>
+<span id="L697"><span class="lineNum">     697</span>              :                                                                 PGC_S_SESSION,</span>
+<span id="L698"><span class="lineNum">     698</span>              :                                                                 GUC_ACTION_SAVE);</span>
+<span id="L699"><span class="lineNum">     699</span>              :                         }</span>
+<span id="L700"><span class="lineNum">     700</span>              :                 }</span>
+<span id="L701"><span class="lineNum">     701</span>              : </span>
+<span id="L702"><span class="lineNum">     702</span> <span class="tlaGNC tlaBgGNC">          52 :                 OidFunctionCall1(languageValidator, ObjectIdGetDatum(retval));</span></span>
+<span id="L703"><span class="lineNum">     703</span>              : </span>
+<span id="L704"><span class="lineNum">     704</span> <span class="tlaGNC">          50 :                 if (set_items)</span></span>
+<span id="L705"><span class="lineNum">     705</span> <span class="tlaUNC tlaBgUNC">           0 :                         AtEOXact_GUC(true, save_nestlevel);</span></span>
+<span id="L706"><span class="lineNum">     706</span>              :         }</span>
+<span id="L707"><span class="lineNum">     707</span>              : </span>
+<span id="L708"><span class="lineNum">     708</span> <span class="tlaGNC tlaBgGNC">          50 :         return myself;</span></span>
+<span id="L709"><span class="lineNum">     709</span>              : }</span>
+<span id="L710"><span class="lineNum">     710</span>              : </span>
+<span id="L711"><span class="lineNum">     711</span>              : </span>
+<span id="L712"><span class="lineNum">     712</span>              : </span>
+<span id="L713"><span class="lineNum">     713</span>              : /*</span>
+<span id="L714"><span class="lineNum">     714</span>              :  * Validator for internal functions</span>
+<span id="L715"><span class="lineNum">     715</span>              :  *</span>
+<span id="L716"><span class="lineNum">     716</span>              :  * Check that the given internal function name (the &quot;prosrc&quot; value) is</span>
+<span id="L717"><span class="lineNum">     717</span>              :  * a known builtin function.</span>
+<span id="L718"><span class="lineNum">     718</span>              :  */</span>
+<span id="L719"><span class="lineNum">     719</span>              : Datum</span>
+<span id="L720"><span class="lineNum">     720</span> <span class="tlaGNC">          28 : fmgr_internal_validator(PG_FUNCTION_ARGS)</span></span>
+<span id="L721"><span class="lineNum">     721</span>              : {</span>
+<span id="L722"><span class="lineNum">     722</span> <span class="tlaGNC">          28 :         Oid                     funcoid = PG_GETARG_OID(0);</span></span>
+<span id="L723"><span class="lineNum">     723</span>              :         HeapTuple       tuple;</span>
+<span id="L724"><span class="lineNum">     724</span>              :         bool            isnull;</span>
+<span id="L725"><span class="lineNum">     725</span>              :         Datum           tmp;</span>
+<span id="L726"><span class="lineNum">     726</span>              :         char       *prosrc;</span>
+<span id="L727"><span class="lineNum">     727</span>              : </span>
+<span id="L728"><span class="lineNum">     728</span> <span class="tlaGNC">          28 :         if (!CheckFunctionValidatorAccess(fcinfo-&gt;flinfo-&gt;fn_oid, funcoid))</span></span>
+<span id="L729"><span class="lineNum">     729</span> <span class="tlaUNC tlaBgUNC">           0 :                 PG_RETURN_VOID();</span></span>
+<span id="L730"><span class="lineNum">     730</span>              : </span>
+<span id="L731"><span class="lineNum">     731</span>              :         /*</span>
+<span id="L732"><span class="lineNum">     732</span>              :          * We do not honor check_function_bodies since it's unlikely the function</span>
+<span id="L733"><span class="lineNum">     733</span>              :          * name will be found later if it isn't there now.</span>
+<span id="L734"><span class="lineNum">     734</span>              :          */</span>
+<span id="L735"><span class="lineNum">     735</span>              : </span>
+<span id="L736"><span class="lineNum">     736</span> <span class="tlaGNC tlaBgGNC">          28 :         tuple = SearchSysCache1(PROCOID, ObjectIdGetDatum(funcoid));</span></span>
+<span id="L737"><span class="lineNum">     737</span> <span class="tlaGNC">          28 :         if (!HeapTupleIsValid(tuple))</span></span>
+<span id="L738"><span class="lineNum">     738</span> <span class="tlaUNC tlaBgUNC">           0 :                 elog(ERROR, &quot;cache lookup failed for function %u&quot;, funcoid);</span></span>
+<span id="L739"><span class="lineNum">     739</span>              : </span>
+<span id="L740"><span class="lineNum">     740</span> <span class="tlaGNC tlaBgGNC">          28 :         tmp = SysCacheGetAttr(PROCOID, tuple, Anum_pg_proc_prosrc, &amp;isnull);</span></span>
+<span id="L741"><span class="lineNum">     741</span> <span class="tlaGNC">          28 :         if (isnull)</span></span>
+<span id="L742"><span class="lineNum">     742</span> <span class="tlaUNC tlaBgUNC">           0 :                 elog(ERROR, &quot;null prosrc&quot;);</span></span>
+<span id="L743"><span class="lineNum">     743</span> <span class="tlaGNC tlaBgGNC">          28 :         prosrc = TextDatumGetCString(tmp);</span></span>
+<span id="L744"><span class="lineNum">     744</span>              : </span>
+<span id="L745"><span class="lineNum">     745</span> <span class="tlaGNC">          28 :         if (fmgr_internal_function(prosrc) == InvalidOid)</span></span>
+<span id="L746"><span class="lineNum">     746</span> <span class="tlaUNC tlaBgUNC">           0 :                 ereport(ERROR,</span></span>
+<span id="L747"><span class="lineNum">     747</span>              :                                 (errcode(ERRCODE_UNDEFINED_FUNCTION),</span>
+<span id="L748"><span class="lineNum">     748</span>              :                                  errmsg(&quot;there is no built-in function named \&quot;%s\&quot;&quot;,</span>
+<span id="L749"><span class="lineNum">     749</span>              :                                                 prosrc)));</span>
+<span id="L750"><span class="lineNum">     750</span>              : </span>
+<span id="L751"><span class="lineNum">     751</span> <span class="tlaGNC tlaBgGNC">          28 :         ReleaseSysCache(tuple);</span></span>
+<span id="L752"><span class="lineNum">     752</span>              : </span>
+<span id="L753"><span class="lineNum">     753</span> <span class="tlaGNC">          28 :         PG_RETURN_VOID();</span></span>
+<span id="L754"><span class="lineNum">     754</span>              : }</span>
+<span id="L755"><span class="lineNum">     755</span>              : </span>
+<span id="L756"><span class="lineNum">     756</span>              : </span>
+<span id="L757"><span class="lineNum">     757</span>              : </span>
+<span id="L758"><span class="lineNum">     758</span>              : /*</span>
+<span id="L759"><span class="lineNum">     759</span>              :  * Validator for C language functions</span>
+<span id="L760"><span class="lineNum">     760</span>              :  *</span>
+<span id="L761"><span class="lineNum">     761</span>              :  * Make sure that the library file exists, is loadable, and contains</span>
+<span id="L762"><span class="lineNum">     762</span>              :  * the specified link symbol. Also check for a valid function</span>
+<span id="L763"><span class="lineNum">     763</span>              :  * information record.</span>
+<span id="L764"><span class="lineNum">     764</span>              :  */</span>
+<span id="L765"><span class="lineNum">     765</span>              : Datum</span>
+<span id="L766"><span class="lineNum">     766</span> <span class="tlaGNC">           5 : fmgr_c_validator(PG_FUNCTION_ARGS)</span></span>
+<span id="L767"><span class="lineNum">     767</span>              : {</span>
+<span id="L768"><span class="lineNum">     768</span> <span class="tlaGNC">           5 :         Oid                     funcoid = PG_GETARG_OID(0);</span></span>
+<span id="L769"><span class="lineNum">     769</span>              :         void       *libraryhandle;</span>
+<span id="L770"><span class="lineNum">     770</span>              :         HeapTuple       tuple;</span>
+<span id="L771"><span class="lineNum">     771</span>              :         bool            isnull;</span>
+<span id="L772"><span class="lineNum">     772</span>              :         Datum           tmp;</span>
+<span id="L773"><span class="lineNum">     773</span>              :         char       *prosrc;</span>
+<span id="L774"><span class="lineNum">     774</span>              :         char       *probin;</span>
+<span id="L775"><span class="lineNum">     775</span>              : </span>
+<span id="L776"><span class="lineNum">     776</span> <span class="tlaGNC">           5 :         if (!CheckFunctionValidatorAccess(fcinfo-&gt;flinfo-&gt;fn_oid, funcoid))</span></span>
+<span id="L777"><span class="lineNum">     777</span> <span class="tlaUNC tlaBgUNC">           0 :                 PG_RETURN_VOID();</span></span>
+<span id="L778"><span class="lineNum">     778</span>              : </span>
+<span id="L779"><span class="lineNum">     779</span>              :         /*</span>
+<span id="L780"><span class="lineNum">     780</span>              :          * It'd be most consistent to skip the check if !check_function_bodies,</span>
+<span id="L781"><span class="lineNum">     781</span>              :          * but the purpose of that switch is to be helpful for pg_dump loading,</span>
+<span id="L782"><span class="lineNum">     782</span>              :          * and for pg_dump loading it's much better if we *do* check.</span>
+<span id="L783"><span class="lineNum">     783</span>              :          */</span>
+<span id="L784"><span class="lineNum">     784</span>              : </span>
+<span id="L785"><span class="lineNum">     785</span> <span class="tlaGNC tlaBgGNC">           5 :         tuple = SearchSysCache1(PROCOID, ObjectIdGetDatum(funcoid));</span></span>
+<span id="L786"><span class="lineNum">     786</span> <span class="tlaGNC">           5 :         if (!HeapTupleIsValid(tuple))</span></span>
+<span id="L787"><span class="lineNum">     787</span> <span class="tlaUNC tlaBgUNC">           0 :                 elog(ERROR, &quot;cache lookup failed for function %u&quot;, funcoid);</span></span>
+<span id="L788"><span class="lineNum">     788</span>              : </span>
+<span id="L789"><span class="lineNum">     789</span> <span class="tlaGNC tlaBgGNC">           5 :         tmp = SysCacheGetAttr(PROCOID, tuple, Anum_pg_proc_prosrc, &amp;isnull);</span></span>
+<span id="L790"><span class="lineNum">     790</span> <span class="tlaGNC">           5 :         if (isnull)</span></span>
+<span id="L791"><span class="lineNum">     791</span> <span class="tlaUNC tlaBgUNC">           0 :                 elog(ERROR, &quot;null prosrc for C function %u&quot;, funcoid);</span></span>
+<span id="L792"><span class="lineNum">     792</span> <span class="tlaGNC tlaBgGNC">           5 :         prosrc = TextDatumGetCString(tmp);</span></span>
+<span id="L793"><span class="lineNum">     793</span>              : </span>
+<span id="L794"><span class="lineNum">     794</span> <span class="tlaGNC">           5 :         tmp = SysCacheGetAttr(PROCOID, tuple, Anum_pg_proc_probin, &amp;isnull);</span></span>
+<span id="L795"><span class="lineNum">     795</span> <span class="tlaGNC">           5 :         if (isnull)</span></span>
+<span id="L796"><span class="lineNum">     796</span> <span class="tlaUNC tlaBgUNC">           0 :                 elog(ERROR, &quot;null probin for C function %u&quot;, funcoid);</span></span>
+<span id="L797"><span class="lineNum">     797</span> <span class="tlaGNC tlaBgGNC">           5 :         probin = TextDatumGetCString(tmp);</span></span>
+<span id="L798"><span class="lineNum">     798</span>              : </span>
+<span id="L799"><span class="lineNum">     799</span> <span class="tlaGNC">           5 :         (void) load_external_function(probin, prosrc, true, &amp;libraryhandle);</span></span>
+<span id="L800"><span class="lineNum">     800</span> <span class="tlaGNC">           5 :         (void) fetch_finfo_record(libraryhandle, prosrc);</span></span>
+<span id="L801"><span class="lineNum">     801</span>              : </span>
+<span id="L802"><span class="lineNum">     802</span> <span class="tlaGNC">           5 :         ReleaseSysCache(tuple);</span></span>
+<span id="L803"><span class="lineNum">     803</span>              : </span>
+<span id="L804"><span class="lineNum">     804</span> <span class="tlaGNC">           5 :         PG_RETURN_VOID();</span></span>
+<span id="L805"><span class="lineNum">     805</span>              : }</span>
+<span id="L806"><span class="lineNum">     806</span>              : </span>
+<span id="L807"><span class="lineNum">     807</span>              : </span>
+<span id="L808"><span class="lineNum">     808</span>              : /*</span>
+<span id="L809"><span class="lineNum">     809</span>              :  * Validator for SQL language functions</span>
+<span id="L810"><span class="lineNum">     810</span>              :  *</span>
+<span id="L811"><span class="lineNum">     811</span>              :  * Parse it here in order to be sure that it contains no syntax errors.</span>
+<span id="L812"><span class="lineNum">     812</span>              :  */</span>
+<span id="L813"><span class="lineNum">     813</span>              : Datum</span>
+<span id="L814"><span class="lineNum">     814</span> <span class="tlaGNC">          15 : fmgr_sql_validator(PG_FUNCTION_ARGS)</span></span>
+<span id="L815"><span class="lineNum">     815</span>              : {</span>
+<span id="L816"><span class="lineNum">     816</span> <span class="tlaGNC">          15 :         Oid                     funcoid = PG_GETARG_OID(0);</span></span>
+<span id="L817"><span class="lineNum">     817</span>              :         HeapTuple       tuple;</span>
+<span id="L818"><span class="lineNum">     818</span>              :         Form_pg_proc proc;</span>
+<span id="L819"><span class="lineNum">     819</span>              :         List       *raw_parsetree_list;</span>
+<span id="L820"><span class="lineNum">     820</span>              :         List       *querytree_list;</span>
+<span id="L821"><span class="lineNum">     821</span>              :         ListCell   *lc;</span>
+<span id="L822"><span class="lineNum">     822</span>              :         bool            isnull;</span>
+<span id="L823"><span class="lineNum">     823</span>              :         Datum           tmp;</span>
+<span id="L824"><span class="lineNum">     824</span>              :         char       *prosrc;</span>
+<span id="L825"><span class="lineNum">     825</span>              :         parse_error_callback_arg callback_arg;</span>
+<span id="L826"><span class="lineNum">     826</span>              :         ErrorContextCallback sqlerrcontext;</span>
+<span id="L827"><span class="lineNum">     827</span>              :         bool            haspolyarg;</span>
+<span id="L828"><span class="lineNum">     828</span>              :         int                     i;</span>
+<span id="L829"><span class="lineNum">     829</span>              : </span>
+<span id="L830"><span class="lineNum">     830</span> <span class="tlaGNC">          15 :         if (!CheckFunctionValidatorAccess(fcinfo-&gt;flinfo-&gt;fn_oid, funcoid))</span></span>
+<span id="L831"><span class="lineNum">     831</span> <span class="tlaUNC tlaBgUNC">           0 :                 PG_RETURN_VOID();</span></span>
+<span id="L832"><span class="lineNum">     832</span>              : </span>
+<span id="L833"><span class="lineNum">     833</span> <span class="tlaGNC tlaBgGNC">          15 :         tuple = SearchSysCache1(PROCOID, ObjectIdGetDatum(funcoid));</span></span>
+<span id="L834"><span class="lineNum">     834</span> <span class="tlaGNC">          15 :         if (!HeapTupleIsValid(tuple))</span></span>
+<span id="L835"><span class="lineNum">     835</span> <span class="tlaUNC tlaBgUNC">           0 :                 elog(ERROR, &quot;cache lookup failed for function %u&quot;, funcoid);</span></span>
+<span id="L836"><span class="lineNum">     836</span> <span class="tlaGNC tlaBgGNC">          15 :         proc = (Form_pg_proc) GETSTRUCT(tuple);</span></span>
+<span id="L837"><span class="lineNum">     837</span>              : </span>
+<span id="L838"><span class="lineNum">     838</span>              :         /* Disallow pseudotype result */</span>
+<span id="L839"><span class="lineNum">     839</span>              :         /* except for RECORD, VOID, or polymorphic */</span>
+<span id="L840"><span class="lineNum">     840</span> <span class="tlaGNC">          15 :         if (get_typtype(proc-&gt;prorettype) == TYPTYPE_PSEUDO &amp;&amp;</span></span>
+<span id="L841"><span class="lineNum">     841</span> <span class="tlaGNC">           4 :                 proc-&gt;prorettype != RECORDOID &amp;&amp;</span></span>
+<span id="L842"><span class="lineNum">     842</span> <span class="tlaUNC tlaBgUNC">           0 :                 proc-&gt;prorettype != VOIDOID &amp;&amp;</span></span>
+<span id="L843"><span class="lineNum">     843</span> <span class="tlaUNC">           0 :                 !IsPolymorphicType(proc-&gt;prorettype))</span></span>
+<span id="L844"><span class="lineNum">     844</span> <span class="tlaUNC">           0 :                 ereport(ERROR,</span></span>
+<span id="L845"><span class="lineNum">     845</span>              :                                 (errcode(ERRCODE_INVALID_FUNCTION_DEFINITION),</span>
+<span id="L846"><span class="lineNum">     846</span>              :                                  errmsg(&quot;SQL functions cannot return type %s&quot;,</span>
+<span id="L847"><span class="lineNum">     847</span>              :                                                 format_type_be(proc-&gt;prorettype))));</span>
+<span id="L848"><span class="lineNum">     848</span>              : </span>
+<span id="L849"><span class="lineNum">     849</span>              :         /* Disallow pseudotypes in arguments */</span>
+<span id="L850"><span class="lineNum">     850</span>              :         /* except for polymorphic */</span>
+<span id="L851"><span class="lineNum">     851</span> <span class="tlaGNC tlaBgGNC">          15 :         haspolyarg = false;</span></span>
+<span id="L852"><span class="lineNum">     852</span> <span class="tlaGNC">          39 :         for (i = 0; i &lt; proc-&gt;pronargs; i++)</span></span>
+<span id="L853"><span class="lineNum">     853</span>              :         {</span>
+<span id="L854"><span class="lineNum">     854</span> <span class="tlaGNC">          24 :                 if (get_typtype(proc-&gt;proargtypes.values[i]) == TYPTYPE_PSEUDO)</span></span>
+<span id="L855"><span class="lineNum">     855</span>              :                 {</span>
+<span id="L856"><span class="lineNum">     856</span> <span class="tlaGNC">           1 :                         if (IsPolymorphicType(proc-&gt;proargtypes.values[i]))</span></span>
+<span id="L857"><span class="lineNum">     857</span> <span class="tlaGNC">           1 :                                 haspolyarg = true;</span></span>
+<span id="L858"><span class="lineNum">     858</span>              :                         else</span>
+<span id="L859"><span class="lineNum">     859</span> <span class="tlaUNC tlaBgUNC">           0 :                                 ereport(ERROR,</span></span>
+<span id="L860"><span class="lineNum">     860</span>              :                                                 (errcode(ERRCODE_INVALID_FUNCTION_DEFINITION),</span>
+<span id="L861"><span class="lineNum">     861</span>              :                                                  errmsg(&quot;SQL functions cannot have arguments of type %s&quot;,</span>
+<span id="L862"><span class="lineNum">     862</span>              :                                                                 format_type_be(proc-&gt;proargtypes.values[i]))));</span>
+<span id="L863"><span class="lineNum">     863</span>              :                 }</span>
+<span id="L864"><span class="lineNum">     864</span>              :         }</span>
+<span id="L865"><span class="lineNum">     865</span>              : </span>
+<span id="L866"><span class="lineNum">     866</span>              :         /* Postpone body checks if !check_function_bodies */</span>
+<span id="L867"><span class="lineNum">     867</span> <span class="tlaGNC tlaBgGNC">          15 :         if (check_function_bodies)</span></span>
+<span id="L868"><span class="lineNum">     868</span>              :         {</span>
+<span id="L869"><span class="lineNum">     869</span> <span class="tlaGNC">          15 :                 tmp = SysCacheGetAttr(PROCOID, tuple, Anum_pg_proc_prosrc, &amp;isnull);</span></span>
+<span id="L870"><span class="lineNum">     870</span> <span class="tlaGNC">          15 :                 if (isnull)</span></span>
+<span id="L871"><span class="lineNum">     871</span> <span class="tlaUNC tlaBgUNC">           0 :                         elog(ERROR, &quot;null prosrc&quot;);</span></span>
+<span id="L872"><span class="lineNum">     872</span>              : </span>
+<span id="L873"><span class="lineNum">     873</span> <span class="tlaGNC tlaBgGNC">          15 :                 prosrc = TextDatumGetCString(tmp);</span></span>
+<span id="L874"><span class="lineNum">     874</span>              : </span>
+<span id="L875"><span class="lineNum">     875</span>              :                 /*</span>
+<span id="L876"><span class="lineNum">     876</span>              :                  * Setup error traceback support for ereport().</span>
+<span id="L877"><span class="lineNum">     877</span>              :                  */</span>
+<span id="L878"><span class="lineNum">     878</span> <span class="tlaGNC">          15 :                 callback_arg.proname = NameStr(proc-&gt;proname);</span></span>
+<span id="L879"><span class="lineNum">     879</span> <span class="tlaGNC">          15 :                 callback_arg.prosrc = prosrc;</span></span>
+<span id="L880"><span class="lineNum">     880</span>              : </span>
+<span id="L881"><span class="lineNum">     881</span> <span class="tlaGNC">          15 :                 sqlerrcontext.callback = sql_function_parse_error_callback;</span></span>
+<span id="L882"><span class="lineNum">     882</span> <span class="tlaGNC">          15 :                 sqlerrcontext.arg = (void *) &amp;callback_arg;</span></span>
+<span id="L883"><span class="lineNum">     883</span> <span class="tlaGNC">          15 :                 sqlerrcontext.previous = error_context_stack;</span></span>
+<span id="L884"><span class="lineNum">     884</span> <span class="tlaGNC">          15 :                 error_context_stack = &amp;sqlerrcontext;</span></span>
+<span id="L885"><span class="lineNum">     885</span>              : </span>
+<span id="L886"><span class="lineNum">     886</span>              :                 /*</span>
+<span id="L887"><span class="lineNum">     887</span>              :                  * We can't do full prechecking of the function definition if there</span>
+<span id="L888"><span class="lineNum">     888</span>              :                  * are any polymorphic input types, because actual datatypes of</span>
+<span id="L889"><span class="lineNum">     889</span>              :                  * expression results will be unresolvable.  The check will be done at</span>
+<span id="L890"><span class="lineNum">     890</span>              :                  * runtime instead.</span>
+<span id="L891"><span class="lineNum">     891</span>              :                  *</span>
+<span id="L892"><span class="lineNum">     892</span>              :                  * We can run the text through the raw parser though; this will at</span>
+<span id="L893"><span class="lineNum">     893</span>              :                  * least catch silly syntactic errors.</span>
+<span id="L894"><span class="lineNum">     894</span>              :                  */</span>
+<span id="L895"><span class="lineNum">     895</span> <span class="tlaGNC">          15 :                 raw_parsetree_list = pg_parse_query(prosrc);</span></span>
+<span id="L896"><span class="lineNum">     896</span>              : </span>
+<span id="L897"><span class="lineNum">     897</span> <span class="tlaGNC">          14 :                 if (!haspolyarg)</span></span>
+<span id="L898"><span class="lineNum">     898</span>              :                 {</span>
+<span id="L899"><span class="lineNum">     899</span>              :                         /*</span>
+<span id="L900"><span class="lineNum">     900</span>              :                          * OK to do full precheck: analyze and rewrite the queries, then</span>
+<span id="L901"><span class="lineNum">     901</span>              :                          * verify the result type.</span>
+<span id="L902"><span class="lineNum">     902</span>              :                          */</span>
+<span id="L903"><span class="lineNum">     903</span>              :                         SQLFunctionParseInfoPtr pinfo;</span>
+<span id="L904"><span class="lineNum">     904</span>              :                         Oid                     rettype;</span>
+<span id="L905"><span class="lineNum">     905</span>              :                         TupleDesc       rettupdesc;</span>
+<span id="L906"><span class="lineNum">     906</span>              : </span>
+<span id="L907"><span class="lineNum">     907</span>              :                         /* But first, set up parameter information */</span>
+<span id="L908"><span class="lineNum">     908</span> <span class="tlaGNC">          13 :                         pinfo = prepare_sql_fn_parse_info(tuple, NULL, InvalidOid);</span></span>
+<span id="L909"><span class="lineNum">     909</span>              : </span>
+<span id="L910"><span class="lineNum">     910</span> <span class="tlaGNC">          13 :                         querytree_list = NIL;</span></span>
+<span id="L911"><span class="lineNum">     911</span> <span class="tlaGNC">          26 :                         foreach(lc, raw_parsetree_list)</span></span>
+<span id="L912"><span class="lineNum">     912</span>              :                         {</span>
+<span id="L913"><span class="lineNum">     913</span> <span class="tlaGNC">          13 :                                 RawStmt    *parsetree = lfirst_node(RawStmt, lc);</span></span>
+<span id="L914"><span class="lineNum">     914</span>              :                                 List       *querytree_sublist;</span>
+<span id="L915"><span class="lineNum">     915</span>              : </span>
+<span id="L916"><span class="lineNum">     916</span> <span class="tlaGNC">          13 :                                 querytree_sublist = pg_analyze_and_rewrite_params(parsetree,</span></span>
+<span id="L917"><span class="lineNum">     917</span>              :                                                                                                                                   prosrc,</span>
+<span id="L918"><span class="lineNum">     918</span>              :                                                                                                                                   (ParserSetupHook) sql_fn_parser_setup,</span>
+<span id="L919"><span class="lineNum">     919</span>              :                                                                                                                                   pinfo,</span>
+<span id="L920"><span class="lineNum">     920</span>              :                                                                                                                                   NULL);</span>
+<span id="L921"><span class="lineNum">     921</span> <span class="tlaGNC">          13 :                                 querytree_list = lappend(querytree_list,</span></span>
+<span id="L922"><span class="lineNum">     922</span>              :                                                                                  querytree_sublist);</span>
+<span id="L923"><span class="lineNum">     923</span>              :                         }</span>
+<span id="L924"><span class="lineNum">     924</span>              : </span>
+<span id="L925"><span class="lineNum">     925</span> <span class="tlaGNC">          13 :                         check_sql_fn_statements(querytree_list);</span></span>
+<span id="L926"><span class="lineNum">     926</span>              : </span>
+<span id="L927"><span class="lineNum">     927</span> <span class="tlaGNC">          13 :                         (void) get_func_result_type(funcoid, &amp;rettype, &amp;rettupdesc);</span></span>
+<span id="L928"><span class="lineNum">     928</span>              : </span>
+<span id="L929"><span class="lineNum">     929</span> <span class="tlaGNC">          13 :                         (void) check_sql_fn_retval_ext(querytree_list,</span></span>
+<span id="L930"><span class="lineNum">     930</span>              :                                                                                    rettype, rettupdesc,</span>
+<span id="L931"><span class="lineNum">     931</span> <span class="tlaGNC">          13 :                                                                                    proc-&gt;prokind,</span></span>
+<span id="L932"><span class="lineNum">     932</span>              :                                                                                    false, NULL);</span>
+<span id="L933"><span class="lineNum">     933</span>              :                 }</span>
+<span id="L934"><span class="lineNum">     934</span>              : </span>
+<span id="L935"><span class="lineNum">     935</span> <span class="tlaGNC">          14 :                 error_context_stack = sqlerrcontext.previous;</span></span>
+<span id="L936"><span class="lineNum">     936</span>              :         }</span>
+<span id="L937"><span class="lineNum">     937</span>              : </span>
+<span id="L938"><span class="lineNum">     938</span> <span class="tlaGNC">          14 :         ReleaseSysCache(tuple);</span></span>
+<span id="L939"><span class="lineNum">     939</span>              : </span>
+<span id="L940"><span class="lineNum">     940</span> <span class="tlaGNC">          14 :         PG_RETURN_VOID();</span></span>
+<span id="L941"><span class="lineNum">     941</span>              : }</span>
+<span id="L942"><span class="lineNum">     942</span>              : </span>
+<span id="L943"><span class="lineNum">     943</span>              : /*</span>
+<span id="L944"><span class="lineNum">     944</span>              :  * Error context callback for handling errors in SQL function definitions</span>
+<span id="L945"><span class="lineNum">     945</span>              :  */</span>
+<span id="L946"><span class="lineNum">     946</span>              : static void</span>
+<span id="L947"><span class="lineNum">     947</span> <span class="tlaGNC">           1 : sql_function_parse_error_callback(void *arg)</span></span>
+<span id="L948"><span class="lineNum">     948</span>              : {</span>
+<span id="L949"><span class="lineNum">     949</span> <span class="tlaGNC">           1 :         parse_error_callback_arg *callback_arg = (parse_error_callback_arg *) arg;</span></span>
+<span id="L950"><span class="lineNum">     950</span>              : </span>
+<span id="L951"><span class="lineNum">     951</span>              :         /* See if it's a syntax error; if so, transpose to CREATE FUNCTION */</span>
+<span id="L952"><span class="lineNum">     952</span> <span class="tlaGNC">           1 :         if (!function_parse_error_transpose(callback_arg-&gt;prosrc))</span></span>
+<span id="L953"><span class="lineNum">     953</span>              :         {</span>
+<span id="L954"><span class="lineNum">     954</span>              :                 /* If it's not a syntax error, push info onto context stack */</span>
+<span id="L955"><span class="lineNum">     955</span> <span class="tlaUNC tlaBgUNC">           0 :                 errcontext(&quot;SQL function \&quot;%s\&quot;&quot;, callback_arg-&gt;proname);</span></span>
+<span id="L956"><span class="lineNum">     956</span>              :         }</span>
+<span id="L957"><span class="lineNum">     957</span> <span class="tlaGNC tlaBgGNC">           1 : }</span></span>
+<span id="L958"><span class="lineNum">     958</span>              : </span>
+<span id="L959"><span class="lineNum">     959</span>              : /*</span>
+<span id="L960"><span class="lineNum">     960</span>              :  * Adjust a syntax error occurring inside the function body of a CREATE</span>
+<span id="L961"><span class="lineNum">     961</span>              :  * FUNCTION or DO command.  This can be used by any function validator or</span>
+<span id="L962"><span class="lineNum">     962</span>              :  * anonymous-block handler, not only for SQL-language functions.</span>
+<span id="L963"><span class="lineNum">     963</span>              :  * It is assumed that the syntax error position is initially relative to the</span>
+<span id="L964"><span class="lineNum">     964</span>              :  * function body string (as passed in).  If possible, we adjust the position</span>
+<span id="L965"><span class="lineNum">     965</span>              :  * to reference the original command text; if we can't manage that, we set</span>
+<span id="L966"><span class="lineNum">     966</span>              :  * up an &quot;internal query&quot; syntax error instead.</span>
+<span id="L967"><span class="lineNum">     967</span>              :  *</span>
+<span id="L968"><span class="lineNum">     968</span>              :  * Returns true if a syntax error was processed, false if not.</span>
+<span id="L969"><span class="lineNum">     969</span>              :  */</span>
+<span id="L970"><span class="lineNum">     970</span>              : bool</span>
+<span id="L971"><span class="lineNum">     971</span> <span class="tlaGNC">           3 : function_parse_error_transpose(const char *prosrc)</span></span>
+<span id="L972"><span class="lineNum">     972</span>              : {</span>
+<span id="L973"><span class="lineNum">     973</span>              :         int                     origerrposition;</span>
+<span id="L974"><span class="lineNum">     974</span>              :         int                     newerrposition;</span>
+<span id="L975"><span class="lineNum">     975</span>              : </span>
+<span id="L976"><span class="lineNum">     976</span>              :         /*</span>
+<span id="L977"><span class="lineNum">     977</span>              :          * Nothing to do unless we are dealing with a syntax error that has a</span>
+<span id="L978"><span class="lineNum">     978</span>              :          * cursor position.</span>
+<span id="L979"><span class="lineNum">     979</span>              :          *</span>
+<span id="L980"><span class="lineNum">     980</span>              :          * Some PLs may prefer to report the error position as an internal error</span>
+<span id="L981"><span class="lineNum">     981</span>              :          * to begin with, so check that too.</span>
+<span id="L982"><span class="lineNum">     982</span>              :          */</span>
+<span id="L983"><span class="lineNum">     983</span> <span class="tlaGNC">           3 :         origerrposition = geterrposition();</span></span>
+<span id="L984"><span class="lineNum">     984</span> <span class="tlaGNC">           3 :         if (origerrposition &lt;= 0)</span></span>
+<span id="L985"><span class="lineNum">     985</span>              :         {</span>
+<span id="L986"><span class="lineNum">     986</span> <span class="tlaGNC">           2 :                 origerrposition = getinternalerrposition();</span></span>
+<span id="L987"><span class="lineNum">     987</span> <span class="tlaGNC">           2 :                 if (origerrposition &lt;= 0)</span></span>
+<span id="L988"><span class="lineNum">     988</span> <span class="tlaUNC tlaBgUNC">           0 :                         return false;</span></span>
+<span id="L989"><span class="lineNum">     989</span>              :         }</span>
+<span id="L990"><span class="lineNum">     990</span>              : </span>
+<span id="L991"><span class="lineNum">     991</span>              :         /* We can get the original query text from the active portal (hack...) */</span>
+<span id="L992"><span class="lineNum">     992</span> <span class="tlaGNC tlaBgGNC">           3 :         if (ActivePortal &amp;&amp; ActivePortal-&gt;status == PORTAL_ACTIVE)</span></span>
+<span id="L993"><span class="lineNum">     993</span> <span class="tlaGNC">           3 :         {</span></span>
+<span id="L994"><span class="lineNum">     994</span> <span class="tlaGNC">           3 :                 const char *queryText = ActivePortal-&gt;sourceText;</span></span>
+<span id="L995"><span class="lineNum">     995</span>              : </span>
+<span id="L996"><span class="lineNum">     996</span>              :                 /* Try to locate the prosrc in the original text */</span>
+<span id="L997"><span class="lineNum">     997</span> <span class="tlaGNC">           3 :                 newerrposition = match_prosrc_to_query(prosrc, queryText,</span></span>
+<span id="L998"><span class="lineNum">     998</span>              :                                                                                            origerrposition);</span>
+<span id="L999"><span class="lineNum">     999</span>              :         }</span>
+<span id="L1000"><span class="lineNum">    1000</span>              :         else</span>
+<span id="L1001"><span class="lineNum">    1001</span>              :         {</span>
+<span id="L1002"><span class="lineNum">    1002</span>              :                 /*</span>
+<span id="L1003"><span class="lineNum">    1003</span>              :                  * Quietly give up if no ActivePortal.  This is an unusual situation</span>
+<span id="L1004"><span class="lineNum">    1004</span>              :                  * but it can happen in, e.g., logical replication workers.</span>
+<span id="L1005"><span class="lineNum">    1005</span>              :                  */</span>
+<span id="L1006"><span class="lineNum">    1006</span> <span class="tlaUNC tlaBgUNC">           0 :                 newerrposition = -1;</span></span>
+<span id="L1007"><span class="lineNum">    1007</span>              :         }</span>
+<span id="L1008"><span class="lineNum">    1008</span>              : </span>
+<span id="L1009"><span class="lineNum">    1009</span> <span class="tlaGNC tlaBgGNC">           3 :         if (newerrposition &gt; 0)</span></span>
+<span id="L1010"><span class="lineNum">    1010</span>              :         {</span>
+<span id="L1011"><span class="lineNum">    1011</span>              :                 /* Successful, so fix error position to reference original query */</span>
+<span id="L1012"><span class="lineNum">    1012</span> <span class="tlaGNC">           3 :                 errposition(newerrposition);</span></span>
+<span id="L1013"><span class="lineNum">    1013</span>              :                 /* Get rid of any report of the error as an &quot;internal query&quot; */</span>
+<span id="L1014"><span class="lineNum">    1014</span> <span class="tlaGNC">           3 :                 internalerrposition(0);</span></span>
+<span id="L1015"><span class="lineNum">    1015</span> <span class="tlaGNC">           3 :                 internalerrquery(NULL);</span></span>
+<span id="L1016"><span class="lineNum">    1016</span>              :         }</span>
+<span id="L1017"><span class="lineNum">    1017</span>              :         else</span>
+<span id="L1018"><span class="lineNum">    1018</span>              :         {</span>
+<span id="L1019"><span class="lineNum">    1019</span>              :                 /*</span>
+<span id="L1020"><span class="lineNum">    1020</span>              :                  * If unsuccessful, convert the position to an internal position</span>
+<span id="L1021"><span class="lineNum">    1021</span>              :                  * marker and give the function text as the internal query.</span>
+<span id="L1022"><span class="lineNum">    1022</span>              :                  */</span>
+<span id="L1023"><span class="lineNum">    1023</span> <span class="tlaUNC tlaBgUNC">           0 :                 errposition(0);</span></span>
+<span id="L1024"><span class="lineNum">    1024</span> <span class="tlaUNC">           0 :                 internalerrposition(origerrposition);</span></span>
+<span id="L1025"><span class="lineNum">    1025</span> <span class="tlaUNC">           0 :                 internalerrquery(prosrc);</span></span>
+<span id="L1026"><span class="lineNum">    1026</span>              :         }</span>
+<span id="L1027"><span class="lineNum">    1027</span>              : </span>
+<span id="L1028"><span class="lineNum">    1028</span> <span class="tlaGNC tlaBgGNC">           3 :         return true;</span></span>
+<span id="L1029"><span class="lineNum">    1029</span>              : }</span>
+<span id="L1030"><span class="lineNum">    1030</span>              : </span>
+<span id="L1031"><span class="lineNum">    1031</span>              : /*</span>
+<span id="L1032"><span class="lineNum">    1032</span>              :  * Try to locate the string literal containing the function body in the</span>
+<span id="L1033"><span class="lineNum">    1033</span>              :  * given text of the CREATE FUNCTION or DO command.  If successful, return</span>
+<span id="L1034"><span class="lineNum">    1034</span>              :  * the character (not byte) index within the command corresponding to the</span>
+<span id="L1035"><span class="lineNum">    1035</span>              :  * given character index within the literal.  If not successful, return 0.</span>
+<span id="L1036"><span class="lineNum">    1036</span>              :  */</span>
+<span id="L1037"><span class="lineNum">    1037</span>              : static int</span>
+<span id="L1038"><span class="lineNum">    1038</span> <span class="tlaGNC">           3 : match_prosrc_to_query(const char *prosrc, const char *queryText,</span></span>
+<span id="L1039"><span class="lineNum">    1039</span>              :                                           int cursorpos)</span>
+<span id="L1040"><span class="lineNum">    1040</span>              : {</span>
+<span id="L1041"><span class="lineNum">    1041</span>              :         /*</span>
+<span id="L1042"><span class="lineNum">    1042</span>              :          * Rather than fully parsing the original command, we just scan the</span>
+<span id="L1043"><span class="lineNum">    1043</span>              :          * command looking for $prosrc$ or 'prosrc'.  This could be fooled (though</span>
+<span id="L1044"><span class="lineNum">    1044</span>              :          * not in any very probable scenarios), so fail if we find more than one</span>
+<span id="L1045"><span class="lineNum">    1045</span>              :          * match.</span>
+<span id="L1046"><span class="lineNum">    1046</span>              :          */</span>
+<span id="L1047"><span class="lineNum">    1047</span> <span class="tlaGNC">           3 :         int                     prosrclen = strlen(prosrc);</span></span>
+<span id="L1048"><span class="lineNum">    1048</span> <span class="tlaGNC">           3 :         int                     querylen = strlen(queryText);</span></span>
+<span id="L1049"><span class="lineNum">    1049</span> <span class="tlaGNC">           3 :         int                     matchpos = 0;</span></span>
+<span id="L1050"><span class="lineNum">    1050</span>              :         int                     curpos;</span>
+<span id="L1051"><span class="lineNum">    1051</span>              :         int                     newcursorpos;</span>
+<span id="L1052"><span class="lineNum">    1052</span>              : </span>
+<span id="L1053"><span class="lineNum">    1053</span> <span class="tlaGNC">         157 :         for (curpos = 0; curpos &lt; querylen - prosrclen; curpos++)</span></span>
+<span id="L1054"><span class="lineNum">    1054</span>              :         {</span>
+<span id="L1055"><span class="lineNum">    1055</span> <span class="tlaGNC">         154 :                 if (queryText[curpos] == '$' &amp;&amp;</span></span>
+<span id="L1056"><span class="lineNum">    1056</span> <span class="tlaGNC">           6 :                         strncmp(prosrc, &amp;queryText[curpos + 1], prosrclen) == 0 &amp;&amp;</span></span>
+<span id="L1057"><span class="lineNum">    1057</span> <span class="tlaGNC">           3 :                         queryText[curpos + 1 + prosrclen] == '$')</span></span>
+<span id="L1058"><span class="lineNum">    1058</span>              :                 {</span>
+<span id="L1059"><span class="lineNum">    1059</span>              :                         /*</span>
+<span id="L1060"><span class="lineNum">    1060</span>              :                          * Found a $foo$ match.  Since there are no embedded quoting</span>
+<span id="L1061"><span class="lineNum">    1061</span>              :                          * characters in a dollar-quoted literal, we don't have to do any</span>
+<span id="L1062"><span class="lineNum">    1062</span>              :                          * fancy arithmetic; just offset by the starting position.</span>
+<span id="L1063"><span class="lineNum">    1063</span>              :                          */</span>
+<span id="L1064"><span class="lineNum">    1064</span> <span class="tlaGNC">           3 :                         if (matchpos)</span></span>
+<span id="L1065"><span class="lineNum">    1065</span> <span class="tlaUNC tlaBgUNC">           0 :                                 return 0;               /* multiple matches, fail */</span></span>
+<span id="L1066"><span class="lineNum">    1066</span> <span class="tlaGNC tlaBgGNC">           3 :                         matchpos = pg_mbstrlen_with_len(queryText, curpos + 1)</span></span>
+<span id="L1067"><span class="lineNum">    1067</span>              :                                 + cursorpos;</span>
+<span id="L1068"><span class="lineNum">    1068</span>              :                 }</span>
+<span id="L1069"><span class="lineNum">    1069</span> <span class="tlaGNC">         151 :                 else if (queryText[curpos] == '\'' &amp;&amp;</span></span>
+<span id="L1070"><span class="lineNum">    1070</span> <span class="tlaUNC tlaBgUNC">           0 :                                  match_prosrc_to_literal(prosrc, &amp;queryText[curpos + 1],</span></span>
+<span id="L1071"><span class="lineNum">    1071</span>              :                                                                                  cursorpos, &amp;newcursorpos))</span>
+<span id="L1072"><span class="lineNum">    1072</span>              :                 {</span>
+<span id="L1073"><span class="lineNum">    1073</span>              :                         /*</span>
+<span id="L1074"><span class="lineNum">    1074</span>              :                          * Found a 'foo' match.  match_prosrc_to_literal() has adjusted</span>
+<span id="L1075"><span class="lineNum">    1075</span>              :                          * for any quotes or backslashes embedded in the literal.</span>
+<span id="L1076"><span class="lineNum">    1076</span>              :                          */</span>
+<span id="L1077"><span class="lineNum">    1077</span> <span class="tlaUNC">           0 :                         if (matchpos)</span></span>
+<span id="L1078"><span class="lineNum">    1078</span> <span class="tlaUNC">           0 :                                 return 0;               /* multiple matches, fail */</span></span>
+<span id="L1079"><span class="lineNum">    1079</span> <span class="tlaUNC">           0 :                         matchpos = pg_mbstrlen_with_len(queryText, curpos + 1)</span></span>
+<span id="L1080"><span class="lineNum">    1080</span> <span class="tlaUNC">           0 :                                 + newcursorpos;</span></span>
+<span id="L1081"><span class="lineNum">    1081</span>              :                 }</span>
+<span id="L1082"><span class="lineNum">    1082</span>              :         }</span>
+<span id="L1083"><span class="lineNum">    1083</span>              : </span>
+<span id="L1084"><span class="lineNum">    1084</span> <span class="tlaGNC tlaBgGNC">           3 :         return matchpos;</span></span>
+<span id="L1085"><span class="lineNum">    1085</span>              : }</span>
+<span id="L1086"><span class="lineNum">    1086</span>              : </span>
+<span id="L1087"><span class="lineNum">    1087</span>              : /*</span>
+<span id="L1088"><span class="lineNum">    1088</span>              :  * Try to match the given source text to a single-quoted literal.</span>
+<span id="L1089"><span class="lineNum">    1089</span>              :  * If successful, adjust newcursorpos to correspond to the character</span>
+<span id="L1090"><span class="lineNum">    1090</span>              :  * (not byte) index corresponding to cursorpos in the source text.</span>
+<span id="L1091"><span class="lineNum">    1091</span>              :  *</span>
+<span id="L1092"><span class="lineNum">    1092</span>              :  * At entry, literal points just past a ' character.  We must check for the</span>
+<span id="L1093"><span class="lineNum">    1093</span>              :  * trailing quote.</span>
+<span id="L1094"><span class="lineNum">    1094</span>              :  */</span>
+<span id="L1095"><span class="lineNum">    1095</span>              : static bool</span>
+<span id="L1096"><span class="lineNum">    1096</span> <span class="tlaUNC tlaBgUNC">           0 : match_prosrc_to_literal(const char *prosrc, const char *literal,</span></span>
+<span id="L1097"><span class="lineNum">    1097</span>              :                                                 int cursorpos, int *newcursorpos)</span>
+<span id="L1098"><span class="lineNum">    1098</span>              : {</span>
+<span id="L1099"><span class="lineNum">    1099</span> <span class="tlaUNC">           0 :         int                     newcp = cursorpos;</span></span>
+<span id="L1100"><span class="lineNum">    1100</span>              :         int                     chlen;</span>
+<span id="L1101"><span class="lineNum">    1101</span>              : </span>
+<span id="L1102"><span class="lineNum">    1102</span>              :         /*</span>
+<span id="L1103"><span class="lineNum">    1103</span>              :          * This implementation handles backslashes and doubled quotes in the</span>
+<span id="L1104"><span class="lineNum">    1104</span>              :          * string literal.  It does not handle the SQL syntax for literals</span>
+<span id="L1105"><span class="lineNum">    1105</span>              :          * continued across line boundaries.</span>
+<span id="L1106"><span class="lineNum">    1106</span>              :          *</span>
+<span id="L1107"><span class="lineNum">    1107</span>              :          * We do the comparison a character at a time, not a byte at a time, so</span>
+<span id="L1108"><span class="lineNum">    1108</span>              :          * that we can do the correct cursorpos math.</span>
+<span id="L1109"><span class="lineNum">    1109</span>              :          */</span>
+<span id="L1110"><span class="lineNum">    1110</span> <span class="tlaUNC">           0 :         while (*prosrc)</span></span>
+<span id="L1111"><span class="lineNum">    1111</span>              :         {</span>
+<span id="L1112"><span class="lineNum">    1112</span> <span class="tlaUNC">           0 :                 cursorpos--;                    /* characters left before cursor */</span></span>
+<span id="L1113"><span class="lineNum">    1113</span>              : </span>
+<span id="L1114"><span class="lineNum">    1114</span>              :                 /*</span>
+<span id="L1115"><span class="lineNum">    1115</span>              :                  * Check for backslashes and doubled quotes in the literal; adjust</span>
+<span id="L1116"><span class="lineNum">    1116</span>              :                  * newcp when one is found before the cursor.</span>
+<span id="L1117"><span class="lineNum">    1117</span>              :                  */</span>
+<span id="L1118"><span class="lineNum">    1118</span> <span class="tlaUNC">           0 :                 if (*literal == '\\')</span></span>
+<span id="L1119"><span class="lineNum">    1119</span>              :                 {</span>
+<span id="L1120"><span class="lineNum">    1120</span> <span class="tlaUNC">           0 :                         literal++;</span></span>
+<span id="L1121"><span class="lineNum">    1121</span> <span class="tlaUNC">           0 :                         if (cursorpos &gt; 0)</span></span>
+<span id="L1122"><span class="lineNum">    1122</span> <span class="tlaUNC">           0 :                                 newcp++;</span></span>
+<span id="L1123"><span class="lineNum">    1123</span>              :                 }</span>
+<span id="L1124"><span class="lineNum">    1124</span> <span class="tlaUNC">           0 :                 else if (*literal == '\'')</span></span>
+<span id="L1125"><span class="lineNum">    1125</span>              :                 {</span>
+<span id="L1126"><span class="lineNum">    1126</span> <span class="tlaUNC">           0 :                         if (literal[1] != '\'')</span></span>
+<span id="L1127"><span class="lineNum">    1127</span> <span class="tlaUNC">           0 :                                 goto fail;</span></span>
+<span id="L1128"><span class="lineNum">    1128</span> <span class="tlaUNC">           0 :                         literal++;</span></span>
+<span id="L1129"><span class="lineNum">    1129</span> <span class="tlaUNC">           0 :                         if (cursorpos &gt; 0)</span></span>
+<span id="L1130"><span class="lineNum">    1130</span> <span class="tlaUNC">           0 :                                 newcp++;</span></span>
+<span id="L1131"><span class="lineNum">    1131</span>              :                 }</span>
+<span id="L1132"><span class="lineNum">    1132</span> <span class="tlaUNC">           0 :                 chlen = pg_mblen(prosrc);</span></span>
+<span id="L1133"><span class="lineNum">    1133</span> <span class="tlaUNC">           0 :                 if (strncmp(prosrc, literal, chlen) != 0)</span></span>
+<span id="L1134"><span class="lineNum">    1134</span> <span class="tlaUNC">           0 :                         goto fail;</span></span>
+<span id="L1135"><span class="lineNum">    1135</span> <span class="tlaUNC">           0 :                 prosrc += chlen;</span></span>
+<span id="L1136"><span class="lineNum">    1136</span> <span class="tlaUNC">           0 :                 literal += chlen;</span></span>
+<span id="L1137"><span class="lineNum">    1137</span>              :         }</span>
+<span id="L1138"><span class="lineNum">    1138</span>              : </span>
+<span id="L1139"><span class="lineNum">    1139</span> <span class="tlaUNC">           0 :         if (*literal == '\'' &amp;&amp; literal[1] != '\'')</span></span>
+<span id="L1140"><span class="lineNum">    1140</span>              :         {</span>
+<span id="L1141"><span class="lineNum">    1141</span>              :                 /* success */</span>
+<span id="L1142"><span class="lineNum">    1142</span> <span class="tlaUNC">           0 :                 *newcursorpos = newcp;</span></span>
+<span id="L1143"><span class="lineNum">    1143</span> <span class="tlaUNC">           0 :                 return true;</span></span>
+<span id="L1144"><span class="lineNum">    1144</span>              :         }</span>
+<span id="L1145"><span class="lineNum">    1145</span>              : </span>
+<span id="L1146"><span class="lineNum">    1146</span> <span class="tlaUNC">           0 : fail:</span></span>
+<span id="L1147"><span class="lineNum">    1147</span>              :         /* Must set *newcursorpos to suppress compiler warning */</span>
+<span id="L1148"><span class="lineNum">    1148</span> <span class="tlaUNC">           0 :         *newcursorpos = newcp;</span></span>
+<span id="L1149"><span class="lineNum">    1149</span> <span class="tlaUNC">           0 :         return false;</span></span>
+<span id="L1150"><span class="lineNum">    1150</span>              : }</span>
+<span id="L1151"><span class="lineNum">    1151</span>              : </span>
+<span id="L1152"><span class="lineNum">    1152</span>              : List *</span>
+<span id="L1153"><span class="lineNum">    1153</span> <span class="tlaUNC">           0 : oid_array_to_list(Datum datum)</span></span>
+<span id="L1154"><span class="lineNum">    1154</span>              : {</span>
+<span id="L1155"><span class="lineNum">    1155</span> <span class="tlaUNC">           0 :         ArrayType  *array = DatumGetArrayTypeP(datum);</span></span>
+<span id="L1156"><span class="lineNum">    1156</span>              :         Datum      *values;</span>
+<span id="L1157"><span class="lineNum">    1157</span>              :         int                     nelems;</span>
+<span id="L1158"><span class="lineNum">    1158</span>              :         int                     i;</span>
+<span id="L1159"><span class="lineNum">    1159</span> <span class="tlaUNC">           0 :         List       *result = NIL;</span></span>
+<span id="L1160"><span class="lineNum">    1160</span>              : </span>
+<span id="L1161"><span class="lineNum">    1161</span> <span class="tlaUNC">           0 :         deconstruct_array(array,</span></span>
+<span id="L1162"><span class="lineNum">    1162</span>              :                                           OIDOID,</span>
+<span id="L1163"><span class="lineNum">    1163</span>              :                                           sizeof(Oid), true, TYPALIGN_INT,</span>
+<span id="L1164"><span class="lineNum">    1164</span>              :                                           &amp;values, NULL, &amp;nelems);</span>
+<span id="L1165"><span class="lineNum">    1165</span> <span class="tlaUNC">           0 :         for (i = 0; i &lt; nelems; i++)</span></span>
+<span id="L1166"><span class="lineNum">    1166</span> <span class="tlaUNC">           0 :                 result = lappend_oid(result, values[i]);</span></span>
+<span id="L1167"><span class="lineNum">    1167</span> <span class="tlaUNC">           0 :         return result;</span></span>
+<span id="L1168"><span class="lineNum">    1168</span>              : }</span>
+        </pre>
+              </td>
+            </tr>
+          </table>
+          <br>
+
+          <table width="100%" border=0 cellspacing=0 cellpadding=0>
+            <tr><td class="ruler"><img src="../../glass.png" width=3 height=3 alt=""></td></tr>
+            <tr><td class="versionInfo">Generated by: <a href="https://github.com//linux-test-project/lcov" target="_parent">LCOV version 2.0-1</a></td></tr>
+          </table>
+          <br>
+
+</body>
+</html>

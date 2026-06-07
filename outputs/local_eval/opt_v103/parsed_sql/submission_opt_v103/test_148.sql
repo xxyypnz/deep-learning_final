@@ -1,0 +1,74 @@
+-- ===== Commit 148 =====
+-- Source:  - 
+
+-- --- Test Case 1 ---
+DROP TABLE IF EXISTS test_subxact CASCADE;
+CREATE TABLE test_subxact (id INT);
+BEGIN;
+INSERT INTO test_subxact VALUES (1);
+SAVEPOINT sp1;
+INSERT INTO test_subxact VALUES (2);
+SAVEPOINT sp2;
+INSERT INTO test_subxact VALUES (3);
+RELEASE SAVEPOINT sp2;
+RELEASE SAVEPOINT sp1;
+COMMIT;
+SELECT count(*) FROM test_subxact;
+DROP TABLE IF EXISTS test_subxact CASCADE;
+
+-- --- Test Case 2 ---
+DROP TABLE IF EXISTS test_no_subxact CASCADE;
+CREATE TABLE test_no_subxact (id INT);
+BEGIN;
+INSERT INTO test_no_subxact VALUES (1);
+COMMIT;
+SELECT count(*) FROM test_no_subxact;
+DROP TABLE IF EXISTS test_no_subxact CASCADE;
+
+-- --- Test Case 3 ---
+DROP TABLE IF EXISTS test_many_subxact CASCADE;
+CREATE TABLE test_many_subxact (id INT);
+BEGIN;
+INSERT INTO test_many_subxact VALUES (1);
+SAVEPOINT sp1;
+INSERT INTO test_many_subxact VALUES (2);
+SAVEPOINT sp2;
+INSERT INTO test_many_subxact VALUES (3);
+SAVEPOINT sp3;
+INSERT INTO test_many_subxact VALUES (4);
+RELEASE SAVEPOINT sp3;
+RELEASE SAVEPOINT sp2;
+RELEASE SAVEPOINT sp1;
+COMMIT;
+SELECT count(*) FROM test_many_subxact;
+DROP TABLE IF EXISTS test_many_subxact CASCADE;
+
+-- --- Test Case 4 ---
+DROP TABLE IF EXISTS many_subxact148 CASCADE;
+CREATE TABLE many_subxact148 (id int);
+BEGIN;
+INSERT INTO many_subxact148 VALUES (0);
+SAVEPOINT s001; INSERT INTO many_subxact148 VALUES (1);
+SAVEPOINT s002; INSERT INTO many_subxact148 VALUES (2);
+SAVEPOINT s003; INSERT INTO many_subxact148 VALUES (3);
+SAVEPOINT s004; INSERT INTO many_subxact148 VALUES (4);
+SAVEPOINT s005; INSERT INTO many_subxact148 VALUES (5);
+SAVEPOINT s006; INSERT INTO many_subxact148 VALUES (6);
+SAVEPOINT s007; INSERT INTO many_subxact148 VALUES (7);
+SAVEPOINT s008; INSERT INTO many_subxact148 VALUES (8);
+SAVEPOINT s009; INSERT INTO many_subxact148 VALUES (9);
+SAVEPOINT s010; INSERT INTO many_subxact148 VALUES (10);
+SAVEPOINT s011; INSERT INTO many_subxact148 VALUES (11);
+SAVEPOINT s012; INSERT INTO many_subxact148 VALUES (12);
+SAVEPOINT s013; INSERT INTO many_subxact148 VALUES (13);
+SAVEPOINT s014; INSERT INTO many_subxact148 VALUES (14);
+SAVEPOINT s015; INSERT INTO many_subxact148 VALUES (15);
+SAVEPOINT s016; INSERT INTO many_subxact148 VALUES (16);
+SAVEPOINT s017; INSERT INTO many_subxact148 VALUES (17);
+SAVEPOINT s018; INSERT INTO many_subxact148 VALUES (18);
+SAVEPOINT s019; INSERT INTO many_subxact148 VALUES (19);
+SAVEPOINT s020; INSERT INTO many_subxact148 VALUES (20);
+COMMIT;
+SELECT count(*) FROM many_subxact148;
+DROP TABLE IF EXISTS many_subxact148 CASCADE;
+

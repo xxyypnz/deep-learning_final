@@ -1,0 +1,1302 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - coverage_filtered.info - backend/utils/misc/guc-file.l</title>
+  <link rel="stylesheet" type="text/css" href="../../../gcov.css">
+</head>
+
+<body>
+
+          <table width="100%" border=0 cellspacing=0 cellpadding=0>
+            <tr><td class="title">LCOV - code coverage report</td></tr>
+            <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+
+            <tr>
+              <td width="100%">
+                <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="10%" class="headerValue"><a href="../../../index.html">top level</a> - <a href="index.html">backend/utils/misc</a> - guc-file.l<span style="font-size: 80%;"> (source / <a href="guc-file.l.func-c.html">functions</a>)</span></td>
+            <td width="5%"></td>
+            <td width="5%"></td>
+            <td width="5%" class="headerCovTableHead">Coverage</td>
+            <td width="5%" class="headerCovTableHead" title="Covered + Uncovered code">Total</td>
+            <td width="5%" class="headerCovTableHead" title="Exercised code only">Hit</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">coverage_filtered.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntryLo">41.8&nbsp;%</td>
+            <td class="headerCovTableEntry">397</td>
+            <td class="headerCovTableEntry">166</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test Date:</td>
+            <td class="headerValue">2026-06-07 07:44:49</td>
+            <td></td>
+            <td class="headerItem">Functions:</td>
+            <td class="headerCovTableEntryLo">72.7&nbsp;%</td>
+            <td class="headerCovTableEntry">11</td>
+            <td class="headerCovTableEntry">8</td>
+          </tr>
+                  <tr><td><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+                </table>
+              </td>
+            </tr>
+
+            <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+          </table>
+
+          <table cellpadding=0 cellspacing=0 border=0>
+            <tr>
+              <td><br></td>
+            </tr>
+            <tr>
+              <td>
+<pre class="sourceHeading">            Line data    Source code</pre>
+<pre class="source">
+<span id="L1"><span class="lineNum">       1</span>              : /* -*-pgsql-c-*- */</span>
+<span id="L2"><span class="lineNum">       2</span>              : /*</span>
+<span id="L3"><span class="lineNum">       3</span>              :  * Scanner for the configuration file</span>
+<span id="L4"><span class="lineNum">       4</span>              :  *</span>
+<span id="L5"><span class="lineNum">       5</span>              :  * Copyright (c) 2000-2020, PostgreSQL Global Development Group</span>
+<span id="L6"><span class="lineNum">       6</span>              :  *</span>
+<span id="L7"><span class="lineNum">       7</span>              :  * src/backend/utils/misc/guc-file.l</span>
+<span id="L8"><span class="lineNum">       8</span>              :  */</span>
+<span id="L9"><span class="lineNum">       9</span>              : </span>
+<span id="L10"><span class="lineNum">      10</span>              : %{</span>
+<span id="L11"><span class="lineNum">      11</span>              : </span>
+<span id="L12"><span class="lineNum">      12</span>              : #include &quot;postgres.h&quot;</span>
+<span id="L13"><span class="lineNum">      13</span>              : </span>
+<span id="L14"><span class="lineNum">      14</span>              : #include &lt;ctype.h&gt;</span>
+<span id="L15"><span class="lineNum">      15</span>              : #include &lt;unistd.h&gt;</span>
+<span id="L16"><span class="lineNum">      16</span>              : </span>
+<span id="L17"><span class="lineNum">      17</span>              : #include &quot;mb/pg_wchar.h&quot;</span>
+<span id="L18"><span class="lineNum">      18</span>              : #include &quot;miscadmin.h&quot;</span>
+<span id="L19"><span class="lineNum">      19</span>              : #include &quot;storage/fd.h&quot;</span>
+<span id="L20"><span class="lineNum">      20</span>              : #include &quot;utils/guc.h&quot;</span>
+<span id="L21"><span class="lineNum">      21</span>              : </span>
+<span id="L22"><span class="lineNum">      22</span>              : </span>
+<span id="L23"><span class="lineNum">      23</span>              : /*</span>
+<span id="L24"><span class="lineNum">      24</span>              :  * flex emits a yy_fatal_error() function that it calls in response to</span>
+<span id="L25"><span class="lineNum">      25</span>              :  * critical errors like malloc failure, file I/O errors, and detection of</span>
+<span id="L26"><span class="lineNum">      26</span>              :  * internal inconsistency.  That function prints a message and calls exit().</span>
+<span id="L27"><span class="lineNum">      27</span>              :  * Mutate it to instead call our handler, which jumps out of the parser.</span>
+<span id="L28"><span class="lineNum">      28</span>              :  */</span>
+<span id="L29"><span class="lineNum">      29</span>              : #undef fprintf</span>
+<span id="L30"><span class="lineNum">      30</span>              : #define fprintf(file, fmt, msg) GUC_flex_fatal(msg)</span>
+<span id="L31"><span class="lineNum">      31</span>              : </span>
+<span id="L32"><span class="lineNum">      32</span>              : enum</span>
+<span id="L33"><span class="lineNum">      33</span>              : {</span>
+<span id="L34"><span class="lineNum">      34</span>              :         GUC_ID = 1,</span>
+<span id="L35"><span class="lineNum">      35</span>              :         GUC_STRING = 2,</span>
+<span id="L36"><span class="lineNum">      36</span>              :         GUC_INTEGER = 3,</span>
+<span id="L37"><span class="lineNum">      37</span>              :         GUC_REAL = 4,</span>
+<span id="L38"><span class="lineNum">      38</span>              :         GUC_EQUALS = 5,</span>
+<span id="L39"><span class="lineNum">      39</span>              :         GUC_UNQUOTED_STRING = 6,</span>
+<span id="L40"><span class="lineNum">      40</span>              :         GUC_QUALIFIED_ID = 7,</span>
+<span id="L41"><span class="lineNum">      41</span>              :         GUC_EOL = 99,</span>
+<span id="L42"><span class="lineNum">      42</span>              :         GUC_ERROR = 100</span>
+<span id="L43"><span class="lineNum">      43</span>              : };</span>
+<span id="L44"><span class="lineNum">      44</span>              : </span>
+<span id="L45"><span class="lineNum">      45</span>              : static unsigned int ConfigFileLineno;</span>
+<span id="L46"><span class="lineNum">      46</span>              : static const char *GUC_flex_fatal_errmsg;</span>
+<span id="L47"><span class="lineNum">      47</span>              : static sigjmp_buf *GUC_flex_fatal_jmp;</span>
+<span id="L48"><span class="lineNum">      48</span>              : </span>
+<span id="L49"><span class="lineNum">      49</span>              : static void FreeConfigVariable(ConfigVariable *item);</span>
+<span id="L50"><span class="lineNum">      50</span>              : </span>
+<span id="L51"><span class="lineNum">      51</span>              : static void record_config_file_error(const char *errmsg,</span>
+<span id="L52"><span class="lineNum">      52</span>              :                                                  const char *config_file,</span>
+<span id="L53"><span class="lineNum">      53</span>              :                                                  int lineno,</span>
+<span id="L54"><span class="lineNum">      54</span>              :                                                  ConfigVariable **head_p,</span>
+<span id="L55"><span class="lineNum">      55</span>              :                                                  ConfigVariable **tail_p);</span>
+<span id="L56"><span class="lineNum">      56</span>              : </span>
+<span id="L57"><span class="lineNum">      57</span>              : static int      GUC_flex_fatal(const char *msg);</span>
+<span id="L58"><span class="lineNum">      58</span>              : static char *GUC_scanstr(const char *s);</span>
+<span id="L59"><span class="lineNum">      59</span>              : </span>
+<span id="L60"><span class="lineNum">      60</span>              : /* LCOV_EXCL_START */</span>
+<span id="L61"><span class="lineNum">      61</span>              : </span>
+<span id="L62"><span class="lineNum">      62</span>              : %}</span>
+<span id="L63"><span class="lineNum">      63</span>              : </span>
+<span id="L64"><span class="lineNum">      64</span>              : %option 8bit</span>
+<span id="L65"><span class="lineNum">      65</span>              : %option never-interactive</span>
+<span id="L66"><span class="lineNum">      66</span>              : %option nodefault</span>
+<span id="L67"><span class="lineNum">      67</span>              : %option noinput</span>
+<span id="L68"><span class="lineNum">      68</span>              : %option nounput</span>
+<span id="L69"><span class="lineNum">      69</span>              : %option noyywrap</span>
+<span id="L70"><span class="lineNum">      70</span>              : %option warn</span>
+<span id="L71"><span class="lineNum">      71</span>              : %option prefix=&quot;GUC_yy&quot;</span>
+<span id="L72"><span class="lineNum">      72</span>              : </span>
+<span id="L73"><span class="lineNum">      73</span>              : </span>
+<span id="L74"><span class="lineNum">      74</span>              : SIGN                    (&quot;-&quot;|&quot;+&quot;)</span>
+<span id="L75"><span class="lineNum">      75</span>              : DIGIT                   [0-9]</span>
+<span id="L76"><span class="lineNum">      76</span>              : HEXDIGIT                [0-9a-fA-F]</span>
+<span id="L77"><span class="lineNum">      77</span>              : </span>
+<span id="L78"><span class="lineNum">      78</span>              : UNIT_LETTER             [a-zA-Z]</span>
+<span id="L79"><span class="lineNum">      79</span>              : </span>
+<span id="L80"><span class="lineNum">      80</span>              : INTEGER                 {SIGN}?({DIGIT}+|0x{HEXDIGIT}+){UNIT_LETTER}*</span>
+<span id="L81"><span class="lineNum">      81</span>              : </span>
+<span id="L82"><span class="lineNum">      82</span>              : EXPONENT                [Ee]{SIGN}?{DIGIT}+</span>
+<span id="L83"><span class="lineNum">      83</span>              : REAL                    {SIGN}?{DIGIT}*&quot;.&quot;{DIGIT}*{EXPONENT}?</span>
+<span id="L84"><span class="lineNum">      84</span>              : </span>
+<span id="L85"><span class="lineNum">      85</span>              : LETTER                  [A-Za-z_\200-\377]</span>
+<span id="L86"><span class="lineNum">      86</span>              : LETTER_OR_DIGIT [A-Za-z_0-9\200-\377]</span>
+<span id="L87"><span class="lineNum">      87</span>              : </span>
+<span id="L88"><span class="lineNum">      88</span>              : ID                              {LETTER}{LETTER_OR_DIGIT}*</span>
+<span id="L89"><span class="lineNum">      89</span>              : QUALIFIED_ID    {ID}&quot;.&quot;{ID}</span>
+<span id="L90"><span class="lineNum">      90</span>              : </span>
+<span id="L91"><span class="lineNum">      91</span>              : UNQUOTED_STRING {LETTER}({LETTER_OR_DIGIT}|[-._:/])*</span>
+<span id="L92"><span class="lineNum">      92</span>              : STRING                  \'([^'\\\n]|\\.|\'\')*\'</span>
+<span id="L93"><span class="lineNum">      93</span>              : </span>
+<span id="L94"><span class="lineNum">      94</span>              : %%</span>
+<span id="L95"><span class="lineNum">      95</span>              : </span>
+<span id="L96"><span class="lineNum">      96</span> <span class="tlaGNC tlaBgGNC">        4698 : \n                              ConfigFileLineno++; return GUC_EOL;</span></span>
+<span id="L97"><span class="lineNum">      97</span>              : [ \t\r]+                /* eat whitespace */</span>
+<span id="L98"><span class="lineNum">      98</span> <span class="tlaGNC">        1518 : #.*                             /* eat comment (.* matches anything until newline) */</span></span>
+<span id="L99"><span class="lineNum">      99</span> <span class="tlaGNC">        3853 : </span></span>
+<span id="L100"><span class="lineNum">     100</span> <span class="tlaGNC">         101 : {ID}                    return GUC_ID;</span></span>
+<span id="L101"><span class="lineNum">     101</span> <span class="tlaUNC tlaBgUNC">           0 : {QUALIFIED_ID}  return GUC_QUALIFIED_ID;</span></span>
+<span id="L102"><span class="lineNum">     102</span> <span class="tlaUNC">           0 : {STRING}                return GUC_STRING;</span></span>
+<span id="L103"><span class="lineNum">     103</span> <span class="tlaGNC tlaBgGNC">          53 : {UNQUOTED_STRING} return GUC_UNQUOTED_STRING;</span></span>
+<span id="L104"><span class="lineNum">     104</span> <span class="tlaUNC tlaBgUNC">           0 : {INTEGER}               return GUC_INTEGER;</span></span>
+<span id="L105"><span class="lineNum">     105</span> <span class="tlaGNC tlaBgGNC">          24 : {REAL}                  return GUC_REAL;</span></span>
+<span id="L106"><span class="lineNum">     106</span> <span class="tlaUNC tlaBgUNC">           0 : =                               return GUC_EQUALS;</span></span>
+<span id="L107"><span class="lineNum">     107</span> <span class="tlaGNC tlaBgGNC">          89 : </span></span>
+<span id="L108"><span class="lineNum">     108</span> <span class="tlaUNC tlaBgUNC">           0 : .                               return GUC_ERROR;</span></span>
+<span id="L109"><span class="lineNum">     109</span>              : </span>
+<span id="L110"><span class="lineNum">     110</span> <span class="tlaUNC">           0 : %%</span></span>
+<span id="L111"><span class="lineNum">     111</span>              : </span>
+<span id="L112"><span class="lineNum">     112</span>              : /* LCOV_EXCL_STOP */</span>
+<span id="L113"><span class="lineNum">     113</span>              : </span>
+<span id="L114"><span class="lineNum">     114</span>              : /*</span>
+<span id="L115"><span class="lineNum">     115</span>              :  * Exported function to read and process the configuration file. The</span>
+<span id="L116"><span class="lineNum">     116</span>              :  * parameter indicates in what context the file is being read --- either</span>
+<span id="L117"><span class="lineNum">     117</span>              :  * postmaster startup (including standalone-backend startup) or SIGHUP.</span>
+<span id="L118"><span class="lineNum">     118</span>              :  * All options mentioned in the configuration file are set to new values.</span>
+<span id="L119"><span class="lineNum">     119</span>              :  * If a hard error occurs, no values will be changed.  (There can also be</span>
+<span id="L120"><span class="lineNum">     120</span>              :  * errors that prevent just one value from being changed.)</span>
+<span id="L121"><span class="lineNum">     121</span>              :  */</span>
+<span id="L122"><span class="lineNum">     122</span>              : void</span>
+<span id="L123"><span class="lineNum">     123</span> <span class="tlaGNC tlaBgGNC">          10 : ProcessConfigFile(GucContext context)</span></span>
+<span id="L124"><span class="lineNum">     124</span>              : {</span>
+<span id="L125"><span class="lineNum">     125</span>              :         int                     elevel;</span>
+<span id="L126"><span class="lineNum">     126</span>              :         MemoryContext config_cxt;</span>
+<span id="L127"><span class="lineNum">     127</span>              :         MemoryContext caller_cxt;</span>
+<span id="L128"><span class="lineNum">     128</span>              : </span>
+<span id="L129"><span class="lineNum">     129</span>              :         /*</span>
+<span id="L130"><span class="lineNum">     130</span>              :          * Config files are processed on startup (by the postmaster only) and on</span>
+<span id="L131"><span class="lineNum">     131</span>              :          * SIGHUP (by the postmaster and its children)</span>
+<span id="L132"><span class="lineNum">     132</span>              :          */</span>
+<span id="L133"><span class="lineNum">     133</span>              :         Assert((context == PGC_POSTMASTER &amp;&amp; !IsUnderPostmaster) ||</span>
+<span id="L134"><span class="lineNum">     134</span>              :                    context == PGC_SIGHUP);</span>
+<span id="L135"><span class="lineNum">     135</span>              : </span>
+<span id="L136"><span class="lineNum">     136</span>              :         /*</span>
+<span id="L137"><span class="lineNum">     137</span>              :          * To avoid cluttering the log, only the postmaster bleats loudly about</span>
+<span id="L138"><span class="lineNum">     138</span>              :          * problems with the config file.</span>
+<span id="L139"><span class="lineNum">     139</span>              :          */</span>
+<span id="L140"><span class="lineNum">     140</span> <span class="tlaGNC">          10 :         elevel = IsUnderPostmaster ? DEBUG2 : LOG;</span></span>
+<span id="L141"><span class="lineNum">     141</span>              : </span>
+<span id="L142"><span class="lineNum">     142</span>              :         /*</span>
+<span id="L143"><span class="lineNum">     143</span>              :          * This function is usually called within a process-lifespan memory</span>
+<span id="L144"><span class="lineNum">     144</span>              :          * context.  To ensure that any memory leaked during GUC processing does</span>
+<span id="L145"><span class="lineNum">     145</span>              :          * not accumulate across repeated SIGHUP cycles, do the work in a private</span>
+<span id="L146"><span class="lineNum">     146</span>              :          * context that we can free at exit.</span>
+<span id="L147"><span class="lineNum">     147</span>              :          */</span>
+<span id="L148"><span class="lineNum">     148</span> <span class="tlaGNC">          10 :         config_cxt = AllocSetContextCreate(CurrentMemoryContext,</span></span>
+<span id="L149"><span class="lineNum">     149</span>              :                                                                            &quot;config file processing&quot;,</span>
+<span id="L150"><span class="lineNum">     150</span>              :                                                                            ALLOCSET_DEFAULT_SIZES);</span>
+<span id="L151"><span class="lineNum">     151</span> <span class="tlaGNC">          10 :         caller_cxt = MemoryContextSwitchTo(config_cxt);</span></span>
+<span id="L152"><span class="lineNum">     152</span>              : </span>
+<span id="L153"><span class="lineNum">     153</span>              :         /*</span>
+<span id="L154"><span class="lineNum">     154</span>              :          * Read and apply the config file.  We don't need to examine the result.</span>
+<span id="L155"><span class="lineNum">     155</span>              :          */</span>
+<span id="L156"><span class="lineNum">     156</span> <span class="tlaGNC">          10 :         (void) ProcessConfigFileInternal(context, true, elevel);</span></span>
+<span id="L157"><span class="lineNum">     157</span>              : </span>
+<span id="L158"><span class="lineNum">     158</span>              :         /* Clean up */</span>
+<span id="L159"><span class="lineNum">     159</span> <span class="tlaGNC">          10 :         MemoryContextSwitchTo(caller_cxt);</span></span>
+<span id="L160"><span class="lineNum">     160</span> <span class="tlaGNC">          10 :         MemoryContextDelete(config_cxt);</span></span>
+<span id="L161"><span class="lineNum">     161</span> <span class="tlaGNC">          10 : }</span></span>
+<span id="L162"><span class="lineNum">     162</span>              : </span>
+<span id="L163"><span class="lineNum">     163</span>              : /*</span>
+<span id="L164"><span class="lineNum">     164</span>              :  * This function handles both actual config file (re)loads and execution of</span>
+<span id="L165"><span class="lineNum">     165</span>              :  * show_all_file_settings() (i.e., the pg_file_settings view).  In the latter</span>
+<span id="L166"><span class="lineNum">     166</span>              :  * case we don't apply any of the settings, but we make all the usual validity</span>
+<span id="L167"><span class="lineNum">     167</span>              :  * checks, and we return the ConfigVariable list so that it can be printed out</span>
+<span id="L168"><span class="lineNum">     168</span>              :  * by show_all_file_settings().</span>
+<span id="L169"><span class="lineNum">     169</span>              :  */</span>
+<span id="L170"><span class="lineNum">     170</span>              : static ConfigVariable *</span>
+<span id="L171"><span class="lineNum">     171</span> <span class="tlaGNC">          10 : ProcessConfigFileInternal(GucContext context, bool applySettings, int elevel)</span></span>
+<span id="L172"><span class="lineNum">     172</span>              : {</span>
+<span id="L173"><span class="lineNum">     173</span> <span class="tlaGNC">          10 :         bool            error = false;</span></span>
+<span id="L174"><span class="lineNum">     174</span> <span class="tlaGNC">          10 :         bool            applying = false;</span></span>
+<span id="L175"><span class="lineNum">     175</span>              :         const char *ConfFileWithError;</span>
+<span id="L176"><span class="lineNum">     176</span>              :         ConfigVariable *item,</span>
+<span id="L177"><span class="lineNum">     177</span>              :                            *head,</span>
+<span id="L178"><span class="lineNum">     178</span>              :                            *tail;</span>
+<span id="L179"><span class="lineNum">     179</span>              :         int                     i;</span>
+<span id="L180"><span class="lineNum">     180</span>              : </span>
+<span id="L181"><span class="lineNum">     181</span>              :         /* Parse the main config file into a list of option names and values */</span>
+<span id="L182"><span class="lineNum">     182</span> <span class="tlaGNC">          10 :         ConfFileWithError = ConfigFileName;</span></span>
+<span id="L183"><span class="lineNum">     183</span> <span class="tlaGNC">          10 :         head = tail = NULL;</span></span>
+<span id="L184"><span class="lineNum">     184</span>              : </span>
+<span id="L185"><span class="lineNum">     185</span> <span class="tlaGNC">          10 :         if (!ParseConfigFile(ConfigFileName, true,</span></span>
+<span id="L186"><span class="lineNum">     186</span>              :                                                  NULL, 0, 0, elevel,</span>
+<span id="L187"><span class="lineNum">     187</span>              :                                                  &amp;head, &amp;tail))</span>
+<span id="L188"><span class="lineNum">     188</span>              :         {</span>
+<span id="L189"><span class="lineNum">     189</span>              :                 /* Syntax error(s) detected in the file, so bail out */</span>
+<span id="L190"><span class="lineNum">     190</span> <span class="tlaUNC tlaBgUNC">           0 :                 error = true;</span></span>
+<span id="L191"><span class="lineNum">     191</span> <span class="tlaUNC">           0 :                 goto bail_out;</span></span>
+<span id="L192"><span class="lineNum">     192</span>              :         }</span>
+<span id="L193"><span class="lineNum">     193</span>              : </span>
+<span id="L194"><span class="lineNum">     194</span>              :         /*</span>
+<span id="L195"><span class="lineNum">     195</span>              :          * Parse the PG_AUTOCONF_FILENAME file, if present, after the main file to</span>
+<span id="L196"><span class="lineNum">     196</span>              :          * replace any parameters set by ALTER SYSTEM command.  Because this file</span>
+<span id="L197"><span class="lineNum">     197</span>              :          * is in the data directory, we can't read it until the DataDir has been</span>
+<span id="L198"><span class="lineNum">     198</span>              :          * set.</span>
+<span id="L199"><span class="lineNum">     199</span>              :          */</span>
+<span id="L200"><span class="lineNum">     200</span> <span class="tlaGNC tlaBgGNC">          10 :         if (DataDir)</span></span>
+<span id="L201"><span class="lineNum">     201</span>              :         {</span>
+<span id="L202"><span class="lineNum">     202</span> <span class="tlaGNC">           5 :                 if (!ParseConfigFile(PG_AUTOCONF_FILENAME, false,</span></span>
+<span id="L203"><span class="lineNum">     203</span>              :                                                          NULL, 0, 0, elevel,</span>
+<span id="L204"><span class="lineNum">     204</span>              :                                                          &amp;head, &amp;tail))</span>
+<span id="L205"><span class="lineNum">     205</span>              :                 {</span>
+<span id="L206"><span class="lineNum">     206</span>              :                         /* Syntax error(s) detected in the file, so bail out */</span>
+<span id="L207"><span class="lineNum">     207</span> <span class="tlaUNC tlaBgUNC">           0 :                         error = true;</span></span>
+<span id="L208"><span class="lineNum">     208</span> <span class="tlaUNC">           0 :                         ConfFileWithError = PG_AUTOCONF_FILENAME;</span></span>
+<span id="L209"><span class="lineNum">     209</span> <span class="tlaUNC">           0 :                         goto bail_out;</span></span>
+<span id="L210"><span class="lineNum">     210</span>              :                 }</span>
+<span id="L211"><span class="lineNum">     211</span>              :         }</span>
+<span id="L212"><span class="lineNum">     212</span>              :         else</span>
+<span id="L213"><span class="lineNum">     213</span>              :         {</span>
+<span id="L214"><span class="lineNum">     214</span>              :                 /*</span>
+<span id="L215"><span class="lineNum">     215</span>              :                  * If DataDir is not set, the PG_AUTOCONF_FILENAME file cannot be</span>
+<span id="L216"><span class="lineNum">     216</span>              :                  * read.  In this case, we don't want to accept any settings but</span>
+<span id="L217"><span class="lineNum">     217</span>              :                  * data_directory from postgresql.conf, because they might be</span>
+<span id="L218"><span class="lineNum">     218</span>              :                  * overwritten with settings in the PG_AUTOCONF_FILENAME file which</span>
+<span id="L219"><span class="lineNum">     219</span>              :                  * will be read later. OTOH, since data_directory isn't allowed in the</span>
+<span id="L220"><span class="lineNum">     220</span>              :                  * PG_AUTOCONF_FILENAME file, it will never be overwritten later.</span>
+<span id="L221"><span class="lineNum">     221</span>              :                  */</span>
+<span id="L222"><span class="lineNum">     222</span> <span class="tlaGNC tlaBgGNC">           5 :                 ConfigVariable *newlist = NULL;</span></span>
+<span id="L223"><span class="lineNum">     223</span>              : </span>
+<span id="L224"><span class="lineNum">     224</span>              :                 /*</span>
+<span id="L225"><span class="lineNum">     225</span>              :                  * Prune all items except the last &quot;data_directory&quot; from the list.</span>
+<span id="L226"><span class="lineNum">     226</span>              :                  */</span>
+<span id="L227"><span class="lineNum">     227</span> <span class="tlaGNC">          46 :                 for (item = head; item; item = item-&gt;next)</span></span>
+<span id="L228"><span class="lineNum">     228</span>              :                 {</span>
+<span id="L229"><span class="lineNum">     229</span> <span class="tlaGNC">          41 :                         if (!item-&gt;ignore &amp;&amp;</span></span>
+<span id="L230"><span class="lineNum">     230</span> <span class="tlaGNC">          41 :                                 strcmp(item-&gt;name, &quot;data_directory&quot;) == 0)</span></span>
+<span id="L231"><span class="lineNum">     231</span> <span class="tlaUNC tlaBgUNC">           0 :                                 newlist = item;</span></span>
+<span id="L232"><span class="lineNum">     232</span>              :                 }</span>
+<span id="L233"><span class="lineNum">     233</span>              : </span>
+<span id="L234"><span class="lineNum">     234</span> <span class="tlaGNC tlaBgGNC">           5 :                 if (newlist)</span></span>
+<span id="L235"><span class="lineNum">     235</span> <span class="tlaUNC tlaBgUNC">           0 :                         newlist-&gt;next = NULL;</span></span>
+<span id="L236"><span class="lineNum">     236</span> <span class="tlaGNC tlaBgGNC">           5 :                 head = tail = newlist;</span></span>
+<span id="L237"><span class="lineNum">     237</span>              : </span>
+<span id="L238"><span class="lineNum">     238</span>              :                 /*</span>
+<span id="L239"><span class="lineNum">     239</span>              :                  * Quick exit if data_directory is not present in file.</span>
+<span id="L240"><span class="lineNum">     240</span>              :                  *</span>
+<span id="L241"><span class="lineNum">     241</span>              :                  * We need not do any further processing, in particular we don't set</span>
+<span id="L242"><span class="lineNum">     242</span>              :                  * PgReloadTime; that will be set soon by subsequent full loading of</span>
+<span id="L243"><span class="lineNum">     243</span>              :                  * the config file.</span>
+<span id="L244"><span class="lineNum">     244</span>              :                  */</span>
+<span id="L245"><span class="lineNum">     245</span> <span class="tlaGNC">           5 :                 if (head == NULL)</span></span>
+<span id="L246"><span class="lineNum">     246</span> <span class="tlaGNC">           5 :                         goto bail_out;</span></span>
+<span id="L247"><span class="lineNum">     247</span>              :         }</span>
+<span id="L248"><span class="lineNum">     248</span>              : </span>
+<span id="L249"><span class="lineNum">     249</span>              :         /*</span>
+<span id="L250"><span class="lineNum">     250</span>              :          * Mark all extant GUC variables as not present in the config file. We</span>
+<span id="L251"><span class="lineNum">     251</span>              :          * need this so that we can tell below which ones have been removed from</span>
+<span id="L252"><span class="lineNum">     252</span>              :          * the file since we last processed it.</span>
+<span id="L253"><span class="lineNum">     253</span>              :          */</span>
+<span id="L254"><span class="lineNum">     254</span> <span class="tlaGNC">        1690 :         for (i = 0; i &lt; num_guc_variables; i++)</span></span>
+<span id="L255"><span class="lineNum">     255</span>              :         {</span>
+<span id="L256"><span class="lineNum">     256</span> <span class="tlaGNC">        1685 :                 struct config_generic *gconf = guc_variables[i];</span></span>
+<span id="L257"><span class="lineNum">     257</span>              : </span>
+<span id="L258"><span class="lineNum">     258</span> <span class="tlaGNC">        1685 :                 gconf-&gt;status &amp;= ~GUC_IS_IN_FILE;</span></span>
+<span id="L259"><span class="lineNum">     259</span>              :         }</span>
+<span id="L260"><span class="lineNum">     260</span>              : </span>
+<span id="L261"><span class="lineNum">     261</span>              :         /*</span>
+<span id="L262"><span class="lineNum">     262</span>              :          * Check if all the supplied option names are valid, as an additional</span>
+<span id="L263"><span class="lineNum">     263</span>              :          * quasi-syntactic check on the validity of the config file.  It is</span>
+<span id="L264"><span class="lineNum">     264</span>              :          * important that the postmaster and all backends agree on the results of</span>
+<span id="L265"><span class="lineNum">     265</span>              :          * this phase, else we will have strange inconsistencies about which</span>
+<span id="L266"><span class="lineNum">     266</span>              :          * processes accept a config file update and which don't.  Hence, unknown</span>
+<span id="L267"><span class="lineNum">     267</span>              :          * custom variable names have to be accepted without complaint.  For the</span>
+<span id="L268"><span class="lineNum">     268</span>              :          * same reason, we don't attempt to validate the options' values here.</span>
+<span id="L269"><span class="lineNum">     269</span>              :          *</span>
+<span id="L270"><span class="lineNum">     270</span>              :          * In addition, the GUC_IS_IN_FILE flag is set on each existing GUC</span>
+<span id="L271"><span class="lineNum">     271</span>              :          * variable mentioned in the file; and we detect duplicate entries in the</span>
+<span id="L272"><span class="lineNum">     272</span>              :          * file and mark the earlier occurrences as ignorable.</span>
+<span id="L273"><span class="lineNum">     273</span>              :          */</span>
+<span id="L274"><span class="lineNum">     274</span> <span class="tlaGNC">          46 :         for (item = head; item; item = item-&gt;next)</span></span>
+<span id="L275"><span class="lineNum">     275</span>              :         {</span>
+<span id="L276"><span class="lineNum">     276</span>              :                 struct config_generic *record;</span>
+<span id="L277"><span class="lineNum">     277</span>              : </span>
+<span id="L278"><span class="lineNum">     278</span>              :                 /* Ignore anything already marked as ignorable */</span>
+<span id="L279"><span class="lineNum">     279</span> <span class="tlaGNC">          41 :                 if (item-&gt;ignore)</span></span>
+<span id="L280"><span class="lineNum">     280</span> <span class="tlaUNC tlaBgUNC">           0 :                         continue;</span></span>
+<span id="L281"><span class="lineNum">     281</span>              : </span>
+<span id="L282"><span class="lineNum">     282</span>              :                 /*</span>
+<span id="L283"><span class="lineNum">     283</span>              :                  * Try to find the variable; but do not create a custom placeholder if</span>
+<span id="L284"><span class="lineNum">     284</span>              :                  * it's not there already.</span>
+<span id="L285"><span class="lineNum">     285</span>              :                  */</span>
+<span id="L286"><span class="lineNum">     286</span> <span class="tlaGNC tlaBgGNC">          41 :                 record = find_option(item-&gt;name, false, elevel);</span></span>
+<span id="L287"><span class="lineNum">     287</span>              : </span>
+<span id="L288"><span class="lineNum">     288</span> <span class="tlaGNC">          41 :                 if (record)</span></span>
+<span id="L289"><span class="lineNum">     289</span>              :                 {</span>
+<span id="L290"><span class="lineNum">     290</span>              :                         /* If it's already marked, then this is a duplicate entry */</span>
+<span id="L291"><span class="lineNum">     291</span> <span class="tlaGNC">          41 :                         if (record-&gt;status &amp; GUC_IS_IN_FILE)</span></span>
+<span id="L292"><span class="lineNum">     292</span>              :                         {</span>
+<span id="L293"><span class="lineNum">     293</span>              :                                 /*</span>
+<span id="L294"><span class="lineNum">     294</span>              :                                  * Mark the earlier occurrence(s) as dead/ignorable.  We could</span>
+<span id="L295"><span class="lineNum">     295</span>              :                                  * avoid the O(N^2) behavior here with some additional state,</span>
+<span id="L296"><span class="lineNum">     296</span>              :                                  * but it seems unlikely to be worth the trouble.</span>
+<span id="L297"><span class="lineNum">     297</span>              :                                  */</span>
+<span id="L298"><span class="lineNum">     298</span>              :                                 ConfigVariable *pitem;</span>
+<span id="L299"><span class="lineNum">     299</span>              : </span>
+<span id="L300"><span class="lineNum">     300</span> <span class="tlaUNC tlaBgUNC">           0 :                                 for (pitem = head; pitem != item; pitem = pitem-&gt;next)</span></span>
+<span id="L301"><span class="lineNum">     301</span>              :                                 {</span>
+<span id="L302"><span class="lineNum">     302</span> <span class="tlaUNC">           0 :                                         if (!pitem-&gt;ignore &amp;&amp;</span></span>
+<span id="L303"><span class="lineNum">     303</span> <span class="tlaUNC">           0 :                                                 strcmp(pitem-&gt;name, item-&gt;name) == 0)</span></span>
+<span id="L304"><span class="lineNum">     304</span> <span class="tlaUNC">           0 :                                                 pitem-&gt;ignore = true;</span></span>
+<span id="L305"><span class="lineNum">     305</span>              :                                 }</span>
+<span id="L306"><span class="lineNum">     306</span>              :                         }</span>
+<span id="L307"><span class="lineNum">     307</span>              :                         /* Now mark it as present in file */</span>
+<span id="L308"><span class="lineNum">     308</span> <span class="tlaGNC tlaBgGNC">          41 :                         record-&gt;status |= GUC_IS_IN_FILE;</span></span>
+<span id="L309"><span class="lineNum">     309</span>              :                 }</span>
+<span id="L310"><span class="lineNum">     310</span> <span class="tlaUNC tlaBgUNC">           0 :                 else if (strchr(item-&gt;name, GUC_QUALIFIER_SEPARATOR) == NULL)</span></span>
+<span id="L311"><span class="lineNum">     311</span>              :                 {</span>
+<span id="L312"><span class="lineNum">     312</span>              :                         /* Invalid non-custom variable, so complain */</span>
+<span id="L313"><span class="lineNum">     313</span> <span class="tlaUNC">           0 :                         ereport(elevel,</span></span>
+<span id="L314"><span class="lineNum">     314</span>              :                                         (errcode(ERRCODE_UNDEFINED_OBJECT),</span>
+<span id="L315"><span class="lineNum">     315</span>              :                                          errmsg(&quot;unrecognized configuration parameter \&quot;%s\&quot; in file \&quot;%s\&quot; line %u&quot;,</span>
+<span id="L316"><span class="lineNum">     316</span>              :                                                         item-&gt;name,</span>
+<span id="L317"><span class="lineNum">     317</span>              :                                                         item-&gt;filename, item-&gt;sourceline)));</span>
+<span id="L318"><span class="lineNum">     318</span> <span class="tlaUNC">           0 :                         item-&gt;errmsg = pstrdup(&quot;unrecognized configuration parameter&quot;);</span></span>
+<span id="L319"><span class="lineNum">     319</span> <span class="tlaUNC">           0 :                         error = true;</span></span>
+<span id="L320"><span class="lineNum">     320</span> <span class="tlaUNC">           0 :                         ConfFileWithError = item-&gt;filename;</span></span>
+<span id="L321"><span class="lineNum">     321</span>              :                 }</span>
+<span id="L322"><span class="lineNum">     322</span>              :         }</span>
+<span id="L323"><span class="lineNum">     323</span>              : </span>
+<span id="L324"><span class="lineNum">     324</span>              :         /*</span>
+<span id="L325"><span class="lineNum">     325</span>              :          * If we've detected any errors so far, we don't want to risk applying any</span>
+<span id="L326"><span class="lineNum">     326</span>              :          * changes.</span>
+<span id="L327"><span class="lineNum">     327</span>              :          */</span>
+<span id="L328"><span class="lineNum">     328</span> <span class="tlaGNC tlaBgGNC">           5 :         if (error)</span></span>
+<span id="L329"><span class="lineNum">     329</span> <span class="tlaUNC tlaBgUNC">           0 :                 goto bail_out;</span></span>
+<span id="L330"><span class="lineNum">     330</span>              : </span>
+<span id="L331"><span class="lineNum">     331</span>              :         /* Otherwise, set flag that we're beginning to apply changes */</span>
+<span id="L332"><span class="lineNum">     332</span> <span class="tlaGNC tlaBgGNC">           5 :         applying = true;</span></span>
+<span id="L333"><span class="lineNum">     333</span>              : </span>
+<span id="L334"><span class="lineNum">     334</span>              :         /*</span>
+<span id="L335"><span class="lineNum">     335</span>              :          * Check for variables having been removed from the config file, and</span>
+<span id="L336"><span class="lineNum">     336</span>              :          * revert their reset values (and perhaps also effective values) to the</span>
+<span id="L337"><span class="lineNum">     337</span>              :          * boot-time defaults.  If such a variable can't be changed after startup,</span>
+<span id="L338"><span class="lineNum">     338</span>              :          * report that and continue.</span>
+<span id="L339"><span class="lineNum">     339</span>              :          */</span>
+<span id="L340"><span class="lineNum">     340</span> <span class="tlaGNC">        1690 :         for (i = 0; i &lt; num_guc_variables; i++)</span></span>
+<span id="L341"><span class="lineNum">     341</span>              :         {</span>
+<span id="L342"><span class="lineNum">     342</span> <span class="tlaGNC">        1685 :                 struct config_generic *gconf = guc_variables[i];</span></span>
+<span id="L343"><span class="lineNum">     343</span>              :                 GucStack   *stack;</span>
+<span id="L344"><span class="lineNum">     344</span>              : </span>
+<span id="L345"><span class="lineNum">     345</span> <span class="tlaGNC">        1685 :                 if (gconf-&gt;reset_source != PGC_S_FILE ||</span></span>
+<span id="L346"><span class="lineNum">     346</span> <span class="tlaUNC tlaBgUNC">           0 :                         (gconf-&gt;status &amp; GUC_IS_IN_FILE))</span></span>
+<span id="L347"><span class="lineNum">     347</span> <span class="tlaGNC tlaBgGNC">        1685 :                         continue;</span></span>
+<span id="L348"><span class="lineNum">     348</span> <span class="tlaUNC tlaBgUNC">           0 :                 if (gconf-&gt;context &lt; PGC_SIGHUP)</span></span>
+<span id="L349"><span class="lineNum">     349</span>              :                 {</span>
+<span id="L350"><span class="lineNum">     350</span>              :                         /* The removal can't be effective without a restart */</span>
+<span id="L351"><span class="lineNum">     351</span> <span class="tlaUNC">           0 :                         gconf-&gt;status |= GUC_PENDING_RESTART;</span></span>
+<span id="L352"><span class="lineNum">     352</span> <span class="tlaUNC">           0 :                         ereport(elevel,</span></span>
+<span id="L353"><span class="lineNum">     353</span>              :                                         (errcode(ERRCODE_CANT_CHANGE_RUNTIME_PARAM),</span>
+<span id="L354"><span class="lineNum">     354</span>              :                                          errmsg(&quot;parameter \&quot;%s\&quot; cannot be changed without restarting the server&quot;,</span>
+<span id="L355"><span class="lineNum">     355</span>              :                                                         gconf-&gt;name)));</span>
+<span id="L356"><span class="lineNum">     356</span> <span class="tlaUNC">           0 :                         record_config_file_error(psprintf(&quot;parameter \&quot;%s\&quot; cannot be changed without restarting the server&quot;,</span></span>
+<span id="L357"><span class="lineNum">     357</span>              :                                                                                           gconf-&gt;name),</span>
+<span id="L358"><span class="lineNum">     358</span>              :                                                                          NULL, 0,</span>
+<span id="L359"><span class="lineNum">     359</span>              :                                                                          &amp;head, &amp;tail);</span>
+<span id="L360"><span class="lineNum">     360</span> <span class="tlaUNC">           0 :                         error = true;</span></span>
+<span id="L361"><span class="lineNum">     361</span> <span class="tlaUNC">           0 :                         continue;</span></span>
+<span id="L362"><span class="lineNum">     362</span>              :                 }</span>
+<span id="L363"><span class="lineNum">     363</span>              : </span>
+<span id="L364"><span class="lineNum">     364</span>              :                 /* No more to do if we're just doing show_all_file_settings() */</span>
+<span id="L365"><span class="lineNum">     365</span> <span class="tlaUNC">           0 :                 if (!applySettings)</span></span>
+<span id="L366"><span class="lineNum">     366</span> <span class="tlaUNC">           0 :                         continue;</span></span>
+<span id="L367"><span class="lineNum">     367</span>              : </span>
+<span id="L368"><span class="lineNum">     368</span>              :                 /*</span>
+<span id="L369"><span class="lineNum">     369</span>              :                  * Reset any &quot;file&quot; sources to &quot;default&quot;, else set_config_option will</span>
+<span id="L370"><span class="lineNum">     370</span>              :                  * not override those settings.</span>
+<span id="L371"><span class="lineNum">     371</span>              :                  */</span>
+<span id="L372"><span class="lineNum">     372</span> <span class="tlaUNC">           0 :                 if (gconf-&gt;reset_source == PGC_S_FILE)</span></span>
+<span id="L373"><span class="lineNum">     373</span> <span class="tlaUNC">           0 :                         gconf-&gt;reset_source = PGC_S_DEFAULT;</span></span>
+<span id="L374"><span class="lineNum">     374</span> <span class="tlaUNC">           0 :                 if (gconf-&gt;source == PGC_S_FILE)</span></span>
+<span id="L375"><span class="lineNum">     375</span> <span class="tlaUNC">           0 :                         gconf-&gt;source = PGC_S_DEFAULT;</span></span>
+<span id="L376"><span class="lineNum">     376</span> <span class="tlaUNC">           0 :                 for (stack = gconf-&gt;stack; stack; stack = stack-&gt;prev)</span></span>
+<span id="L377"><span class="lineNum">     377</span>              :                 {</span>
+<span id="L378"><span class="lineNum">     378</span> <span class="tlaUNC">           0 :                         if (stack-&gt;source == PGC_S_FILE)</span></span>
+<span id="L379"><span class="lineNum">     379</span> <span class="tlaUNC">           0 :                                 stack-&gt;source = PGC_S_DEFAULT;</span></span>
+<span id="L380"><span class="lineNum">     380</span>              :                 }</span>
+<span id="L381"><span class="lineNum">     381</span>              : </span>
+<span id="L382"><span class="lineNum">     382</span>              :                 /* Now we can re-apply the wired-in default (i.e., the boot_val) */</span>
+<span id="L383"><span class="lineNum">     383</span> <span class="tlaUNC">           0 :                 if (set_config_option(gconf-&gt;name, NULL,</span></span>
+<span id="L384"><span class="lineNum">     384</span>              :                                                           context, PGC_S_DEFAULT,</span>
+<span id="L385"><span class="lineNum">     385</span>              :                                                           GUC_ACTION_SET, true, 0, false) &gt; 0)</span>
+<span id="L386"><span class="lineNum">     386</span>              :                 {</span>
+<span id="L387"><span class="lineNum">     387</span>              :                         /* Log the change if appropriate */</span>
+<span id="L388"><span class="lineNum">     388</span> <span class="tlaUNC">           0 :                         if (context == PGC_SIGHUP)</span></span>
+<span id="L389"><span class="lineNum">     389</span> <span class="tlaUNC">           0 :                                 ereport(elevel,</span></span>
+<span id="L390"><span class="lineNum">     390</span>              :                                                 (errmsg(&quot;parameter \&quot;%s\&quot; removed from configuration file, reset to default&quot;,</span>
+<span id="L391"><span class="lineNum">     391</span>              :                                                                 gconf-&gt;name)));</span>
+<span id="L392"><span class="lineNum">     392</span>              :                 }</span>
+<span id="L393"><span class="lineNum">     393</span>              :         }</span>
+<span id="L394"><span class="lineNum">     394</span>              : </span>
+<span id="L395"><span class="lineNum">     395</span>              :         /*</span>
+<span id="L396"><span class="lineNum">     396</span>              :          * Restore any variables determined by environment variables or</span>
+<span id="L397"><span class="lineNum">     397</span>              :          * dynamically-computed defaults.  This is a no-op except in the case</span>
+<span id="L398"><span class="lineNum">     398</span>              :          * where one of these had been in the config file and is now removed.</span>
+<span id="L399"><span class="lineNum">     399</span>              :          *</span>
+<span id="L400"><span class="lineNum">     400</span>              :          * In particular, we *must not* do this during the postmaster's initial</span>
+<span id="L401"><span class="lineNum">     401</span>              :          * loading of the file, since the timezone functions in particular should</span>
+<span id="L402"><span class="lineNum">     402</span>              :          * be run only after initialization is complete.</span>
+<span id="L403"><span class="lineNum">     403</span>              :          *</span>
+<span id="L404"><span class="lineNum">     404</span>              :          * XXX this is an unmaintainable crock, because we have to know how to set</span>
+<span id="L405"><span class="lineNum">     405</span>              :          * (or at least what to call to set) every variable that could potentially</span>
+<span id="L406"><span class="lineNum">     406</span>              :          * have PGC_S_DYNAMIC_DEFAULT or PGC_S_ENV_VAR source. However, there's no</span>
+<span id="L407"><span class="lineNum">     407</span>              :          * time to redesign it for 9.1.</span>
+<span id="L408"><span class="lineNum">     408</span>              :          */</span>
+<span id="L409"><span class="lineNum">     409</span> <span class="tlaGNC tlaBgGNC">           5 :         if (context == PGC_SIGHUP &amp;&amp; applySettings)</span></span>
+<span id="L410"><span class="lineNum">     410</span>              :         {</span>
+<span id="L411"><span class="lineNum">     411</span> <span class="tlaUNC tlaBgUNC">           0 :                 InitializeGUCOptionsFromEnvironment();</span></span>
+<span id="L412"><span class="lineNum">     412</span> <span class="tlaUNC">           0 :                 pg_timezone_abbrev_initialize();</span></span>
+<span id="L413"><span class="lineNum">     413</span>              :                 /* this selects SQL_ASCII in processes not connected to a database */</span>
+<span id="L414"><span class="lineNum">     414</span> <span class="tlaUNC">           0 :                 SetConfigOption(&quot;client_encoding&quot;, GetDatabaseEncodingName(),</span></span>
+<span id="L415"><span class="lineNum">     415</span>              :                                                 PGC_BACKEND, PGC_S_DYNAMIC_DEFAULT);</span>
+<span id="L416"><span class="lineNum">     416</span>              :         }</span>
+<span id="L417"><span class="lineNum">     417</span>              : </span>
+<span id="L418"><span class="lineNum">     418</span>              :         /*</span>
+<span id="L419"><span class="lineNum">     419</span>              :          * Now apply the values from the config file.</span>
+<span id="L420"><span class="lineNum">     420</span>              :          */</span>
+<span id="L421"><span class="lineNum">     421</span> <span class="tlaGNC tlaBgGNC">          46 :         for (item = head; item; item = item-&gt;next)</span></span>
+<span id="L422"><span class="lineNum">     422</span>              :         {</span>
+<span id="L423"><span class="lineNum">     423</span> <span class="tlaGNC">          41 :                 char       *pre_value = NULL;</span></span>
+<span id="L424"><span class="lineNum">     424</span>              :                 int                     scres;</span>
+<span id="L425"><span class="lineNum">     425</span>              : </span>
+<span id="L426"><span class="lineNum">     426</span>              :                 /* Ignore anything marked as ignorable */</span>
+<span id="L427"><span class="lineNum">     427</span> <span class="tlaGNC">          41 :                 if (item-&gt;ignore)</span></span>
+<span id="L428"><span class="lineNum">     428</span> <span class="tlaUNC tlaBgUNC">           0 :                         continue;</span></span>
+<span id="L429"><span class="lineNum">     429</span>              : </span>
+<span id="L430"><span class="lineNum">     430</span>              :                 /* In SIGHUP cases in the postmaster, we want to report changes */</span>
+<span id="L431"><span class="lineNum">     431</span> <span class="tlaGNC tlaBgGNC">          41 :                 if (context == PGC_SIGHUP &amp;&amp; applySettings &amp;&amp; !IsUnderPostmaster)</span></span>
+<span id="L432"><span class="lineNum">     432</span>              :                 {</span>
+<span id="L433"><span class="lineNum">     433</span> <span class="tlaUNC tlaBgUNC">           0 :                         const char *preval = GetConfigOption(item-&gt;name, true, false);</span></span>
+<span id="L434"><span class="lineNum">     434</span>              : </span>
+<span id="L435"><span class="lineNum">     435</span>              :                         /* If option doesn't exist yet or is NULL, treat as empty string */</span>
+<span id="L436"><span class="lineNum">     436</span> <span class="tlaUNC">           0 :                         if (!preval)</span></span>
+<span id="L437"><span class="lineNum">     437</span> <span class="tlaUNC">           0 :                                 preval = &quot;&quot;;</span></span>
+<span id="L438"><span class="lineNum">     438</span>              :                         /* must dup, else might have dangling pointer below */</span>
+<span id="L439"><span class="lineNum">     439</span> <span class="tlaUNC">           0 :                         pre_value = pstrdup(preval);</span></span>
+<span id="L440"><span class="lineNum">     440</span>              :                 }</span>
+<span id="L441"><span class="lineNum">     441</span>              : </span>
+<span id="L442"><span class="lineNum">     442</span> <span class="tlaGNC tlaBgGNC">          41 :                 scres = set_config_option(item-&gt;name, item-&gt;value,</span></span>
+<span id="L443"><span class="lineNum">     443</span>              :                                                                   context, PGC_S_FILE,</span>
+<span id="L444"><span class="lineNum">     444</span>              :                                                                   GUC_ACTION_SET, applySettings, 0, false);</span>
+<span id="L445"><span class="lineNum">     445</span> <span class="tlaGNC">          41 :                 if (scres &gt; 0)</span></span>
+<span id="L446"><span class="lineNum">     446</span>              :                 {</span>
+<span id="L447"><span class="lineNum">     447</span>              :                         /* variable was updated, so log the change if appropriate */</span>
+<span id="L448"><span class="lineNum">     448</span> <span class="tlaGNC">          41 :                         if (pre_value)</span></span>
+<span id="L449"><span class="lineNum">     449</span>              :                         {</span>
+<span id="L450"><span class="lineNum">     450</span> <span class="tlaUNC tlaBgUNC">           0 :                                 const char *post_value = GetConfigOption(item-&gt;name, true, false);</span></span>
+<span id="L451"><span class="lineNum">     451</span>              : </span>
+<span id="L452"><span class="lineNum">     452</span> <span class="tlaUNC">           0 :                                 if (!post_value)</span></span>
+<span id="L453"><span class="lineNum">     453</span> <span class="tlaUNC">           0 :                                         post_value = &quot;&quot;;</span></span>
+<span id="L454"><span class="lineNum">     454</span> <span class="tlaUNC">           0 :                                 if (strcmp(pre_value, post_value) != 0)</span></span>
+<span id="L455"><span class="lineNum">     455</span> <span class="tlaUNC">           0 :                                         ereport(elevel,</span></span>
+<span id="L456"><span class="lineNum">     456</span>              :                                                         (errmsg(&quot;parameter \&quot;%s\&quot; changed to \&quot;%s\&quot;&quot;,</span>
+<span id="L457"><span class="lineNum">     457</span>              :                                                                         item-&gt;name, item-&gt;value)));</span>
+<span id="L458"><span class="lineNum">     458</span>              :                         }</span>
+<span id="L459"><span class="lineNum">     459</span> <span class="tlaGNC tlaBgGNC">          41 :                         item-&gt;applied = true;</span></span>
+<span id="L460"><span class="lineNum">     460</span>              :                 }</span>
+<span id="L461"><span class="lineNum">     461</span> <span class="tlaUNC tlaBgUNC">           0 :                 else if (scres == 0)</span></span>
+<span id="L462"><span class="lineNum">     462</span>              :                 {</span>
+<span id="L463"><span class="lineNum">     463</span> <span class="tlaUNC">           0 :                         error = true;</span></span>
+<span id="L464"><span class="lineNum">     464</span> <span class="tlaUNC">           0 :                         item-&gt;errmsg = pstrdup(&quot;setting could not be applied&quot;);</span></span>
+<span id="L465"><span class="lineNum">     465</span> <span class="tlaUNC">           0 :                         ConfFileWithError = item-&gt;filename;</span></span>
+<span id="L466"><span class="lineNum">     466</span>              :                 }</span>
+<span id="L467"><span class="lineNum">     467</span>              :                 else</span>
+<span id="L468"><span class="lineNum">     468</span>              :                 {</span>
+<span id="L469"><span class="lineNum">     469</span>              :                         /* no error, but variable's active value was not changed */</span>
+<span id="L470"><span class="lineNum">     470</span> <span class="tlaUNC">           0 :                         item-&gt;applied = true;</span></span>
+<span id="L471"><span class="lineNum">     471</span>              :                 }</span>
+<span id="L472"><span class="lineNum">     472</span>              : </span>
+<span id="L473"><span class="lineNum">     473</span>              :                 /*</span>
+<span id="L474"><span class="lineNum">     474</span>              :                  * We should update source location unless there was an error, since</span>
+<span id="L475"><span class="lineNum">     475</span>              :                  * even if the active value didn't change, the reset value might have.</span>
+<span id="L476"><span class="lineNum">     476</span>              :                  * (In the postmaster, there won't be a difference, but it does matter</span>
+<span id="L477"><span class="lineNum">     477</span>              :                  * in backends.)</span>
+<span id="L478"><span class="lineNum">     478</span>              :                  */</span>
+<span id="L479"><span class="lineNum">     479</span> <span class="tlaGNC tlaBgGNC">          41 :                 if (scres != 0 &amp;&amp; applySettings)</span></span>
+<span id="L480"><span class="lineNum">     480</span> <span class="tlaGNC">          41 :                         set_config_sourcefile(item-&gt;name, item-&gt;filename,</span></span>
+<span id="L481"><span class="lineNum">     481</span>              :                                                                   item-&gt;sourceline);</span>
+<span id="L482"><span class="lineNum">     482</span>              : </span>
+<span id="L483"><span class="lineNum">     483</span> <span class="tlaGNC">          41 :                 if (pre_value)</span></span>
+<span id="L484"><span class="lineNum">     484</span> <span class="tlaUNC tlaBgUNC">           0 :                         pfree(pre_value);</span></span>
+<span id="L485"><span class="lineNum">     485</span>              :         }</span>
+<span id="L486"><span class="lineNum">     486</span>              : </span>
+<span id="L487"><span class="lineNum">     487</span>              :         /* Remember when we last successfully loaded the config file. */</span>
+<span id="L488"><span class="lineNum">     488</span> <span class="tlaGNC tlaBgGNC">           5 :         if (applySettings)</span></span>
+<span id="L489"><span class="lineNum">     489</span> <span class="tlaGNC">           5 :                 PgReloadTime = GetCurrentTimestamp();</span></span>
+<span id="L490"><span class="lineNum">     490</span>              : </span>
+<span id="L491"><span class="lineNum">     491</span> <span class="tlaUNC tlaBgUNC">           0 : bail_out:</span></span>
+<span id="L492"><span class="lineNum">     492</span> <span class="tlaGNC tlaBgGNC">          10 :         if (error &amp;&amp; applySettings)</span></span>
+<span id="L493"><span class="lineNum">     493</span>              :         {</span>
+<span id="L494"><span class="lineNum">     494</span>              :                 /* During postmaster startup, any error is fatal */</span>
+<span id="L495"><span class="lineNum">     495</span> <span class="tlaUNC tlaBgUNC">           0 :                 if (context == PGC_POSTMASTER)</span></span>
+<span id="L496"><span class="lineNum">     496</span> <span class="tlaUNC">           0 :                         ereport(ERROR,</span></span>
+<span id="L497"><span class="lineNum">     497</span>              :                                         (errcode(ERRCODE_CONFIG_FILE_ERROR),</span>
+<span id="L498"><span class="lineNum">     498</span>              :                                          errmsg(&quot;configuration file \&quot;%s\&quot; contains errors&quot;,</span>
+<span id="L499"><span class="lineNum">     499</span>              :                                                         ConfFileWithError)));</span>
+<span id="L500"><span class="lineNum">     500</span> <span class="tlaUNC">           0 :                 else if (applying)</span></span>
+<span id="L501"><span class="lineNum">     501</span> <span class="tlaUNC">           0 :                         ereport(elevel,</span></span>
+<span id="L502"><span class="lineNum">     502</span>              :                                         (errcode(ERRCODE_CONFIG_FILE_ERROR),</span>
+<span id="L503"><span class="lineNum">     503</span>              :                                          errmsg(&quot;configuration file \&quot;%s\&quot; contains errors; unaffected changes were applied&quot;,</span>
+<span id="L504"><span class="lineNum">     504</span>              :                                                         ConfFileWithError)));</span>
+<span id="L505"><span class="lineNum">     505</span>              :                 else</span>
+<span id="L506"><span class="lineNum">     506</span> <span class="tlaUNC">           0 :                         ereport(elevel,</span></span>
+<span id="L507"><span class="lineNum">     507</span>              :                                         (errcode(ERRCODE_CONFIG_FILE_ERROR),</span>
+<span id="L508"><span class="lineNum">     508</span>              :                                          errmsg(&quot;configuration file \&quot;%s\&quot; contains errors; no changes were applied&quot;,</span>
+<span id="L509"><span class="lineNum">     509</span>              :                                                         ConfFileWithError)));</span>
+<span id="L510"><span class="lineNum">     510</span>              :         }</span>
+<span id="L511"><span class="lineNum">     511</span>              : </span>
+<span id="L512"><span class="lineNum">     512</span>              :         /* Successful or otherwise, return the collected data list */</span>
+<span id="L513"><span class="lineNum">     513</span> <span class="tlaGNC tlaBgGNC">          10 :         return head;</span></span>
+<span id="L514"><span class="lineNum">     514</span>              : }</span>
+<span id="L515"><span class="lineNum">     515</span>              : </span>
+<span id="L516"><span class="lineNum">     516</span>              : /*</span>
+<span id="L517"><span class="lineNum">     517</span>              :  * Given a configuration file or directory location that may be a relative</span>
+<span id="L518"><span class="lineNum">     518</span>              :  * path, return an absolute one.  We consider the location to be relative to</span>
+<span id="L519"><span class="lineNum">     519</span>              :  * the directory holding the calling file, or to DataDir if no calling file.</span>
+<span id="L520"><span class="lineNum">     520</span>              :  */</span>
+<span id="L521"><span class="lineNum">     521</span>              : static char *</span>
+<span id="L522"><span class="lineNum">     522</span> <span class="tlaGNC">          15 : AbsoluteConfigLocation(const char *location, const char *calling_file)</span></span>
+<span id="L523"><span class="lineNum">     523</span>              : {</span>
+<span id="L524"><span class="lineNum">     524</span>              :         char            abs_path[MAXPGPATH];</span>
+<span id="L525"><span class="lineNum">     525</span>              : </span>
+<span id="L526"><span class="lineNum">     526</span> <span class="tlaGNC">          15 :         if (is_absolute_path(location))</span></span>
+<span id="L527"><span class="lineNum">     527</span> <span class="tlaGNC">          10 :                 return pstrdup(location);</span></span>
+<span id="L528"><span class="lineNum">     528</span>              :         else</span>
+<span id="L529"><span class="lineNum">     529</span>              :         {</span>
+<span id="L530"><span class="lineNum">     530</span> <span class="tlaGNC">           5 :                 if (calling_file != NULL)</span></span>
+<span id="L531"><span class="lineNum">     531</span>              :                 {</span>
+<span id="L532"><span class="lineNum">     532</span> <span class="tlaUNC tlaBgUNC">           0 :                         strlcpy(abs_path, calling_file, sizeof(abs_path));</span></span>
+<span id="L533"><span class="lineNum">     533</span> <span class="tlaUNC">           0 :                         get_parent_directory(abs_path);</span></span>
+<span id="L534"><span class="lineNum">     534</span> <span class="tlaUNC">           0 :                         join_path_components(abs_path, abs_path, location);</span></span>
+<span id="L535"><span class="lineNum">     535</span> <span class="tlaUNC">           0 :                         canonicalize_path(abs_path);</span></span>
+<span id="L536"><span class="lineNum">     536</span>              :                 }</span>
+<span id="L537"><span class="lineNum">     537</span>              :                 else</span>
+<span id="L538"><span class="lineNum">     538</span>              :                 {</span>
+<span id="L539"><span class="lineNum">     539</span>              :                         AssertState(DataDir);</span>
+<span id="L540"><span class="lineNum">     540</span> <span class="tlaGNC tlaBgGNC">           5 :                         join_path_components(abs_path, DataDir, location);</span></span>
+<span id="L541"><span class="lineNum">     541</span> <span class="tlaGNC">           5 :                         canonicalize_path(abs_path);</span></span>
+<span id="L542"><span class="lineNum">     542</span>              :                 }</span>
+<span id="L543"><span class="lineNum">     543</span> <span class="tlaGNC">           5 :                 return pstrdup(abs_path);</span></span>
+<span id="L544"><span class="lineNum">     544</span>              :         }</span>
+<span id="L545"><span class="lineNum">     545</span>              : }</span>
+<span id="L546"><span class="lineNum">     546</span>              : </span>
+<span id="L547"><span class="lineNum">     547</span>              : /*</span>
+<span id="L548"><span class="lineNum">     548</span>              :  * Read and parse a single configuration file.  This function recurses</span>
+<span id="L549"><span class="lineNum">     549</span>              :  * to handle &quot;include&quot; directives.</span>
+<span id="L550"><span class="lineNum">     550</span>              :  *</span>
+<span id="L551"><span class="lineNum">     551</span>              :  * If &quot;strict&quot; is true, treat failure to open the config file as an error,</span>
+<span id="L552"><span class="lineNum">     552</span>              :  * otherwise just skip the file.</span>
+<span id="L553"><span class="lineNum">     553</span>              :  *</span>
+<span id="L554"><span class="lineNum">     554</span>              :  * calling_file/calling_lineno identify the source of the request.</span>
+<span id="L555"><span class="lineNum">     555</span>              :  * Pass NULL/0 if not recursing from an inclusion request.</span>
+<span id="L556"><span class="lineNum">     556</span>              :  *</span>
+<span id="L557"><span class="lineNum">     557</span>              :  * See ParseConfigFp for further details.  This one merely adds opening the</span>
+<span id="L558"><span class="lineNum">     558</span>              :  * config file rather than working from a caller-supplied file descriptor,</span>
+<span id="L559"><span class="lineNum">     559</span>              :  * and absolute-ifying the path name if necessary.</span>
+<span id="L560"><span class="lineNum">     560</span>              :  */</span>
+<span id="L561"><span class="lineNum">     561</span>              : bool</span>
+<span id="L562"><span class="lineNum">     562</span> <span class="tlaGNC">          15 : ParseConfigFile(const char *config_file, bool strict,</span></span>
+<span id="L563"><span class="lineNum">     563</span>              :                                 const char *calling_file, int calling_lineno,</span>
+<span id="L564"><span class="lineNum">     564</span>              :                                 int depth, int elevel,</span>
+<span id="L565"><span class="lineNum">     565</span>              :                                 ConfigVariable **head_p,</span>
+<span id="L566"><span class="lineNum">     566</span>              :                                 ConfigVariable **tail_p)</span>
+<span id="L567"><span class="lineNum">     567</span>              : {</span>
+<span id="L568"><span class="lineNum">     568</span>              :         char       *abs_path;</span>
+<span id="L569"><span class="lineNum">     569</span> <span class="tlaGNC">          15 :         bool            OK = true;</span></span>
+<span id="L570"><span class="lineNum">     570</span>              :         FILE       *fp;</span>
+<span id="L571"><span class="lineNum">     571</span>              : </span>
+<span id="L572"><span class="lineNum">     572</span>              :         /*</span>
+<span id="L573"><span class="lineNum">     573</span>              :          * Reject file name that is all-blank (including empty), as that leads to</span>
+<span id="L574"><span class="lineNum">     574</span>              :          * confusion --- we'd try to read the containing directory as a file.</span>
+<span id="L575"><span class="lineNum">     575</span>              :          */</span>
+<span id="L576"><span class="lineNum">     576</span> <span class="tlaGNC">          15 :         if (strspn(config_file, &quot; \t\r\n&quot;) == strlen(config_file))</span></span>
+<span id="L577"><span class="lineNum">     577</span>              :         {</span>
+<span id="L578"><span class="lineNum">     578</span> <span class="tlaUNC tlaBgUNC">           0 :                 ereport(elevel,</span></span>
+<span id="L579"><span class="lineNum">     579</span>              :                                 (errcode(ERRCODE_INVALID_PARAMETER_VALUE),</span>
+<span id="L580"><span class="lineNum">     580</span>              :                                  errmsg(&quot;empty configuration file name: \&quot;%s\&quot;&quot;,</span>
+<span id="L581"><span class="lineNum">     581</span>              :                                                 config_file)));</span>
+<span id="L582"><span class="lineNum">     582</span> <span class="tlaUNC">           0 :                 record_config_file_error(&quot;empty configuration file name&quot;,</span></span>
+<span id="L583"><span class="lineNum">     583</span>              :                                                                  calling_file, calling_lineno,</span>
+<span id="L584"><span class="lineNum">     584</span>              :                                                                  head_p, tail_p);</span>
+<span id="L585"><span class="lineNum">     585</span> <span class="tlaUNC">           0 :                 return false;</span></span>
+<span id="L586"><span class="lineNum">     586</span>              :         }</span>
+<span id="L587"><span class="lineNum">     587</span>              : </span>
+<span id="L588"><span class="lineNum">     588</span>              :         /*</span>
+<span id="L589"><span class="lineNum">     589</span>              :          * Reject too-deep include nesting depth.  This is just a safety check to</span>
+<span id="L590"><span class="lineNum">     590</span>              :          * avoid dumping core due to stack overflow if an include file loops back</span>
+<span id="L591"><span class="lineNum">     591</span>              :          * to itself.  The maximum nesting depth is pretty arbitrary.</span>
+<span id="L592"><span class="lineNum">     592</span>              :          */</span>
+<span id="L593"><span class="lineNum">     593</span> <span class="tlaGNC tlaBgGNC">          15 :         if (depth &gt; 10)</span></span>
+<span id="L594"><span class="lineNum">     594</span>              :         {</span>
+<span id="L595"><span class="lineNum">     595</span> <span class="tlaUNC tlaBgUNC">           0 :                 ereport(elevel,</span></span>
+<span id="L596"><span class="lineNum">     596</span>              :                                 (errcode(ERRCODE_PROGRAM_LIMIT_EXCEEDED),</span>
+<span id="L597"><span class="lineNum">     597</span>              :                                  errmsg(&quot;could not open configuration file \&quot;%s\&quot;: maximum nesting depth exceeded&quot;,</span>
+<span id="L598"><span class="lineNum">     598</span>              :                                                 config_file)));</span>
+<span id="L599"><span class="lineNum">     599</span> <span class="tlaUNC">           0 :                 record_config_file_error(&quot;nesting depth exceeded&quot;,</span></span>
+<span id="L600"><span class="lineNum">     600</span>              :                                                                  calling_file, calling_lineno,</span>
+<span id="L601"><span class="lineNum">     601</span>              :                                                                  head_p, tail_p);</span>
+<span id="L602"><span class="lineNum">     602</span> <span class="tlaUNC">           0 :                 return false;</span></span>
+<span id="L603"><span class="lineNum">     603</span>              :         }</span>
+<span id="L604"><span class="lineNum">     604</span>              : </span>
+<span id="L605"><span class="lineNum">     605</span> <span class="tlaGNC tlaBgGNC">          15 :         abs_path = AbsoluteConfigLocation(config_file, calling_file);</span></span>
+<span id="L606"><span class="lineNum">     606</span>              : </span>
+<span id="L607"><span class="lineNum">     607</span>              :         /*</span>
+<span id="L608"><span class="lineNum">     608</span>              :          * Reject direct recursion.  Indirect recursion is also possible, but it's</span>
+<span id="L609"><span class="lineNum">     609</span>              :          * harder to detect and so doesn't seem worth the trouble.  (We test at</span>
+<span id="L610"><span class="lineNum">     610</span>              :          * this step because the canonicalization done by AbsoluteConfigLocation</span>
+<span id="L611"><span class="lineNum">     611</span>              :          * makes it more likely that a simple strcmp comparison will match.)</span>
+<span id="L612"><span class="lineNum">     612</span>              :          */</span>
+<span id="L613"><span class="lineNum">     613</span> <span class="tlaGNC">          15 :         if (calling_file &amp;&amp; strcmp(abs_path, calling_file) == 0)</span></span>
+<span id="L614"><span class="lineNum">     614</span>              :         {</span>
+<span id="L615"><span class="lineNum">     615</span> <span class="tlaUNC tlaBgUNC">           0 :                 ereport(elevel,</span></span>
+<span id="L616"><span class="lineNum">     616</span>              :                                 (errcode(ERRCODE_INVALID_PARAMETER_VALUE),</span>
+<span id="L617"><span class="lineNum">     617</span>              :                                  errmsg(&quot;configuration file recursion in \&quot;%s\&quot;&quot;,</span>
+<span id="L618"><span class="lineNum">     618</span>              :                                                 calling_file)));</span>
+<span id="L619"><span class="lineNum">     619</span> <span class="tlaUNC">           0 :                 record_config_file_error(&quot;configuration file recursion&quot;,</span></span>
+<span id="L620"><span class="lineNum">     620</span>              :                                                                  calling_file, calling_lineno,</span>
+<span id="L621"><span class="lineNum">     621</span>              :                                                                  head_p, tail_p);</span>
+<span id="L622"><span class="lineNum">     622</span> <span class="tlaUNC">           0 :                 pfree(abs_path);</span></span>
+<span id="L623"><span class="lineNum">     623</span> <span class="tlaUNC">           0 :                 return false;</span></span>
+<span id="L624"><span class="lineNum">     624</span>              :         }</span>
+<span id="L625"><span class="lineNum">     625</span>              : </span>
+<span id="L626"><span class="lineNum">     626</span> <span class="tlaGNC tlaBgGNC">          15 :         fp = AllocateFile(abs_path, &quot;r&quot;);</span></span>
+<span id="L627"><span class="lineNum">     627</span> <span class="tlaGNC">          15 :         if (!fp)</span></span>
+<span id="L628"><span class="lineNum">     628</span>              :         {</span>
+<span id="L629"><span class="lineNum">     629</span> <span class="tlaGNC">           2 :                 if (strict)</span></span>
+<span id="L630"><span class="lineNum">     630</span>              :                 {</span>
+<span id="L631"><span class="lineNum">     631</span> <span class="tlaUNC tlaBgUNC">           0 :                         ereport(elevel,</span></span>
+<span id="L632"><span class="lineNum">     632</span>              :                                         (errcode_for_file_access(),</span>
+<span id="L633"><span class="lineNum">     633</span>              :                                          errmsg(&quot;could not open configuration file \&quot;%s\&quot;: %m&quot;,</span>
+<span id="L634"><span class="lineNum">     634</span>              :                                                         abs_path)));</span>
+<span id="L635"><span class="lineNum">     635</span> <span class="tlaUNC">           0 :                         record_config_file_error(psprintf(&quot;could not open file \&quot;%s\&quot;&quot;,</span></span>
+<span id="L636"><span class="lineNum">     636</span>              :                                                                                           abs_path),</span>
+<span id="L637"><span class="lineNum">     637</span>              :                                                                          calling_file, calling_lineno,</span>
+<span id="L638"><span class="lineNum">     638</span>              :                                                                          head_p, tail_p);</span>
+<span id="L639"><span class="lineNum">     639</span> <span class="tlaUNC">           0 :                         OK = false;</span></span>
+<span id="L640"><span class="lineNum">     640</span>              :                 }</span>
+<span id="L641"><span class="lineNum">     641</span>              :                 else</span>
+<span id="L642"><span class="lineNum">     642</span>              :                 {</span>
+<span id="L643"><span class="lineNum">     643</span> <span class="tlaGNC tlaBgGNC">           2 :                         ereport(LOG,</span></span>
+<span id="L644"><span class="lineNum">     644</span>              :                                         (errmsg(&quot;skipping missing configuration file \&quot;%s\&quot;&quot;,</span>
+<span id="L645"><span class="lineNum">     645</span>              :                                                         abs_path)));</span>
+<span id="L646"><span class="lineNum">     646</span>              :                 }</span>
+<span id="L647"><span class="lineNum">     647</span> <span class="tlaGNC">           2 :                 goto cleanup;</span></span>
+<span id="L648"><span class="lineNum">     648</span>              :         }</span>
+<span id="L649"><span class="lineNum">     649</span>              : </span>
+<span id="L650"><span class="lineNum">     650</span> <span class="tlaGNC">          13 :         OK = ParseConfigFp(fp, abs_path, depth, elevel, head_p, tail_p);</span></span>
+<span id="L651"><span class="lineNum">     651</span>              : </span>
+<span id="L652"><span class="lineNum">     652</span> <span class="tlaGNC">          15 : cleanup:</span></span>
+<span id="L653"><span class="lineNum">     653</span> <span class="tlaGNC">          15 :         if (fp)</span></span>
+<span id="L654"><span class="lineNum">     654</span> <span class="tlaGNC">          13 :                 FreeFile(fp);</span></span>
+<span id="L655"><span class="lineNum">     655</span> <span class="tlaGNC">          15 :         pfree(abs_path);</span></span>
+<span id="L656"><span class="lineNum">     656</span>              : </span>
+<span id="L657"><span class="lineNum">     657</span> <span class="tlaGNC">          15 :         return OK;</span></span>
+<span id="L658"><span class="lineNum">     658</span>              : }</span>
+<span id="L659"><span class="lineNum">     659</span>              : </span>
+<span id="L660"><span class="lineNum">     660</span>              : /*</span>
+<span id="L661"><span class="lineNum">     661</span>              :  * Capture an error message in the ConfigVariable list returned by</span>
+<span id="L662"><span class="lineNum">     662</span>              :  * config file parsing.</span>
+<span id="L663"><span class="lineNum">     663</span>              :  */</span>
+<span id="L664"><span class="lineNum">     664</span>              : static void</span>
+<span id="L665"><span class="lineNum">     665</span> <span class="tlaUNC tlaBgUNC">           0 : record_config_file_error(const char *errmsg,</span></span>
+<span id="L666"><span class="lineNum">     666</span>              :                                                  const char *config_file,</span>
+<span id="L667"><span class="lineNum">     667</span>              :                                                  int lineno,</span>
+<span id="L668"><span class="lineNum">     668</span>              :                                                  ConfigVariable **head_p,</span>
+<span id="L669"><span class="lineNum">     669</span>              :                                                  ConfigVariable **tail_p)</span>
+<span id="L670"><span class="lineNum">     670</span>              : {</span>
+<span id="L671"><span class="lineNum">     671</span>              :         ConfigVariable *item;</span>
+<span id="L672"><span class="lineNum">     672</span>              : </span>
+<span id="L673"><span class="lineNum">     673</span> <span class="tlaUNC">           0 :         item = palloc(sizeof *item);</span></span>
+<span id="L674"><span class="lineNum">     674</span> <span class="tlaUNC">           0 :         item-&gt;name = NULL;</span></span>
+<span id="L675"><span class="lineNum">     675</span> <span class="tlaUNC">           0 :         item-&gt;value = NULL;</span></span>
+<span id="L676"><span class="lineNum">     676</span> <span class="tlaUNC">           0 :         item-&gt;errmsg = pstrdup(errmsg);</span></span>
+<span id="L677"><span class="lineNum">     677</span> <span class="tlaUNC">           0 :         item-&gt;filename = config_file ? pstrdup(config_file) : NULL;</span></span>
+<span id="L678"><span class="lineNum">     678</span> <span class="tlaUNC">           0 :         item-&gt;sourceline = lineno;</span></span>
+<span id="L679"><span class="lineNum">     679</span> <span class="tlaUNC">           0 :         item-&gt;ignore = true;</span></span>
+<span id="L680"><span class="lineNum">     680</span> <span class="tlaUNC">           0 :         item-&gt;applied = false;</span></span>
+<span id="L681"><span class="lineNum">     681</span> <span class="tlaUNC">           0 :         item-&gt;next = NULL;</span></span>
+<span id="L682"><span class="lineNum">     682</span> <span class="tlaUNC">           0 :         if (*head_p == NULL)</span></span>
+<span id="L683"><span class="lineNum">     683</span> <span class="tlaUNC">           0 :                 *head_p = item;</span></span>
+<span id="L684"><span class="lineNum">     684</span>              :         else</span>
+<span id="L685"><span class="lineNum">     685</span> <span class="tlaUNC">           0 :                 (*tail_p)-&gt;next = item;</span></span>
+<span id="L686"><span class="lineNum">     686</span> <span class="tlaUNC">           0 :         *tail_p = item;</span></span>
+<span id="L687"><span class="lineNum">     687</span> <span class="tlaUNC">           0 : }</span></span>
+<span id="L688"><span class="lineNum">     688</span>              : </span>
+<span id="L689"><span class="lineNum">     689</span>              : /*</span>
+<span id="L690"><span class="lineNum">     690</span>              :  * Flex fatal errors bring us here.  Stash the error message and jump back to</span>
+<span id="L691"><span class="lineNum">     691</span>              :  * ParseConfigFp().  Assume all msg arguments point to string constants; this</span>
+<span id="L692"><span class="lineNum">     692</span>              :  * holds for flex 2.5.31 (earliest we support) and flex 2.5.35 (latest as of</span>
+<span id="L693"><span class="lineNum">     693</span>              :  * this writing).  Otherwise, we would need to copy the message.</span>
+<span id="L694"><span class="lineNum">     694</span>              :  *</span>
+<span id="L695"><span class="lineNum">     695</span>              :  * We return &quot;int&quot; since this takes the place of calls to fprintf().</span>
+<span id="L696"><span class="lineNum">     696</span>              : */</span>
+<span id="L697"><span class="lineNum">     697</span>              : static int</span>
+<span id="L698"><span class="lineNum">     698</span> <span class="tlaUNC">           0 : GUC_flex_fatal(const char *msg)</span></span>
+<span id="L699"><span class="lineNum">     699</span>              : {</span>
+<span id="L700"><span class="lineNum">     700</span> <span class="tlaUNC">           0 :         GUC_flex_fatal_errmsg = msg;</span></span>
+<span id="L701"><span class="lineNum">     701</span> <span class="tlaUNC">           0 :         siglongjmp(*GUC_flex_fatal_jmp, 1);</span></span>
+<span id="L702"><span class="lineNum">     702</span>              :         return 0;                                       /* keep compiler quiet */</span>
+<span id="L703"><span class="lineNum">     703</span>              : }</span>
+<span id="L704"><span class="lineNum">     704</span>              : </span>
+<span id="L705"><span class="lineNum">     705</span>              : /*</span>
+<span id="L706"><span class="lineNum">     706</span>              :  * Read and parse a single configuration file.  This function recurses</span>
+<span id="L707"><span class="lineNum">     707</span>              :  * to handle &quot;include&quot; directives.</span>
+<span id="L708"><span class="lineNum">     708</span>              :  *</span>
+<span id="L709"><span class="lineNum">     709</span>              :  * Input parameters:</span>
+<span id="L710"><span class="lineNum">     710</span>              :  *      fp: file pointer from AllocateFile for the configuration file to parse</span>
+<span id="L711"><span class="lineNum">     711</span>              :  *      config_file: absolute or relative path name of the configuration file</span>
+<span id="L712"><span class="lineNum">     712</span>              :  *      depth: recursion depth (should be 0 in the outermost call)</span>
+<span id="L713"><span class="lineNum">     713</span>              :  *      elevel: error logging level to use</span>
+<span id="L714"><span class="lineNum">     714</span>              :  * Input/Output parameters:</span>
+<span id="L715"><span class="lineNum">     715</span>              :  *      head_p, tail_p: head and tail of linked list of name/value pairs</span>
+<span id="L716"><span class="lineNum">     716</span>              :  *</span>
+<span id="L717"><span class="lineNum">     717</span>              :  * *head_p and *tail_p must be initialized, either to NULL or valid pointers</span>
+<span id="L718"><span class="lineNum">     718</span>              :  * to a ConfigVariable list, before calling the outer recursion level.  Any</span>
+<span id="L719"><span class="lineNum">     719</span>              :  * name-value pairs read from the input file(s) will be appended to the list.</span>
+<span id="L720"><span class="lineNum">     720</span>              :  * Error reports will also be appended to the list, if elevel &lt; ERROR.</span>
+<span id="L721"><span class="lineNum">     721</span>              :  *</span>
+<span id="L722"><span class="lineNum">     722</span>              :  * Returns TRUE if successful, FALSE if an error occurred.  The error has</span>
+<span id="L723"><span class="lineNum">     723</span>              :  * already been ereport'd, it is only necessary for the caller to clean up</span>
+<span id="L724"><span class="lineNum">     724</span>              :  * its own state and release the ConfigVariable list.</span>
+<span id="L725"><span class="lineNum">     725</span>              :  *</span>
+<span id="L726"><span class="lineNum">     726</span>              :  * Note: if elevel &gt;= ERROR then an error will not return control to the</span>
+<span id="L727"><span class="lineNum">     727</span>              :  * caller, so there is no need to check the return value in that case.</span>
+<span id="L728"><span class="lineNum">     728</span>              :  *</span>
+<span id="L729"><span class="lineNum">     729</span>              :  * Note: this function is used to parse not only postgresql.conf, but</span>
+<span id="L730"><span class="lineNum">     730</span>              :  * various other configuration files that use the same &quot;name = value&quot;</span>
+<span id="L731"><span class="lineNum">     731</span>              :  * syntax.  Hence, do not do anything here or in the subsidiary routines</span>
+<span id="L732"><span class="lineNum">     732</span>              :  * ParseConfigFile/ParseConfigDirectory that assumes we are processing</span>
+<span id="L733"><span class="lineNum">     733</span>              :  * GUCs specifically.</span>
+<span id="L734"><span class="lineNum">     734</span>              :  */</span>
+<span id="L735"><span class="lineNum">     735</span>              : bool</span>
+<span id="L736"><span class="lineNum">     736</span> <span class="tlaGNC tlaBgGNC">          14 : ParseConfigFp(FILE *fp, const char *config_file, int depth, int elevel,</span></span>
+<span id="L737"><span class="lineNum">     737</span>              :                           ConfigVariable **head_p, ConfigVariable **tail_p)</span>
+<span id="L738"><span class="lineNum">     738</span>              : {</span>
+<span id="L739"><span class="lineNum">     739</span> <span class="tlaGNC">          14 :         volatile bool OK = true;</span></span>
+<span id="L740"><span class="lineNum">     740</span> <span class="tlaGNC">          14 :         unsigned int save_ConfigFileLineno = ConfigFileLineno;</span></span>
+<span id="L741"><span class="lineNum">     741</span> <span class="tlaGNC">          14 :         sigjmp_buf *save_GUC_flex_fatal_jmp = GUC_flex_fatal_jmp;</span></span>
+<span id="L742"><span class="lineNum">     742</span>              :         sigjmp_buf      flex_fatal_jmp;</span>
+<span id="L743"><span class="lineNum">     743</span> <span class="tlaGNC">          14 :         volatile YY_BUFFER_STATE lex_buffer = NULL;</span></span>
+<span id="L744"><span class="lineNum">     744</span>              :         int                     errorcount;</span>
+<span id="L745"><span class="lineNum">     745</span>              :         int                     token;</span>
+<span id="L746"><span class="lineNum">     746</span>              : </span>
+<span id="L747"><span class="lineNum">     747</span> <span class="tlaGNC">          14 :         if (sigsetjmp(flex_fatal_jmp, 1) == 0)</span></span>
+<span id="L748"><span class="lineNum">     748</span> <span class="tlaGNC">          14 :                 GUC_flex_fatal_jmp = &amp;flex_fatal_jmp;</span></span>
+<span id="L749"><span class="lineNum">     749</span>              :         else</span>
+<span id="L750"><span class="lineNum">     750</span>              :         {</span>
+<span id="L751"><span class="lineNum">     751</span>              :                 /*</span>
+<span id="L752"><span class="lineNum">     752</span>              :                  * Regain control after a fatal, internal flex error.  It may have</span>
+<span id="L753"><span class="lineNum">     753</span>              :                  * corrupted parser state.  Consequently, abandon the file, but trust</span>
+<span id="L754"><span class="lineNum">     754</span>              :                  * that the state remains sane enough for yy_delete_buffer().</span>
+<span id="L755"><span class="lineNum">     755</span>              :                  */</span>
+<span id="L756"><span class="lineNum">     756</span> <span class="tlaUNC tlaBgUNC">           0 :                 elog(elevel, &quot;%s at file \&quot;%s\&quot; line %u&quot;,</span></span>
+<span id="L757"><span class="lineNum">     757</span>              :                          GUC_flex_fatal_errmsg, config_file, ConfigFileLineno);</span>
+<span id="L758"><span class="lineNum">     758</span> <span class="tlaUNC">           0 :                 record_config_file_error(GUC_flex_fatal_errmsg,</span></span>
+<span id="L759"><span class="lineNum">     759</span>              :                                                                  config_file, ConfigFileLineno,</span>
+<span id="L760"><span class="lineNum">     760</span>              :                                                                  head_p, tail_p);</span>
+<span id="L761"><span class="lineNum">     761</span> <span class="tlaUNC">           0 :                 OK = false;</span></span>
+<span id="L762"><span class="lineNum">     762</span> <span class="tlaUNC">           0 :                 goto cleanup;</span></span>
+<span id="L763"><span class="lineNum">     763</span>              :         }</span>
+<span id="L764"><span class="lineNum">     764</span>              : </span>
+<span id="L765"><span class="lineNum">     765</span>              :         /*</span>
+<span id="L766"><span class="lineNum">     766</span>              :          * Parse</span>
+<span id="L767"><span class="lineNum">     767</span>              :          */</span>
+<span id="L768"><span class="lineNum">     768</span> <span class="tlaGNC tlaBgGNC">          14 :         ConfigFileLineno = 1;</span></span>
+<span id="L769"><span class="lineNum">     769</span> <span class="tlaGNC">          14 :         errorcount = 0;</span></span>
+<span id="L770"><span class="lineNum">     770</span>              : </span>
+<span id="L771"><span class="lineNum">     771</span> <span class="tlaGNC">          14 :         lex_buffer = yy_create_buffer(fp, YY_BUF_SIZE);</span></span>
+<span id="L772"><span class="lineNum">     772</span> <span class="tlaGNC">          14 :         yy_switch_to_buffer(lex_buffer);</span></span>
+<span id="L773"><span class="lineNum">     773</span>              : </span>
+<span id="L774"><span class="lineNum">     774</span>              :         /* This loop iterates once per logical line */</span>
+<span id="L775"><span class="lineNum">     775</span> <span class="tlaGNC">        4712 :         while ((token = yylex()))</span></span>
+<span id="L776"><span class="lineNum">     776</span> <span class="tlaGNC">          89 :         {</span></span>
+<span id="L777"><span class="lineNum">     777</span> <span class="tlaGNC">        4698 :                 char       *opt_name = NULL;</span></span>
+<span id="L778"><span class="lineNum">     778</span> <span class="tlaGNC">        4698 :                 char       *opt_value = NULL;</span></span>
+<span id="L779"><span class="lineNum">     779</span>              :                 ConfigVariable *item;</span>
+<span id="L780"><span class="lineNum">     780</span>              : </span>
+<span id="L781"><span class="lineNum">     781</span> <span class="tlaGNC">        4698 :                 if (token == GUC_EOL)   /* empty or comment line */</span></span>
+<span id="L782"><span class="lineNum">     782</span> <span class="tlaGNC">        4609 :                         continue;</span></span>
+<span id="L783"><span class="lineNum">     783</span>              : </span>
+<span id="L784"><span class="lineNum">     784</span>              :                 /* first token on line is option name */</span>
+<span id="L785"><span class="lineNum">     785</span> <span class="tlaGNC">          89 :                 if (token != GUC_ID &amp;&amp; token != GUC_QUALIFIED_ID)</span></span>
+<span id="L786"><span class="lineNum">     786</span> <span class="tlaUNC tlaBgUNC">           0 :                         goto parse_error;</span></span>
+<span id="L787"><span class="lineNum">     787</span> <span class="tlaGNC tlaBgGNC">          89 :                 opt_name = pstrdup(yytext);</span></span>
+<span id="L788"><span class="lineNum">     788</span>              : </span>
+<span id="L789"><span class="lineNum">     789</span>              :                 /* next we have an optional equal sign; discard if present */</span>
+<span id="L790"><span class="lineNum">     790</span> <span class="tlaGNC">          89 :                 token = yylex();</span></span>
+<span id="L791"><span class="lineNum">     791</span> <span class="tlaGNC">          89 :                 if (token == GUC_EQUALS)</span></span>
+<span id="L792"><span class="lineNum">     792</span> <span class="tlaGNC">          89 :                         token = yylex();</span></span>
+<span id="L793"><span class="lineNum">     793</span>              : </span>
+<span id="L794"><span class="lineNum">     794</span>              :                 /* now we must have the option value */</span>
+<span id="L795"><span class="lineNum">     795</span> <span class="tlaGNC">          89 :                 if (token != GUC_ID &amp;&amp;</span></span>
+<span id="L796"><span class="lineNum">     796</span> <span class="tlaGNC">          24 :                         token != GUC_STRING &amp;&amp;</span></span>
+<span id="L797"><span class="lineNum">     797</span> <span class="tlaUNC tlaBgUNC">           0 :                         token != GUC_INTEGER &amp;&amp;</span></span>
+<span id="L798"><span class="lineNum">     798</span> <span class="tlaUNC">           0 :                         token != GUC_REAL &amp;&amp;</span></span>
+<span id="L799"><span class="lineNum">     799</span>              :                         token != GUC_UNQUOTED_STRING)</span>
+<span id="L800"><span class="lineNum">     800</span> <span class="tlaUNC">           0 :                         goto parse_error;</span></span>
+<span id="L801"><span class="lineNum">     801</span> <span class="tlaGNC tlaBgGNC">          89 :                 if (token == GUC_STRING)        /* strip quotes and escapes */</span></span>
+<span id="L802"><span class="lineNum">     802</span> <span class="tlaGNC">          53 :                         opt_value = GUC_scanstr(yytext);</span></span>
+<span id="L803"><span class="lineNum">     803</span>              :                 else</span>
+<span id="L804"><span class="lineNum">     804</span> <span class="tlaGNC">          36 :                         opt_value = pstrdup(yytext);</span></span>
+<span id="L805"><span class="lineNum">     805</span>              : </span>
+<span id="L806"><span class="lineNum">     806</span>              :                 /* now we'd like an end of line, or possibly EOF */</span>
+<span id="L807"><span class="lineNum">     807</span> <span class="tlaGNC">          89 :                 token = yylex();</span></span>
+<span id="L808"><span class="lineNum">     808</span> <span class="tlaGNC">          89 :                 if (token != GUC_EOL)</span></span>
+<span id="L809"><span class="lineNum">     809</span>              :                 {</span>
+<span id="L810"><span class="lineNum">     810</span> <span class="tlaUNC tlaBgUNC">           0 :                         if (token != 0)</span></span>
+<span id="L811"><span class="lineNum">     811</span> <span class="tlaUNC">           0 :                                 goto parse_error;</span></span>
+<span id="L812"><span class="lineNum">     812</span>              :                         /* treat EOF like \n for line numbering purposes, cf bug 4752 */</span>
+<span id="L813"><span class="lineNum">     813</span> <span class="tlaUNC">           0 :                         ConfigFileLineno++;</span></span>
+<span id="L814"><span class="lineNum">     814</span>              :                 }</span>
+<span id="L815"><span class="lineNum">     815</span>              : </span>
+<span id="L816"><span class="lineNum">     816</span>              :                 /* OK, process the option name and value */</span>
+<span id="L817"><span class="lineNum">     817</span> <span class="tlaGNC tlaBgGNC">          89 :                 if (guc_name_compare(opt_name, &quot;include_dir&quot;) == 0)</span></span>
+<span id="L818"><span class="lineNum">     818</span>              :                 {</span>
+<span id="L819"><span class="lineNum">     819</span>              :                         /*</span>
+<span id="L820"><span class="lineNum">     820</span>              :                          * An include_dir directive isn't a variable and should be</span>
+<span id="L821"><span class="lineNum">     821</span>              :                          * processed immediately.</span>
+<span id="L822"><span class="lineNum">     822</span>              :                          */</span>
+<span id="L823"><span class="lineNum">     823</span> <span class="tlaUNC tlaBgUNC">           0 :                         if (!ParseConfigDirectory(opt_value,</span></span>
+<span id="L824"><span class="lineNum">     824</span> <span class="tlaUNC">           0 :                                                                           config_file, ConfigFileLineno - 1,</span></span>
+<span id="L825"><span class="lineNum">     825</span>              :                                                                           depth + 1, elevel,</span>
+<span id="L826"><span class="lineNum">     826</span>              :                                                                           head_p, tail_p))</span>
+<span id="L827"><span class="lineNum">     827</span> <span class="tlaUNC">           0 :                                 OK = false;</span></span>
+<span id="L828"><span class="lineNum">     828</span> <span class="tlaUNC">           0 :                         yy_switch_to_buffer(lex_buffer);</span></span>
+<span id="L829"><span class="lineNum">     829</span> <span class="tlaUNC">           0 :                         pfree(opt_name);</span></span>
+<span id="L830"><span class="lineNum">     830</span> <span class="tlaUNC">           0 :                         pfree(opt_value);</span></span>
+<span id="L831"><span class="lineNum">     831</span>              :                 }</span>
+<span id="L832"><span class="lineNum">     832</span> <span class="tlaGNC tlaBgGNC">          89 :                 else if (guc_name_compare(opt_name, &quot;include_if_exists&quot;) == 0)</span></span>
+<span id="L833"><span class="lineNum">     833</span>              :                 {</span>
+<span id="L834"><span class="lineNum">     834</span>              :                         /*</span>
+<span id="L835"><span class="lineNum">     835</span>              :                          * An include_if_exists directive isn't a variable and should be</span>
+<span id="L836"><span class="lineNum">     836</span>              :                          * processed immediately.</span>
+<span id="L837"><span class="lineNum">     837</span>              :                          */</span>
+<span id="L838"><span class="lineNum">     838</span> <span class="tlaUNC tlaBgUNC">           0 :                         if (!ParseConfigFile(opt_value, false,</span></span>
+<span id="L839"><span class="lineNum">     839</span> <span class="tlaUNC">           0 :                                                                  config_file, ConfigFileLineno - 1,</span></span>
+<span id="L840"><span class="lineNum">     840</span>              :                                                                  depth + 1, elevel,</span>
+<span id="L841"><span class="lineNum">     841</span>              :                                                                  head_p, tail_p))</span>
+<span id="L842"><span class="lineNum">     842</span> <span class="tlaUNC">           0 :                                 OK = false;</span></span>
+<span id="L843"><span class="lineNum">     843</span> <span class="tlaUNC">           0 :                         yy_switch_to_buffer(lex_buffer);</span></span>
+<span id="L844"><span class="lineNum">     844</span> <span class="tlaUNC">           0 :                         pfree(opt_name);</span></span>
+<span id="L845"><span class="lineNum">     845</span> <span class="tlaUNC">           0 :                         pfree(opt_value);</span></span>
+<span id="L846"><span class="lineNum">     846</span>              :                 }</span>
+<span id="L847"><span class="lineNum">     847</span> <span class="tlaGNC tlaBgGNC">          89 :                 else if (guc_name_compare(opt_name, &quot;include&quot;) == 0)</span></span>
+<span id="L848"><span class="lineNum">     848</span>              :                 {</span>
+<span id="L849"><span class="lineNum">     849</span>              :                         /*</span>
+<span id="L850"><span class="lineNum">     850</span>              :                          * An include directive isn't a variable and should be processed</span>
+<span id="L851"><span class="lineNum">     851</span>              :                          * immediately.</span>
+<span id="L852"><span class="lineNum">     852</span>              :                          */</span>
+<span id="L853"><span class="lineNum">     853</span> <span class="tlaUNC tlaBgUNC">           0 :                         if (!ParseConfigFile(opt_value, true,</span></span>
+<span id="L854"><span class="lineNum">     854</span> <span class="tlaUNC">           0 :                                                                  config_file, ConfigFileLineno - 1,</span></span>
+<span id="L855"><span class="lineNum">     855</span>              :                                                                  depth + 1, elevel,</span>
+<span id="L856"><span class="lineNum">     856</span>              :                                                                  head_p, tail_p))</span>
+<span id="L857"><span class="lineNum">     857</span> <span class="tlaUNC">           0 :                                 OK = false;</span></span>
+<span id="L858"><span class="lineNum">     858</span> <span class="tlaUNC">           0 :                         yy_switch_to_buffer(lex_buffer);</span></span>
+<span id="L859"><span class="lineNum">     859</span> <span class="tlaUNC">           0 :                         pfree(opt_name);</span></span>
+<span id="L860"><span class="lineNum">     860</span> <span class="tlaUNC">           0 :                         pfree(opt_value);</span></span>
+<span id="L861"><span class="lineNum">     861</span>              :                 }</span>
+<span id="L862"><span class="lineNum">     862</span>              :                 else</span>
+<span id="L863"><span class="lineNum">     863</span>              :                 {</span>
+<span id="L864"><span class="lineNum">     864</span>              :                         /* ordinary variable, append to list */</span>
+<span id="L865"><span class="lineNum">     865</span> <span class="tlaGNC tlaBgGNC">          89 :                         item = palloc(sizeof *item);</span></span>
+<span id="L866"><span class="lineNum">     866</span> <span class="tlaGNC">          89 :                         item-&gt;name = opt_name;</span></span>
+<span id="L867"><span class="lineNum">     867</span> <span class="tlaGNC">          89 :                         item-&gt;value = opt_value;</span></span>
+<span id="L868"><span class="lineNum">     868</span> <span class="tlaGNC">          89 :                         item-&gt;errmsg = NULL;</span></span>
+<span id="L869"><span class="lineNum">     869</span> <span class="tlaGNC">          89 :                         item-&gt;filename = pstrdup(config_file);</span></span>
+<span id="L870"><span class="lineNum">     870</span> <span class="tlaGNC">          89 :                         item-&gt;sourceline = ConfigFileLineno - 1;</span></span>
+<span id="L871"><span class="lineNum">     871</span> <span class="tlaGNC">          89 :                         item-&gt;ignore = false;</span></span>
+<span id="L872"><span class="lineNum">     872</span> <span class="tlaGNC">          89 :                         item-&gt;applied = false;</span></span>
+<span id="L873"><span class="lineNum">     873</span> <span class="tlaGNC">          89 :                         item-&gt;next = NULL;</span></span>
+<span id="L874"><span class="lineNum">     874</span> <span class="tlaGNC">          89 :                         if (*head_p == NULL)</span></span>
+<span id="L875"><span class="lineNum">     875</span> <span class="tlaGNC">           7 :                                 *head_p = item;</span></span>
+<span id="L876"><span class="lineNum">     876</span>              :                         else</span>
+<span id="L877"><span class="lineNum">     877</span> <span class="tlaGNC">          82 :                                 (*tail_p)-&gt;next = item;</span></span>
+<span id="L878"><span class="lineNum">     878</span> <span class="tlaGNC">          89 :                         *tail_p = item;</span></span>
+<span id="L879"><span class="lineNum">     879</span>              :                 }</span>
+<span id="L880"><span class="lineNum">     880</span>              : </span>
+<span id="L881"><span class="lineNum">     881</span>              :                 /* break out of loop if read EOF, else loop for next line */</span>
+<span id="L882"><span class="lineNum">     882</span> <span class="tlaGNC">          89 :                 if (token == 0)</span></span>
+<span id="L883"><span class="lineNum">     883</span> <span class="tlaUNC tlaBgUNC">           0 :                         break;</span></span>
+<span id="L884"><span class="lineNum">     884</span> <span class="tlaGNC tlaBgGNC">          89 :                 continue;</span></span>
+<span id="L885"><span class="lineNum">     885</span>              : </span>
+<span id="L886"><span class="lineNum">     886</span> <span class="tlaUNC tlaBgUNC">           0 : parse_error:</span></span>
+<span id="L887"><span class="lineNum">     887</span>              :                 /* release storage if we allocated any on this line */</span>
+<span id="L888"><span class="lineNum">     888</span> <span class="tlaUNC">           0 :                 if (opt_name)</span></span>
+<span id="L889"><span class="lineNum">     889</span> <span class="tlaUNC">           0 :                         pfree(opt_name);</span></span>
+<span id="L890"><span class="lineNum">     890</span> <span class="tlaUNC">           0 :                 if (opt_value)</span></span>
+<span id="L891"><span class="lineNum">     891</span> <span class="tlaUNC">           0 :                         pfree(opt_value);</span></span>
+<span id="L892"><span class="lineNum">     892</span>              : </span>
+<span id="L893"><span class="lineNum">     893</span>              :                 /* report the error */</span>
+<span id="L894"><span class="lineNum">     894</span> <span class="tlaUNC">           0 :                 if (token == GUC_EOL || token == 0)</span></span>
+<span id="L895"><span class="lineNum">     895</span>              :                 {</span>
+<span id="L896"><span class="lineNum">     896</span> <span class="tlaUNC">           0 :                         ereport(elevel,</span></span>
+<span id="L897"><span class="lineNum">     897</span>              :                                         (errcode(ERRCODE_SYNTAX_ERROR),</span>
+<span id="L898"><span class="lineNum">     898</span>              :                           errmsg(&quot;syntax error in file \&quot;%s\&quot; line %u, near end of line&quot;,</span>
+<span id="L899"><span class="lineNum">     899</span>              :                                          config_file, ConfigFileLineno - 1)));</span>
+<span id="L900"><span class="lineNum">     900</span> <span class="tlaUNC">           0 :                         record_config_file_error(&quot;syntax error&quot;,</span></span>
+<span id="L901"><span class="lineNum">     901</span> <span class="tlaUNC">           0 :                                                                          config_file, ConfigFileLineno - 1,</span></span>
+<span id="L902"><span class="lineNum">     902</span>              :                                                                          head_p, tail_p);</span>
+<span id="L903"><span class="lineNum">     903</span>              :                 }</span>
+<span id="L904"><span class="lineNum">     904</span>              :                 else</span>
+<span id="L905"><span class="lineNum">     905</span>              :                 {</span>
+<span id="L906"><span class="lineNum">     906</span> <span class="tlaUNC">           0 :                         ereport(elevel,</span></span>
+<span id="L907"><span class="lineNum">     907</span>              :                                         (errcode(ERRCODE_SYNTAX_ERROR),</span>
+<span id="L908"><span class="lineNum">     908</span>              :                          errmsg(&quot;syntax error in file \&quot;%s\&quot; line %u, near token \&quot;%s\&quot;&quot;,</span>
+<span id="L909"><span class="lineNum">     909</span>              :                                         config_file, ConfigFileLineno, yytext)));</span>
+<span id="L910"><span class="lineNum">     910</span> <span class="tlaUNC">           0 :                         record_config_file_error(&quot;syntax error&quot;,</span></span>
+<span id="L911"><span class="lineNum">     911</span>              :                                                                          config_file, ConfigFileLineno,</span>
+<span id="L912"><span class="lineNum">     912</span>              :                                                                          head_p, tail_p);</span>
+<span id="L913"><span class="lineNum">     913</span>              :                 }</span>
+<span id="L914"><span class="lineNum">     914</span> <span class="tlaUNC">           0 :                 OK = false;</span></span>
+<span id="L915"><span class="lineNum">     915</span> <span class="tlaUNC">           0 :                 errorcount++;</span></span>
+<span id="L916"><span class="lineNum">     916</span>              : </span>
+<span id="L917"><span class="lineNum">     917</span>              :                 /*</span>
+<span id="L918"><span class="lineNum">     918</span>              :                  * To avoid producing too much noise when fed a totally bogus file,</span>
+<span id="L919"><span class="lineNum">     919</span>              :                  * give up after 100 syntax errors per file (an arbitrary number).</span>
+<span id="L920"><span class="lineNum">     920</span>              :                  * Also, if we're only logging the errors at DEBUG level anyway, might</span>
+<span id="L921"><span class="lineNum">     921</span>              :                  * as well give up immediately.  (This prevents postmaster children</span>
+<span id="L922"><span class="lineNum">     922</span>              :                  * from bloating the logs with duplicate complaints.)</span>
+<span id="L923"><span class="lineNum">     923</span>              :                  */</span>
+<span id="L924"><span class="lineNum">     924</span> <span class="tlaUNC">           0 :                 if (errorcount &gt;= 100 || elevel &lt;= DEBUG1)</span></span>
+<span id="L925"><span class="lineNum">     925</span>              :                 {</span>
+<span id="L926"><span class="lineNum">     926</span> <span class="tlaUNC">           0 :                         ereport(elevel,</span></span>
+<span id="L927"><span class="lineNum">     927</span>              :                                         (errcode(ERRCODE_PROGRAM_LIMIT_EXCEEDED),</span>
+<span id="L928"><span class="lineNum">     928</span>              :                            errmsg(&quot;too many syntax errors found, abandoning file \&quot;%s\&quot;&quot;,</span>
+<span id="L929"><span class="lineNum">     929</span>              :                                           config_file)));</span>
+<span id="L930"><span class="lineNum">     930</span> <span class="tlaUNC">           0 :                         break;</span></span>
+<span id="L931"><span class="lineNum">     931</span>              :                 }</span>
+<span id="L932"><span class="lineNum">     932</span>              : </span>
+<span id="L933"><span class="lineNum">     933</span>              :                 /* resync to next end-of-line or EOF */</span>
+<span id="L934"><span class="lineNum">     934</span> <span class="tlaUNC">           0 :                 while (token != GUC_EOL &amp;&amp; token != 0)</span></span>
+<span id="L935"><span class="lineNum">     935</span> <span class="tlaUNC">           0 :                         token = yylex();</span></span>
+<span id="L936"><span class="lineNum">     936</span>              :                 /* break out of loop on EOF */</span>
+<span id="L937"><span class="lineNum">     937</span> <span class="tlaUNC">           0 :                 if (token == 0)</span></span>
+<span id="L938"><span class="lineNum">     938</span> <span class="tlaUNC">           0 :                         break;</span></span>
+<span id="L939"><span class="lineNum">     939</span>              :         }</span>
+<span id="L940"><span class="lineNum">     940</span>              : </span>
+<span id="L941"><span class="lineNum">     941</span> <span class="tlaGNC tlaBgGNC">          14 : cleanup:</span></span>
+<span id="L942"><span class="lineNum">     942</span> <span class="tlaGNC">          14 :         yy_delete_buffer(lex_buffer);</span></span>
+<span id="L943"><span class="lineNum">     943</span>              :         /* Each recursion level must save and restore these static variables. */</span>
+<span id="L944"><span class="lineNum">     944</span> <span class="tlaGNC">          14 :         ConfigFileLineno = save_ConfigFileLineno;</span></span>
+<span id="L945"><span class="lineNum">     945</span> <span class="tlaGNC">          14 :         GUC_flex_fatal_jmp = save_GUC_flex_fatal_jmp;</span></span>
+<span id="L946"><span class="lineNum">     946</span> <span class="tlaGNC">          14 :         return OK;</span></span>
+<span id="L947"><span class="lineNum">     947</span>              : }</span>
+<span id="L948"><span class="lineNum">     948</span>              : </span>
+<span id="L949"><span class="lineNum">     949</span>              : /*</span>
+<span id="L950"><span class="lineNum">     950</span>              :  * Read and parse all config files in a subdirectory in alphabetical order</span>
+<span id="L951"><span class="lineNum">     951</span>              :  *</span>
+<span id="L952"><span class="lineNum">     952</span>              :  * includedir is the absolute or relative path to the subdirectory to scan.</span>
+<span id="L953"><span class="lineNum">     953</span>              :  *</span>
+<span id="L954"><span class="lineNum">     954</span>              :  * calling_file/calling_lineno identify the source of the request.</span>
+<span id="L955"><span class="lineNum">     955</span>              :  * Pass NULL/0 if not recursing from an inclusion request.</span>
+<span id="L956"><span class="lineNum">     956</span>              :  *</span>
+<span id="L957"><span class="lineNum">     957</span>              :  * See ParseConfigFp for further details.</span>
+<span id="L958"><span class="lineNum">     958</span>              :  */</span>
+<span id="L959"><span class="lineNum">     959</span>              : bool</span>
+<span id="L960"><span class="lineNum">     960</span> <span class="tlaUNC tlaBgUNC">           0 : ParseConfigDirectory(const char *includedir,</span></span>
+<span id="L961"><span class="lineNum">     961</span>              :                                          const char *calling_file, int calling_lineno,</span>
+<span id="L962"><span class="lineNum">     962</span>              :                                          int depth, int elevel,</span>
+<span id="L963"><span class="lineNum">     963</span>              :                                          ConfigVariable **head_p,</span>
+<span id="L964"><span class="lineNum">     964</span>              :                                          ConfigVariable **tail_p)</span>
+<span id="L965"><span class="lineNum">     965</span>              : {</span>
+<span id="L966"><span class="lineNum">     966</span>              :         char       *directory;</span>
+<span id="L967"><span class="lineNum">     967</span>              :         DIR                *d;</span>
+<span id="L968"><span class="lineNum">     968</span>              :         struct dirent *de;</span>
+<span id="L969"><span class="lineNum">     969</span>              :         char      **filenames;</span>
+<span id="L970"><span class="lineNum">     970</span>              :         int                     num_filenames;</span>
+<span id="L971"><span class="lineNum">     971</span>              :         int                     size_filenames;</span>
+<span id="L972"><span class="lineNum">     972</span>              :         bool            status;</span>
+<span id="L973"><span class="lineNum">     973</span>              : </span>
+<span id="L974"><span class="lineNum">     974</span>              :         /*</span>
+<span id="L975"><span class="lineNum">     975</span>              :          * Reject directory name that is all-blank (including empty), as that</span>
+<span id="L976"><span class="lineNum">     976</span>              :          * leads to confusion --- we'd read the containing directory, typically</span>
+<span id="L977"><span class="lineNum">     977</span>              :          * resulting in recursive inclusion of the same file(s).</span>
+<span id="L978"><span class="lineNum">     978</span>              :          */</span>
+<span id="L979"><span class="lineNum">     979</span> <span class="tlaUNC">           0 :         if (strspn(includedir, &quot; \t\r\n&quot;) == strlen(includedir))</span></span>
+<span id="L980"><span class="lineNum">     980</span>              :         {</span>
+<span id="L981"><span class="lineNum">     981</span> <span class="tlaUNC">           0 :                 ereport(elevel,</span></span>
+<span id="L982"><span class="lineNum">     982</span>              :                                 (errcode(ERRCODE_INVALID_PARAMETER_VALUE),</span>
+<span id="L983"><span class="lineNum">     983</span>              :                                  errmsg(&quot;empty configuration directory name: \&quot;%s\&quot;&quot;,</span>
+<span id="L984"><span class="lineNum">     984</span>              :                                                 includedir)));</span>
+<span id="L985"><span class="lineNum">     985</span> <span class="tlaUNC">           0 :                 record_config_file_error(&quot;empty configuration directory name&quot;,</span></span>
+<span id="L986"><span class="lineNum">     986</span>              :                                                                  calling_file, calling_lineno,</span>
+<span id="L987"><span class="lineNum">     987</span>              :                                                                  head_p, tail_p);</span>
+<span id="L988"><span class="lineNum">     988</span> <span class="tlaUNC">           0 :                 return false;</span></span>
+<span id="L989"><span class="lineNum">     989</span>              :         }</span>
+<span id="L990"><span class="lineNum">     990</span>              : </span>
+<span id="L991"><span class="lineNum">     991</span>              :         /*</span>
+<span id="L992"><span class="lineNum">     992</span>              :          * We don't check for recursion or too-deep nesting depth here; the</span>
+<span id="L993"><span class="lineNum">     993</span>              :          * subsequent calls to ParseConfigFile will take care of that.</span>
+<span id="L994"><span class="lineNum">     994</span>              :          */</span>
+<span id="L995"><span class="lineNum">     995</span>              : </span>
+<span id="L996"><span class="lineNum">     996</span> <span class="tlaUNC">           0 :         directory = AbsoluteConfigLocation(includedir, calling_file);</span></span>
+<span id="L997"><span class="lineNum">     997</span> <span class="tlaUNC">           0 :         d = AllocateDir(directory);</span></span>
+<span id="L998"><span class="lineNum">     998</span> <span class="tlaUNC">           0 :         if (d == NULL)</span></span>
+<span id="L999"><span class="lineNum">     999</span>              :         {</span>
+<span id="L1000"><span class="lineNum">    1000</span> <span class="tlaUNC">           0 :                 ereport(elevel,</span></span>
+<span id="L1001"><span class="lineNum">    1001</span>              :                                 (errcode_for_file_access(),</span>
+<span id="L1002"><span class="lineNum">    1002</span>              :                                  errmsg(&quot;could not open configuration directory \&quot;%s\&quot;: %m&quot;,</span>
+<span id="L1003"><span class="lineNum">    1003</span>              :                                                 directory)));</span>
+<span id="L1004"><span class="lineNum">    1004</span> <span class="tlaUNC">           0 :                 record_config_file_error(psprintf(&quot;could not open directory \&quot;%s\&quot;&quot;,</span></span>
+<span id="L1005"><span class="lineNum">    1005</span>              :                                                                                   directory),</span>
+<span id="L1006"><span class="lineNum">    1006</span>              :                                                                  calling_file, calling_lineno,</span>
+<span id="L1007"><span class="lineNum">    1007</span>              :                                                                  head_p, tail_p);</span>
+<span id="L1008"><span class="lineNum">    1008</span> <span class="tlaUNC">           0 :                 status = false;</span></span>
+<span id="L1009"><span class="lineNum">    1009</span> <span class="tlaUNC">           0 :                 goto cleanup;</span></span>
+<span id="L1010"><span class="lineNum">    1010</span>              :         }</span>
+<span id="L1011"><span class="lineNum">    1011</span>              : </span>
+<span id="L1012"><span class="lineNum">    1012</span>              :         /*</span>
+<span id="L1013"><span class="lineNum">    1013</span>              :          * Read the directory and put the filenames in an array, so we can sort</span>
+<span id="L1014"><span class="lineNum">    1014</span>              :          * them prior to processing the contents.</span>
+<span id="L1015"><span class="lineNum">    1015</span>              :          */</span>
+<span id="L1016"><span class="lineNum">    1016</span> <span class="tlaUNC">           0 :         size_filenames = 32;</span></span>
+<span id="L1017"><span class="lineNum">    1017</span> <span class="tlaUNC">           0 :         filenames = (char **) palloc(size_filenames * sizeof(char *));</span></span>
+<span id="L1018"><span class="lineNum">    1018</span> <span class="tlaUNC">           0 :         num_filenames = 0;</span></span>
+<span id="L1019"><span class="lineNum">    1019</span>              : </span>
+<span id="L1020"><span class="lineNum">    1020</span> <span class="tlaUNC">           0 :         while ((de = ReadDir(d, directory)) != NULL)</span></span>
+<span id="L1021"><span class="lineNum">    1021</span>              :         {</span>
+<span id="L1022"><span class="lineNum">    1022</span>              :                 struct stat st;</span>
+<span id="L1023"><span class="lineNum">    1023</span>              :                 char            filename[MAXPGPATH];</span>
+<span id="L1024"><span class="lineNum">    1024</span>              : </span>
+<span id="L1025"><span class="lineNum">    1025</span>              :                 /*</span>
+<span id="L1026"><span class="lineNum">    1026</span>              :                  * Only parse files with names ending in &quot;.conf&quot;.  Explicitly reject</span>
+<span id="L1027"><span class="lineNum">    1027</span>              :                  * files starting with &quot;.&quot;.  This excludes things like &quot;.&quot; and &quot;..&quot;,</span>
+<span id="L1028"><span class="lineNum">    1028</span>              :                  * as well as typical hidden files, backup files, and editor debris.</span>
+<span id="L1029"><span class="lineNum">    1029</span>              :                  */</span>
+<span id="L1030"><span class="lineNum">    1030</span> <span class="tlaUNC">           0 :                 if (strlen(de-&gt;d_name) &lt; 6)</span></span>
+<span id="L1031"><span class="lineNum">    1031</span> <span class="tlaUNC">           0 :                         continue;</span></span>
+<span id="L1032"><span class="lineNum">    1032</span> <span class="tlaUNC">           0 :                 if (de-&gt;d_name[0] == '.')</span></span>
+<span id="L1033"><span class="lineNum">    1033</span> <span class="tlaUNC">           0 :                         continue;</span></span>
+<span id="L1034"><span class="lineNum">    1034</span> <span class="tlaUNC">           0 :                 if (strcmp(de-&gt;d_name + strlen(de-&gt;d_name) - 5, &quot;.conf&quot;) != 0)</span></span>
+<span id="L1035"><span class="lineNum">    1035</span> <span class="tlaUNC">           0 :                         continue;</span></span>
+<span id="L1036"><span class="lineNum">    1036</span>              : </span>
+<span id="L1037"><span class="lineNum">    1037</span> <span class="tlaUNC">           0 :                 join_path_components(filename, directory, de-&gt;d_name);</span></span>
+<span id="L1038"><span class="lineNum">    1038</span> <span class="tlaUNC">           0 :                 canonicalize_path(filename);</span></span>
+<span id="L1039"><span class="lineNum">    1039</span> <span class="tlaUNC">           0 :                 if (stat(filename, &amp;st) == 0)</span></span>
+<span id="L1040"><span class="lineNum">    1040</span>              :                 {</span>
+<span id="L1041"><span class="lineNum">    1041</span> <span class="tlaUNC">           0 :                         if (!S_ISDIR(st.st_mode))</span></span>
+<span id="L1042"><span class="lineNum">    1042</span>              :                         {</span>
+<span id="L1043"><span class="lineNum">    1043</span>              :                                 /* Add file to array, increasing its size in blocks of 32 */</span>
+<span id="L1044"><span class="lineNum">    1044</span> <span class="tlaUNC">           0 :                                 if (num_filenames &gt;= size_filenames)</span></span>
+<span id="L1045"><span class="lineNum">    1045</span>              :                                 {</span>
+<span id="L1046"><span class="lineNum">    1046</span> <span class="tlaUNC">           0 :                                         size_filenames += 32;</span></span>
+<span id="L1047"><span class="lineNum">    1047</span> <span class="tlaUNC">           0 :                                         filenames = (char **) repalloc(filenames,</span></span>
+<span id="L1048"><span class="lineNum">    1048</span>              :                                                                                         size_filenames * sizeof(char *));</span>
+<span id="L1049"><span class="lineNum">    1049</span>              :                                 }</span>
+<span id="L1050"><span class="lineNum">    1050</span> <span class="tlaUNC">           0 :                                 filenames[num_filenames] = pstrdup(filename);</span></span>
+<span id="L1051"><span class="lineNum">    1051</span> <span class="tlaUNC">           0 :                                 num_filenames++;</span></span>
+<span id="L1052"><span class="lineNum">    1052</span>              :                         }</span>
+<span id="L1053"><span class="lineNum">    1053</span>              :                 }</span>
+<span id="L1054"><span class="lineNum">    1054</span>              :                 else</span>
+<span id="L1055"><span class="lineNum">    1055</span>              :                 {</span>
+<span id="L1056"><span class="lineNum">    1056</span>              :                         /*</span>
+<span id="L1057"><span class="lineNum">    1057</span>              :                          * stat does not care about permissions, so the most likely reason</span>
+<span id="L1058"><span class="lineNum">    1058</span>              :                          * a file can't be accessed now is if it was removed between the</span>
+<span id="L1059"><span class="lineNum">    1059</span>              :                          * directory listing and now.</span>
+<span id="L1060"><span class="lineNum">    1060</span>              :                          */</span>
+<span id="L1061"><span class="lineNum">    1061</span> <span class="tlaUNC">           0 :                         ereport(elevel,</span></span>
+<span id="L1062"><span class="lineNum">    1062</span>              :                                         (errcode_for_file_access(),</span>
+<span id="L1063"><span class="lineNum">    1063</span>              :                                          errmsg(&quot;could not stat file \&quot;%s\&quot;: %m&quot;,</span>
+<span id="L1064"><span class="lineNum">    1064</span>              :                                                         filename)));</span>
+<span id="L1065"><span class="lineNum">    1065</span> <span class="tlaUNC">           0 :                         record_config_file_error(psprintf(&quot;could not stat file \&quot;%s\&quot;&quot;,</span></span>
+<span id="L1066"><span class="lineNum">    1066</span>              :                                                                                           filename),</span>
+<span id="L1067"><span class="lineNum">    1067</span>              :                                                                          calling_file, calling_lineno,</span>
+<span id="L1068"><span class="lineNum">    1068</span>              :                                                                          head_p, tail_p);</span>
+<span id="L1069"><span class="lineNum">    1069</span> <span class="tlaUNC">           0 :                         status = false;</span></span>
+<span id="L1070"><span class="lineNum">    1070</span> <span class="tlaUNC">           0 :                         goto cleanup;</span></span>
+<span id="L1071"><span class="lineNum">    1071</span>              :                 }</span>
+<span id="L1072"><span class="lineNum">    1072</span>              :         }</span>
+<span id="L1073"><span class="lineNum">    1073</span>              : </span>
+<span id="L1074"><span class="lineNum">    1074</span> <span class="tlaUNC">           0 :         if (num_filenames &gt; 0)</span></span>
+<span id="L1075"><span class="lineNum">    1075</span>              :         {</span>
+<span id="L1076"><span class="lineNum">    1076</span>              :                 int                     i;</span>
+<span id="L1077"><span class="lineNum">    1077</span>              : </span>
+<span id="L1078"><span class="lineNum">    1078</span> <span class="tlaUNC">           0 :                 qsort(filenames, num_filenames, sizeof(char *), pg_qsort_strcmp);</span></span>
+<span id="L1079"><span class="lineNum">    1079</span> <span class="tlaUNC">           0 :                 for (i = 0; i &lt; num_filenames; i++)</span></span>
+<span id="L1080"><span class="lineNum">    1080</span>              :                 {</span>
+<span id="L1081"><span class="lineNum">    1081</span> <span class="tlaUNC">           0 :                         if (!ParseConfigFile(filenames[i], true,</span></span>
+<span id="L1082"><span class="lineNum">    1082</span>              :                                                                  calling_file, calling_lineno,</span>
+<span id="L1083"><span class="lineNum">    1083</span>              :                                                                  depth, elevel,</span>
+<span id="L1084"><span class="lineNum">    1084</span>              :                                                                  head_p, tail_p))</span>
+<span id="L1085"><span class="lineNum">    1085</span>              :                         {</span>
+<span id="L1086"><span class="lineNum">    1086</span> <span class="tlaUNC">           0 :                                 status = false;</span></span>
+<span id="L1087"><span class="lineNum">    1087</span> <span class="tlaUNC">           0 :                                 goto cleanup;</span></span>
+<span id="L1088"><span class="lineNum">    1088</span>              :                         }</span>
+<span id="L1089"><span class="lineNum">    1089</span>              :                 }</span>
+<span id="L1090"><span class="lineNum">    1090</span>              :         }</span>
+<span id="L1091"><span class="lineNum">    1091</span> <span class="tlaUNC">           0 :         status = true;</span></span>
+<span id="L1092"><span class="lineNum">    1092</span>              : </span>
+<span id="L1093"><span class="lineNum">    1093</span> <span class="tlaUNC">           0 : cleanup:</span></span>
+<span id="L1094"><span class="lineNum">    1094</span> <span class="tlaUNC">           0 :         if (d)</span></span>
+<span id="L1095"><span class="lineNum">    1095</span> <span class="tlaUNC">           0 :                 FreeDir(d);</span></span>
+<span id="L1096"><span class="lineNum">    1096</span> <span class="tlaUNC">           0 :         pfree(directory);</span></span>
+<span id="L1097"><span class="lineNum">    1097</span> <span class="tlaUNC">           0 :         return status;</span></span>
+<span id="L1098"><span class="lineNum">    1098</span>              : }</span>
+<span id="L1099"><span class="lineNum">    1099</span>              : </span>
+<span id="L1100"><span class="lineNum">    1100</span>              : /*</span>
+<span id="L1101"><span class="lineNum">    1101</span>              :  * Free a list of ConfigVariables, including the names and the values</span>
+<span id="L1102"><span class="lineNum">    1102</span>              :  */</span>
+<span id="L1103"><span class="lineNum">    1103</span>              : void</span>
+<span id="L1104"><span class="lineNum">    1104</span> <span class="tlaGNC tlaBgGNC">           1 : FreeConfigVariables(ConfigVariable *list)</span></span>
+<span id="L1105"><span class="lineNum">    1105</span>              : {</span>
+<span id="L1106"><span class="lineNum">    1106</span>              :         ConfigVariable *item;</span>
+<span id="L1107"><span class="lineNum">    1107</span>              : </span>
+<span id="L1108"><span class="lineNum">    1108</span> <span class="tlaGNC">           1 :         item = list;</span></span>
+<span id="L1109"><span class="lineNum">    1109</span> <span class="tlaGNC">           8 :         while (item)</span></span>
+<span id="L1110"><span class="lineNum">    1110</span>              :         {</span>
+<span id="L1111"><span class="lineNum">    1111</span> <span class="tlaGNC">           7 :                 ConfigVariable *next = item-&gt;next;</span></span>
+<span id="L1112"><span class="lineNum">    1112</span>              : </span>
+<span id="L1113"><span class="lineNum">    1113</span> <span class="tlaGNC">           7 :                 FreeConfigVariable(item);</span></span>
+<span id="L1114"><span class="lineNum">    1114</span> <span class="tlaGNC">           7 :                 item = next;</span></span>
+<span id="L1115"><span class="lineNum">    1115</span>              :         }</span>
+<span id="L1116"><span class="lineNum">    1116</span> <span class="tlaGNC">           1 : }</span></span>
+<span id="L1117"><span class="lineNum">    1117</span>              : </span>
+<span id="L1118"><span class="lineNum">    1118</span>              : /*</span>
+<span id="L1119"><span class="lineNum">    1119</span>              :  * Free a single ConfigVariable</span>
+<span id="L1120"><span class="lineNum">    1120</span>              :  */</span>
+<span id="L1121"><span class="lineNum">    1121</span>              : static void</span>
+<span id="L1122"><span class="lineNum">    1122</span> <span class="tlaGNC">           7 : FreeConfigVariable(ConfigVariable *item)</span></span>
+<span id="L1123"><span class="lineNum">    1123</span>              : {</span>
+<span id="L1124"><span class="lineNum">    1124</span> <span class="tlaGNC">           7 :         if (item-&gt;name)</span></span>
+<span id="L1125"><span class="lineNum">    1125</span> <span class="tlaGNC">           7 :                 pfree(item-&gt;name);</span></span>
+<span id="L1126"><span class="lineNum">    1126</span> <span class="tlaGNC">           7 :         if (item-&gt;value)</span></span>
+<span id="L1127"><span class="lineNum">    1127</span> <span class="tlaGNC">           7 :                 pfree(item-&gt;value);</span></span>
+<span id="L1128"><span class="lineNum">    1128</span> <span class="tlaGNC">           7 :         if (item-&gt;errmsg)</span></span>
+<span id="L1129"><span class="lineNum">    1129</span> <span class="tlaUNC tlaBgUNC">           0 :                 pfree(item-&gt;errmsg);</span></span>
+<span id="L1130"><span class="lineNum">    1130</span> <span class="tlaGNC tlaBgGNC">           7 :         if (item-&gt;filename)</span></span>
+<span id="L1131"><span class="lineNum">    1131</span> <span class="tlaGNC">           7 :                 pfree(item-&gt;filename);</span></span>
+<span id="L1132"><span class="lineNum">    1132</span> <span class="tlaGNC">           7 :         pfree(item);</span></span>
+<span id="L1133"><span class="lineNum">    1133</span> <span class="tlaGNC">           7 : }</span></span>
+<span id="L1134"><span class="lineNum">    1134</span>              : </span>
+<span id="L1135"><span class="lineNum">    1135</span>              : </span>
+<span id="L1136"><span class="lineNum">    1136</span>              : /*</span>
+<span id="L1137"><span class="lineNum">    1137</span>              :  *              scanstr</span>
+<span id="L1138"><span class="lineNum">    1138</span>              :  *</span>
+<span id="L1139"><span class="lineNum">    1139</span>              :  * Strip the quotes surrounding the given string, and collapse any embedded</span>
+<span id="L1140"><span class="lineNum">    1140</span>              :  * '' sequences and backslash escapes.</span>
+<span id="L1141"><span class="lineNum">    1141</span>              :  *</span>
+<span id="L1142"><span class="lineNum">    1142</span>              :  * the string returned is palloc'd and should eventually be pfree'd by the</span>
+<span id="L1143"><span class="lineNum">    1143</span>              :  * caller.</span>
+<span id="L1144"><span class="lineNum">    1144</span>              :  */</span>
+<span id="L1145"><span class="lineNum">    1145</span>              : static char *</span>
+<span id="L1146"><span class="lineNum">    1146</span> <span class="tlaGNC">          53 : GUC_scanstr(const char *s)</span></span>
+<span id="L1147"><span class="lineNum">    1147</span>              : {</span>
+<span id="L1148"><span class="lineNum">    1148</span>              :         char       *newStr;</span>
+<span id="L1149"><span class="lineNum">    1149</span>              :         int                     len,</span>
+<span id="L1150"><span class="lineNum">    1150</span>              :                                 i,</span>
+<span id="L1151"><span class="lineNum">    1151</span>              :                                 j;</span>
+<span id="L1152"><span class="lineNum">    1152</span>              : </span>
+<span id="L1153"><span class="lineNum">    1153</span>              :         Assert(s != NULL &amp;&amp; s[0] == '\'');</span>
+<span id="L1154"><span class="lineNum">    1154</span> <span class="tlaGNC">          53 :         len = strlen(s);</span></span>
+<span id="L1155"><span class="lineNum">    1155</span>              :         Assert(len &gt;= 2);</span>
+<span id="L1156"><span class="lineNum">    1156</span>              :         Assert(s[len - 1] == '\'');</span>
+<span id="L1157"><span class="lineNum">    1157</span>              : </span>
+<span id="L1158"><span class="lineNum">    1158</span>              :         /* Skip the leading quote; we'll handle the trailing quote below */</span>
+<span id="L1159"><span class="lineNum">    1159</span> <span class="tlaGNC">          53 :         s++, len--;</span></span>
+<span id="L1160"><span class="lineNum">    1160</span>              : </span>
+<span id="L1161"><span class="lineNum">    1161</span>              :         /* Since len still includes trailing quote, this is enough space */</span>
+<span id="L1162"><span class="lineNum">    1162</span> <span class="tlaGNC">          53 :         newStr = palloc(len);</span></span>
+<span id="L1163"><span class="lineNum">    1163</span>              : </span>
+<span id="L1164"><span class="lineNum">    1164</span> <span class="tlaGNC">         560 :         for (i = 0, j = 0; i &lt; len; i++)</span></span>
+<span id="L1165"><span class="lineNum">    1165</span>              :         {</span>
+<span id="L1166"><span class="lineNum">    1166</span> <span class="tlaGNC">         507 :                 if (s[i] == '\\')</span></span>
+<span id="L1167"><span class="lineNum">    1167</span>              :                 {</span>
+<span id="L1168"><span class="lineNum">    1168</span> <span class="tlaUNC tlaBgUNC">           0 :                         i++;</span></span>
+<span id="L1169"><span class="lineNum">    1169</span> <span class="tlaUNC">           0 :                         switch (s[i])</span></span>
+<span id="L1170"><span class="lineNum">    1170</span>              :                         {</span>
+<span id="L1171"><span class="lineNum">    1171</span> <span class="tlaUNC">           0 :                                 case 'b':</span></span>
+<span id="L1172"><span class="lineNum">    1172</span> <span class="tlaUNC">           0 :                                         newStr[j] = '\b';</span></span>
+<span id="L1173"><span class="lineNum">    1173</span> <span class="tlaUNC">           0 :                                         break;</span></span>
+<span id="L1174"><span class="lineNum">    1174</span> <span class="tlaUNC">           0 :                                 case 'f':</span></span>
+<span id="L1175"><span class="lineNum">    1175</span> <span class="tlaUNC">           0 :                                         newStr[j] = '\f';</span></span>
+<span id="L1176"><span class="lineNum">    1176</span> <span class="tlaUNC">           0 :                                         break;</span></span>
+<span id="L1177"><span class="lineNum">    1177</span> <span class="tlaUNC">           0 :                                 case 'n':</span></span>
+<span id="L1178"><span class="lineNum">    1178</span> <span class="tlaUNC">           0 :                                         newStr[j] = '\n';</span></span>
+<span id="L1179"><span class="lineNum">    1179</span> <span class="tlaUNC">           0 :                                         break;</span></span>
+<span id="L1180"><span class="lineNum">    1180</span> <span class="tlaUNC">           0 :                                 case 'r':</span></span>
+<span id="L1181"><span class="lineNum">    1181</span> <span class="tlaUNC">           0 :                                         newStr[j] = '\r';</span></span>
+<span id="L1182"><span class="lineNum">    1182</span> <span class="tlaUNC">           0 :                                         break;</span></span>
+<span id="L1183"><span class="lineNum">    1183</span> <span class="tlaUNC">           0 :                                 case 't':</span></span>
+<span id="L1184"><span class="lineNum">    1184</span> <span class="tlaUNC">           0 :                                         newStr[j] = '\t';</span></span>
+<span id="L1185"><span class="lineNum">    1185</span> <span class="tlaUNC">           0 :                                         break;</span></span>
+<span id="L1186"><span class="lineNum">    1186</span> <span class="tlaUNC">           0 :                                 case '0':</span></span>
+<span id="L1187"><span class="lineNum">    1187</span>              :                                 case '1':</span>
+<span id="L1188"><span class="lineNum">    1188</span>              :                                 case '2':</span>
+<span id="L1189"><span class="lineNum">    1189</span>              :                                 case '3':</span>
+<span id="L1190"><span class="lineNum">    1190</span>              :                                 case '4':</span>
+<span id="L1191"><span class="lineNum">    1191</span>              :                                 case '5':</span>
+<span id="L1192"><span class="lineNum">    1192</span>              :                                 case '6':</span>
+<span id="L1193"><span class="lineNum">    1193</span>              :                                 case '7':</span>
+<span id="L1194"><span class="lineNum">    1194</span>              :                                         {</span>
+<span id="L1195"><span class="lineNum">    1195</span>              :                                                 int                     k;</span>
+<span id="L1196"><span class="lineNum">    1196</span> <span class="tlaUNC">           0 :                                                 long            octVal = 0;</span></span>
+<span id="L1197"><span class="lineNum">    1197</span>              : </span>
+<span id="L1198"><span class="lineNum">    1198</span> <span class="tlaUNC">           0 :                                                 for (k = 0;</span></span>
+<span id="L1199"><span class="lineNum">    1199</span> <span class="tlaUNC">           0 :                                                          s[i + k] &gt;= '0' &amp;&amp; s[i + k] &lt;= '7' &amp;&amp; k &lt; 3;</span></span>
+<span id="L1200"><span class="lineNum">    1200</span> <span class="tlaUNC">           0 :                                                          k++)</span></span>
+<span id="L1201"><span class="lineNum">    1201</span> <span class="tlaUNC">           0 :                                                         octVal = (octVal &lt;&lt; 3) + (s[i + k] - '0');</span></span>
+<span id="L1202"><span class="lineNum">    1202</span> <span class="tlaUNC">           0 :                                                 i += k - 1;</span></span>
+<span id="L1203"><span class="lineNum">    1203</span> <span class="tlaUNC">           0 :                                                 newStr[j] = ((char) octVal);</span></span>
+<span id="L1204"><span class="lineNum">    1204</span>              :                                         }</span>
+<span id="L1205"><span class="lineNum">    1205</span> <span class="tlaUNC">           0 :                                         break;</span></span>
+<span id="L1206"><span class="lineNum">    1206</span> <span class="tlaUNC">           0 :                                 default:</span></span>
+<span id="L1207"><span class="lineNum">    1207</span> <span class="tlaUNC">           0 :                                         newStr[j] = s[i];</span></span>
+<span id="L1208"><span class="lineNum">    1208</span> <span class="tlaUNC">           0 :                                         break;</span></span>
+<span id="L1209"><span class="lineNum">    1209</span>              :                         }                                       /* switch */</span>
+<span id="L1210"><span class="lineNum">    1210</span>              :                 }</span>
+<span id="L1211"><span class="lineNum">    1211</span> <span class="tlaGNC tlaBgGNC">         507 :                 else if (s[i] == '\'' &amp;&amp; s[i + 1] == '\'')</span></span>
+<span id="L1212"><span class="lineNum">    1212</span>              :                 {</span>
+<span id="L1213"><span class="lineNum">    1213</span>              :                         /* doubled quote becomes just one quote */</span>
+<span id="L1214"><span class="lineNum">    1214</span> <span class="tlaUNC tlaBgUNC">           0 :                         newStr[j] = s[++i];</span></span>
+<span id="L1215"><span class="lineNum">    1215</span>              :                 }</span>
+<span id="L1216"><span class="lineNum">    1216</span>              :                 else</span>
+<span id="L1217"><span class="lineNum">    1217</span> <span class="tlaGNC tlaBgGNC">         507 :                         newStr[j] = s[i];</span></span>
+<span id="L1218"><span class="lineNum">    1218</span> <span class="tlaGNC">         507 :                 j++;</span></span>
+<span id="L1219"><span class="lineNum">    1219</span>              :         }</span>
+<span id="L1220"><span class="lineNum">    1220</span>              : </span>
+<span id="L1221"><span class="lineNum">    1221</span>              :         /* We copied the ending quote to newStr, so replace with \0 */</span>
+<span id="L1222"><span class="lineNum">    1222</span>              :         Assert(j &gt; 0 &amp;&amp; j &lt;= len);</span>
+<span id="L1223"><span class="lineNum">    1223</span> <span class="tlaGNC">          53 :         newStr[--j] = '\0';</span></span>
+<span id="L1224"><span class="lineNum">    1224</span>              : </span>
+<span id="L1225"><span class="lineNum">    1225</span> <span class="tlaGNC">          53 :         return newStr;</span></span>
+<span id="L1226"><span class="lineNum">    1226</span>              : }</span>
+        </pre>
+              </td>
+            </tr>
+          </table>
+          <br>
+
+          <table width="100%" border=0 cellspacing=0 cellpadding=0>
+            <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+            <tr><td class="versionInfo">Generated by: <a href="https://github.com//linux-test-project/lcov" target="_parent">LCOV version 2.0-1</a></td></tr>
+          </table>
+          <br>
+
+</body>
+</html>

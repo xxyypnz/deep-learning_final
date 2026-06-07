@@ -1,0 +1,2721 @@
+[0;32m[INFO][0m === Step 1: 全量编译 PostgreSQL (coverage) ===
+[0;32m[INFO][0m 跳过编译 (--skip-build)
+[0;32m[INFO][0m === Step 2: 设置环境变量 ===
+postgres path: /workspaces/deep-learning_final/postgresql-13.23/install_coverage/bin/postgres
+psql path: /workspaces/deep-learning_final/postgresql-13.23/install_coverage/bin/psql
+[0;32m[INFO][0m === Step 3: 初始化数据库 ===
+The files belonging to this database system will be owned by user "codespace".
+This user must also own the server process.
+
+The database cluster will be initialized with locale "C.UTF-8".
+The default database encoding has accordingly been set to "UTF8".
+The default text search configuration will be set to "english".
+
+Data page checksums are disabled.
+
+creating directory /workspaces/deep-learning_final/outputs/local_eval/opt_v102/coverage_workspace/data ... ok
+creating subdirectories ... ok
+selecting dynamic shared memory implementation ... posix
+selecting default max_connections ... 100
+selecting default shared_buffers ... 128MB
+selecting default time zone ... Etc/UTC
+creating configuration files ... ok
+running bootstrap script ... ok
+performing post-bootstrap initialization ... ok
+syncing data to disk ... ok
+
+initdb: warning: enabling "trust" authentication for local connections
+You can change this by editing pg_hba.conf or using the option -A, or
+--auth-local and --auth-host, the next time you run initdb.
+
+Success. You can now start the database server using:
+
+    pg_ctl -D /workspaces/deep-learning_final/outputs/local_eval/opt_v102/coverage_workspace/data -l logfile start
+
+[0;32m[INFO][0m === Step 4: 启动 PostgreSQL ===
+waiting for server to start.... done
+server started
+[0;32m[INFO][0m 检查 postgres 进程
+codespa+   50209  0.3  0.3 172488 29080 ?        Ss   04:31   0:00 /workspaces/deep-learning_final/postgresql-13.23/install_coverage/bin/postgres -D /workspaces/deep-learning_final/outputs/local_eval/opt_v102/coverage_workspace/data -k /tmp/pgcov-55432 -p 55432
+codespa+   50215  0.0  0.0 172488  7232 ?        Ss   04:31   0:00 postgres: checkpointer 
+codespa+   50216  0.0  0.0 172488  7212 ?        Ss   04:31   0:00 postgres: background writer 
+codespa+   50217  0.0  0.0 172488  7120 ?        Ss   04:31   0:00 postgres: walwriter 
+codespa+   50218  0.0  0.1 173048 10740 ?        Ss   04:31   0:00 postgres: autovacuum launcher 
+codespa+   50219  0.0  0.0  26892  6560 ?        Ss   04:31   0:00 postgres: stats collector 
+codespa+   50220  0.0  0.1 172924  9620 ?        Ss   04:31   0:00 postgres: logical replication launcher 
+[0;32m[INFO][0m 验证 PostgreSQL 实例版本
+                                                 version                                                  
+----------------------------------------------------------------------------------------------------------
+ PostgreSQL 13.23 on x86_64-pc-linux-gnu, compiled by gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0, 64-bit
+(1 row)
+
+[0;32m[INFO][0m === Step 5: 创建数据库 ===
+[0;32m[INFO][0m === Step 6: 执行 SQL workload ===
+[0;32m[INFO][0m 总 Test Case 数(预): 163
+[0;32m[INFO][0m ========== SQL 执行统计 ==========
+[0;32m[INFO][0m [Case 级] 总计: 163 case, 成功: 141, 失败: 22, 成功率: 86.5000%
+[0;32m[INFO][0m [SQL 级]  总计: 1282 条, 成功: 1254, 失败: 28, 成功率: 97.8100%
+[0;32m[INFO][0m === Step 7: 停止 PostgreSQL（写入 gcda）===
+waiting for server to shut down.... done
+server stopped
+[0;32m[INFO][0m === Step 8: 检查覆盖率数据 ===
+总 gcda 文件数: 859
+backend gcda 文件数: 700
+backend gcno 文件数: 743
+[0;32m[INFO][0m === Step 9: 生成覆盖率报告 ===
+Capturing coverage data from /workspaces/deep-learning_final/postgresql-13.23
+geninfo cmd: '/usr/bin/geninfo /workspaces/deep-learning_final/postgresql-13.23 --output-filename /workspaces/deep-learning_final/outputs/local_eval/opt_v102/coverage_workspace/coverage.info --ignore-errors gcov --ignore-errors unsupported --ignore-errors mismatch --memory 0'
+Found gcov version: 13.3.0
+Using intermediate gcov format
+Writing temporary data to /tmp/geninfo_datCndN
+Scanning /workspaces/deep-learning_final/postgresql-13.23 for .gcda files ...
+Found 859 data files in /workspaces/deep-learning_final/postgresql-13.23
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/port/noblock_srv.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/port/pg_crc32c_sse42.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/port/strerror.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/port/snprintf_shlib.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/port/pgstrsignal_srv.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/port/pg_strong_random_shlib.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/port/snprintf.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/port/pgstrcasecmp_shlib.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/port/pg_strong_random_srv.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/port/quotes.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/port/pg_crc32c_sse42_srv.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/port/inet_net_ntop_shlib.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/port/strerror_shlib.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/port/qsort.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/port/getpeereid_srv.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/port/pgmkdirp_srv.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/port/strerror_srv.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/port/pgstrsignal.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/port/inet_net_ntop_srv.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/port/quotes_srv.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/port/pgstrcasecmp_srv.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/port/pg_crc32c_sse42_choose.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/port/pg_bitutils_srv.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/port/noblock_shlib.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/port/erand48_srv.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/port/path.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/port/pqsignal_srv.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/port/fls_srv.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/port/thread.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/port/pgsleep.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/port/chklocale.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/port/sprompt.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/port/thread_shlib.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/port/tar_srv.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/port/pqsignal.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/port/pg_crc32c_sb8.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/port/pgcheckdir.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/port/pgsleep_srv.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/port/getpeereid_shlib.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/port/chklocale_srv.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/port/path_srv.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/port/qsort_arg_srv.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/port/snprintf_srv.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/port/thread_srv.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/port/pg_crc32c_sse42_choose_srv.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/port/qsort_srv.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/port/chklocale_shlib.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/port/pg_crc32c_sb8_srv.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/port/pgmkdirp.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/port/pgstrcasecmp.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/foreign/foreign.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/commands/explain.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/commands/functioncmds.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/commands/conversioncmds.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/commands/opclasscmds.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/commands/typecmds.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/commands/discard.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/commands/copy.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/commands/dbcommands.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/commands/event_trigger.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/commands/vacuum.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/commands/dropcmds.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/commands/subscriptioncmds.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/commands/collationcmds.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/commands/aggregatecmds.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/commands/schemacmds.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/commands/foreigncmds.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/commands/prepare.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/commands/comment.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/commands/policy.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/commands/alter.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/commands/portalcmds.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/commands/operatorcmds.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/commands/extension.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/commands/trigger.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/commands/lockcmds.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/commands/statscmds.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/commands/indexcmds.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/commands/sequence.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/commands/constraint.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/commands/publicationcmds.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/commands/view.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/commands/variable.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/commands/analyze.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/commands/tablespace.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/commands/seclabel.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/commands/matview.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/commands/amcmds.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/commands/async.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/commands/cluster.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/commands/tsearchcmds.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/commands/user.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/commands/tablecmds.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/commands/define.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/commands/createas.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/commands/proclang.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/postmaster/syslogger.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/postmaster/fork_process.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/postmaster/startup.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/postmaster/pgarch.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/postmaster/autovacuum.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/postmaster/checkpointer.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/postmaster/walwriter.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/postmaster/pgstat.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/postmaster/bgwriter.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/postmaster/postmaster.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/postmaster/bgworker.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/postmaster/interrupt.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/tcop/fastpath.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/tcop/dest.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/tcop/pquery.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/tcop/cmdtag.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/tcop/postgres.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/tcop/utility.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/tsearch/to_tsany.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/tsearch/ts_typanalyze.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/tsearch/ts_utils.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/tsearch/dict_simple.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/tsearch/dict.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/tsearch/ts_locale.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/tsearch/dict_ispell.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/tsearch/spell.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/tsearch/ts_parse.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/tsearch/wparser_def.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/tsearch/dict_synonym.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/tsearch/dict_thesaurus.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/tsearch/regis.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/tsearch/ts_selfuncs.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/tsearch/wparser.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/statistics/dependencies.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/statistics/mvdistinct.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/statistics/mcv.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/statistics/extended_stats.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/brin/brin_tuple.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/brin/brin_minmax.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/brin/brin_inclusion.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/brin/brin_xlog.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/brin/brin_validate.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/brin/brin_revmap.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/brin/brin_pageops.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/brin/brin.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/spgist/spgdoinsert.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/spgist/spgquadtreeproc.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/spgist/spginsert.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/spgist/spgproc.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/spgist/spgxlog.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/spgist/spgvalidate.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/spgist/spgtextproc.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/spgist/spgutils.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/spgist/spgvacuum.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/spgist/spgkdtreeproc.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/spgist/spgscan.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/table/toast_helper.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/table/tableamapi.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/table/table.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/table/tableam.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/index/indexam.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/index/amapi.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/index/genam.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/index/amvalidate.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/hash/hashfunc.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/hash/hashovfl.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/hash/hash.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/hash/hashvalidate.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/hash/hashinsert.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/hash/hashsearch.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/hash/hashsort.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/hash/hashpage.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/hash/hash_xlog.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/hash/hashutil.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/transam/twophase.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/transam/generic_xlog.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/transam/subtrans.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/transam/multixact.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/transam/xlogarchive.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/transam/commit_ts.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/transam/xlog.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/transam/clog.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/transam/transam.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/transam/parallel.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/transam/varsup.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/transam/slru.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/transam/xlogreader.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/transam/xact.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/transam/xloginsert.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/transam/xlogutils.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/transam/timeline.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/transam/xlogfuncs.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/common/indextuple.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/common/toast_internals.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/common/reloptions.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/common/heaptuple.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/common/attmap.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/common/tupconvert.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/common/printsimple.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/common/bufmask.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/common/detoast.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/common/session.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/common/printtup.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/common/scankey.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/common/relation.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/common/tupdesc.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/tablesample/system.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/tablesample/tablesample.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/tablesample/bernoulli.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/rmgrdesc/mxactdesc.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/rmgrdesc/gistdesc.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/rmgrdesc/spgdesc.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/rmgrdesc/seqdesc.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/rmgrdesc/xlogdesc.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/rmgrdesc/clogdesc.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/rmgrdesc/genericdesc.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/rmgrdesc/dbasedesc.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/rmgrdesc/nbtdesc.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/rmgrdesc/heapdesc.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/rmgrdesc/hashdesc.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/rmgrdesc/replorigindesc.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/rmgrdesc/logicalmsgdesc.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/rmgrdesc/smgrdesc.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/rmgrdesc/tblspcdesc.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/rmgrdesc/brindesc.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/rmgrdesc/committsdesc.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/rmgrdesc/standbydesc.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/rmgrdesc/xactdesc.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/rmgrdesc/relmapdesc.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/rmgrdesc/gindesc.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/heap/heapam.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/heap/visibilitymap.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/heap/syncscan.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/heap/rewriteheap.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/heap/hio.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/heap/vacuumlazy.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/heap/pruneheap.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/heap/heaptoast.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/heap/heapam_visibility.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/heap/heapam_handler.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/gist/gistbuildbuffers.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/gist/gistbuild.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/gist/gistproc.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/gist/gistxlog.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/gist/gistvacuum.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/gist/gistget.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/gist/gistutil.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/gist/gistscan.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/gist/gistsplit.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/gist/gist.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/gist/gistvalidate.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/nbtree/nbtpage.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/nbtree/nbtsearch.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/nbtree/nbtxlog.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/nbtree/nbtsplitloc.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/nbtree/nbtree.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/nbtree/nbtdedup.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/nbtree/nbtinsert.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/nbtree/nbtutils.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/nbtree/nbtsort.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/nbtree/nbtcompare.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/nbtree/nbtvalidate.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/gin/ginbtree.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/gin/ginfast.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/gin/ginarrayproc.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/gin/ginutil.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/gin/ginvacuum.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/gin/ginget.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/gin/ginlogic.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/gin/ginbulk.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/gin/ginentrypage.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/gin/ginxlog.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/gin/ginpostinglist.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/gin/ginvalidate.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/gin/ginscan.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/gin/gininsert.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/access/gin/gindatapage.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/regex/regexec.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/regex/regerror.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/regex/regcomp.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/regex/regfree.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/regex/regprefix.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/regex/regexport.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/port/pg_sema.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/port/pg_shmem.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/storage/file/buffile.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/storage/file/sharedfileset.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/storage/file/fd.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/storage/file/copydir.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/storage/file/reinit.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/storage/freespace/fsmpage.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/storage/freespace/freespace.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/storage/freespace/indexfsm.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/storage/ipc/latch.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/storage/ipc/ipci.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/storage/ipc/standby.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/storage/ipc/procarray.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/storage/ipc/shmqueue.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/storage/ipc/shm_toc.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/storage/ipc/pmsignal.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/storage/ipc/dsm_impl.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/storage/ipc/ipc.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/storage/ipc/procsignal.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/storage/ipc/sinval.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/storage/ipc/shmem.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/storage/ipc/dsm.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/storage/ipc/sinvaladt.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/storage/ipc/signalfuncs.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/storage/ipc/shm_mq.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/storage/ipc/barrier.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/storage/smgr/md.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/storage/smgr/smgr.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/storage/sync/sync.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/storage/lmgr/lmgr.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/storage/lmgr/lock.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/storage/lmgr/spin.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/storage/lmgr/proc.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/storage/lmgr/s_lock.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/storage/lmgr/lwlock.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/storage/lmgr/predicate.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/storage/lmgr/condition_variable.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/storage/lmgr/deadlock.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/storage/buffer/buf_init.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/storage/buffer/freelist.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/storage/buffer/bufmgr.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/storage/buffer/buf_table.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/storage/buffer/localbuf.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/storage/large_object/inv_api.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/storage/page/itemptr.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/storage/page/bufpage.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/storage/page/checksum.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/jit/jit.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/replication/repl_gram.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/replication/syncrep.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/replication/syncrep_gram.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/replication/walreceiver.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/replication/backup_manifest.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/replication/slot.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/replication/walreceiverfuncs.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/replication/walsender.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/replication/slotfuncs.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/replication/basebackup.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/replication/logical/tablesync.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/replication/logical/logicalfuncs.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/replication/logical/logical.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/replication/logical/reorderbuffer.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/replication/logical/origin.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/replication/logical/worker.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/replication/logical/message.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/replication/logical/snapbuild.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/replication/logical/launcher.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/replication/logical/proto.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/replication/logical/decode.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/replication/logical/relation.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/catalog/pg_shdepend.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/catalog/pg_cast.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/catalog/pg_namespace.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/catalog/partition.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/catalog/pg_proc.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/catalog/catalog.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/catalog/pg_largeobject.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/catalog/pg_conversion.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/catalog/aclchk.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/catalog/heap.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/catalog/dependency.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/catalog/pg_publication.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/catalog/namespace.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/catalog/toasting.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/catalog/indexing.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/catalog/pg_range.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/catalog/pg_aggregate.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/catalog/pg_operator.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/catalog/objectaccess.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/catalog/objectaddress.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/catalog/pg_collation.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/catalog/storage.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/catalog/pg_constraint.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/catalog/index.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/catalog/pg_inherits.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/catalog/pg_depend.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/catalog/pg_type.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/catalog/pg_db_role_setting.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/catalog/pg_subscription.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/catalog/pg_enum.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/nodes/outfuncs.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/nodes/tidbitmap.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/nodes/print.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/nodes/copyfuncs.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/nodes/params.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/nodes/extensible.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/nodes/bitmapset.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/nodes/readfuncs.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/nodes/value.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/nodes/nodeFuncs.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/nodes/list.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/nodes/makefuncs.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/nodes/read.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/nodes/equalfuncs.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/libpq/crypt.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/libpq/hba.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/libpq/be-secure.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/libpq/pqformat.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/libpq/auth.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/libpq/be-fsstubs.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/libpq/pqcomm.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/libpq/ifaddr.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/libpq/be-secure-common.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/libpq/pqsignal.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/libpq/auth-scram.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/libpq/pqmq.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/main/main.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/lib/knapsack.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/lib/ilist.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/lib/hyperloglog.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/lib/pairingheap.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/lib/bloomfilter.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/lib/dshash.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/lib/binaryheap.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/lib/integerset.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/lib/bipartite_match.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/lib/rbtree.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/snowball/stem_UTF_8_danish.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/snowball/stem_UTF_8_arabic.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/snowball/stem_UTF_8_finnish.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/snowball/stem_ISO_8859_1_indonesian.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/snowball/stem_ISO_8859_1_finnish.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/snowball/stem_UTF_8_romanian.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/snowball/stem_ISO_8859_2_hungarian.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/snowball/stem_UTF_8_portuguese.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/snowball/stem_ISO_8859_1_german.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/snowball/stem_UTF_8_irish.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/snowball/stem_ISO_8859_1_norwegian.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/snowball/stem_ISO_8859_1_swedish.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/snowball/stem_ISO_8859_1_dutch.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/snowball/stem_ISO_8859_1_porter.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/snowball/stem_UTF_8_dutch.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/snowball/stem_UTF_8_english.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/snowball/stem_ISO_8859_1_english.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/snowball/stem_UTF_8_indonesian.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/snowball/stem_UTF_8_french.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/snowball/stem_UTF_8_porter.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/snowball/api.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/snowball/stem_ISO_8859_1_spanish.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/snowball/stem_UTF_8_german.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/snowball/stem_UTF_8_russian.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/snowball/stem_ISO_8859_1_portuguese.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/snowball/stem_ISO_8859_1_danish.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/snowball/stem_UTF_8_norwegian.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/snowball/utilities.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/snowball/stem_UTF_8_italian.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/snowball/stem_UTF_8_swedish.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/snowball/stem_UTF_8_nepali.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/snowball/stem_UTF_8_tamil.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/snowball/stem_KOI8_R_russian.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/snowball/stem_UTF_8_lithuanian.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/snowball/stem_UTF_8_greek.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/snowball/dict_snowball.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/snowball/stem_ISO_8859_1_irish.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/snowball/stem_UTF_8_hungarian.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/snowball/stem_UTF_8_turkish.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/snowball/stem_UTF_8_spanish.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/snowball/stem_ISO_8859_1_french.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/snowball/stem_ISO_8859_2_romanian.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/snowball/stem_ISO_8859_1_italian.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/parser/parser.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/parser/parse_relation.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/parser/parse_func.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/parser/parse_node.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/parser/parse_type.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/parser/parse_param.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/parser/scansup.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/parser/parse_coerce.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/parser/parse_oper.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/parser/analyze.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/parser/parse_agg.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/parser/parse_expr.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/parser/scan.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/parser/parse_enr.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/parser/parse_utilcmd.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/parser/parse_clause.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/parser/gram.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/parser/parse_cte.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/parser/parse_target.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/parser/parse_collate.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/optimizer/util/relnode.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/optimizer/util/tlist.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/optimizer/util/inherit.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/optimizer/util/placeholder.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/optimizer/util/clauses.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/optimizer/util/appendinfo.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/optimizer/util/joininfo.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/optimizer/util/paramassign.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/optimizer/util/orclauses.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/optimizer/util/pathnode.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/optimizer/util/restrictinfo.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/optimizer/util/plancat.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/optimizer/util/var.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/optimizer/util/predtest.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/optimizer/geqo/geqo_erx.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/optimizer/geqo/geqo_random.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/optimizer/geqo/geqo_pool.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/optimizer/geqo/geqo_recombination.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/optimizer/geqo/geqo_selection.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/optimizer/geqo/geqo_copy.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/optimizer/geqo/geqo_eval.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/optimizer/geqo/geqo_main.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/optimizer/prep/prepjointree.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/optimizer/prep/prepunion.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/optimizer/prep/preptlist.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/optimizer/prep/prepqual.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/optimizer/plan/planmain.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/optimizer/plan/setrefs.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/optimizer/plan/createplan.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/optimizer/plan/planagg.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/optimizer/plan/planner.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/optimizer/plan/initsplan.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/optimizer/plan/analyzejoins.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/optimizer/plan/subselect.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/optimizer/path/joinrels.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/optimizer/path/clausesel.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/optimizer/path/tidpath.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/optimizer/path/equivclass.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/optimizer/path/allpaths.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/optimizer/path/pathkeys.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/optimizer/path/joinpath.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/optimizer/path/indxpath.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/optimizer/path/costsize.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/cache/spccache.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/cache/catcache.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/cache/lsyscache.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/cache/plancache.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/cache/attoptcache.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/cache/relmapper.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/cache/inval.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/cache/ts_cache.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/cache/partcache.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/cache/relfilenodemap.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/cache/evtcache.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/cache/typcache.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/cache/relcache.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/cache/syscache.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/error/assert.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/error/elog.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/hash/dynahash.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/time/snapmgr.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/time/combocid.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/resowner/resowner.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/misc/queryenvironment.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/misc/superuser.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/misc/pg_config.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/misc/pg_controldata.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/misc/guc.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/misc/timeout.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/misc/rls.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/misc/ps_status.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/misc/help_config.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/misc/sampling.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/misc/pg_rusage.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/misc/tzparser.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/mmgr/mcxt.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/mmgr/dsa.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/mmgr/slab.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/mmgr/freepage.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/mmgr/portalmem.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/mmgr/generation.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/mmgr/aset.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/init/postinit.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/init/miscinit.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/sort/sharedtuplestore.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/sort/logtape.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/sort/sortsupport.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/sort/tuplesort.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/sort/tuplestore.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/mb/wstrncmp.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/mb/stringinfo_mb.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/mb/mbutils.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/mb/wstrcmp.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/mb/conv.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/fmgr/dfmgr.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/fmgr/funcapi.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/fmgr/fmgr.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/adt/array_typanalyze.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/adt/mac8.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/adt/xml.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/adt/date.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/adt/numeric.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/adt/datetime.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/adt/jsonpath.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/adt/mac.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/adt/tsquery.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/adt/pgstatfuncs.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/adt/like_support.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/adt/amutils.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/adt/partitionfuncs.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/adt/rangetypes.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/adt/acl.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/adt/xid8funcs.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/adt/misc.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/adt/tsginidx.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/adt/datum.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/adt/jsonb_util.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/adt/pseudotypes.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/adt/jsonpath_gram.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/adt/arrayutils.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/adt/pg_upgrade_support.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/adt/expandedrecord.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/adt/expandeddatum.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/adt/trigfuncs.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/adt/orderedsetaggs.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/adt/geo_spgist.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/adt/formatting.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/adt/tsquery_rewrite.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/adt/ruleutils.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/adt/varbit.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/adt/cryptohashes.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/adt/rangetypes_spgist.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/adt/int8.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/adt/float.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/adt/name.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/adt/windowfuncs.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/adt/jsonpath_exec.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/adt/version.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/adt/tsquery_op.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/adt/encode.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/adt/tsquery_cleanup.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/adt/varlena.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/adt/rowtypes.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/adt/selfuncs.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/adt/jsonfuncs.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/adt/jsonb_op.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/adt/pg_locale.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/adt/regexp.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/adt/tsvector_op.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/adt/array_expanded.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/adt/network_selfuncs.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/adt/xid.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/adt/ascii.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/adt/array_userfuncs.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/adt/tsgistidx.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/adt/json.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/adt/int.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/adt/dbsize.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/adt/geo_ops.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/adt/array_selfuncs.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/adt/inet_cidr_ntop.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/adt/jsonb.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/adt/char.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/adt/oid.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/adt/tsquery_util.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/adt/network_spgist.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/adt/tsvector.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/adt/tsrank.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/adt/oracle_compat.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/adt/domains.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/adt/lockfuncs.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/adt/regproc.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/adt/quote.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/adt/format_type.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/adt/rangetypes_typanalyze.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/adt/tid.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/adt/rangetypes_selfuncs.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/adt/pg_lsn.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/adt/genfile.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/adt/like.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/adt/rangetypes_gist.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/adt/geo_selfuncs.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/adt/bool.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/adt/ri_triggers.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/adt/enum.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/adt/jsonb_gin.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/adt/network_gist.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/adt/tsvector_parser.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/adt/uuid.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/adt/cash.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/adt/network.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/adt/tsquery_gist.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/adt/inet_net_pton.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/adt/arrayfuncs.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/adt/timestamp.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/adt/varchar.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/utils/adt/numutils.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/rewrite/rewriteRemove.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/rewrite/rewriteHandler.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/rewrite/rewriteSupport.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/rewrite/rewriteManip.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/rewrite/rewriteDefine.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/rewrite/rowsecurity.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/bootstrap/bootstrap.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/bootstrap/bootparse.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/partitioning/partdesc.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/partitioning/partbounds.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/partitioning/partprune.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/executor/execGrouping.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/executor/nodeBitmapOr.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/executor/nodeSubplan.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/executor/tqueue.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/executor/nodeWindowAgg.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/executor/nodeMaterial.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/executor/nodeTableFuncscan.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/executor/nodeSeqscan.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/executor/execReplication.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/executor/execProcnode.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/executor/nodeLimit.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/executor/nodeCustom.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/executor/execParallel.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/executor/nodeResult.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/executor/nodeMergejoin.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/executor/nodeGatherMerge.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/executor/nodeBitmapAnd.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/executor/execTuples.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/executor/nodeAgg.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/executor/instrument.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/executor/spi.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/executor/nodeRecursiveunion.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/executor/nodeProjectSet.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/executor/nodeIncrementalSort.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/executor/nodeHashjoin.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/executor/execAmi.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/executor/nodeCtescan.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/executor/nodeFunctionscan.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/executor/execSRF.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/executor/execIndexing.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/executor/execMain.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/executor/nodeForeignscan.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/executor/nodeBitmapIndexscan.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/executor/nodeModifyTable.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/executor/execPartition.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/executor/nodeGather.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/executor/tstoreReceiver.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/executor/nodeSamplescan.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/executor/execCurrent.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/executor/execJunk.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/executor/nodeSubqueryscan.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/executor/nodeMergeAppend.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/executor/nodeGroup.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/executor/nodeBitmapHeapscan.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/executor/nodeNamedtuplestorescan.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/executor/execUtils.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/executor/nodeUnique.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/executor/nodeIndexscan.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/executor/nodeWorktablescan.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/executor/nodeNestloop.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/executor/nodeIndexonlyscan.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/executor/nodeValuesscan.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/executor/nodeAppend.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/executor/execExpr.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/executor/nodeLockRows.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/executor/execScan.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/executor/nodeHash.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/executor/execExprInterp.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/executor/nodeSetOp.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/executor/nodeSort.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/executor/functions.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/backend/executor/nodeTidscan.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/common/archive_srv.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/common/jsonapi_srv.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/common/md5_shlib.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/common/logging.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/common/sha2_srv.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/common/pgfnames_srv.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/common/scram-common_srv.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/common/link-canary_srv.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/common/relpath_srv.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/common/rmtree_srv.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/common/saslprep_srv.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/common/config_info_srv.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/common/exec_srv.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/common/exec.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/common/username.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/common/psprintf_srv.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/common/ip_srv.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/common/wchar_srv.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/common/wchar_shlib.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/common/wait_error_srv.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/common/ip_shlib.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/common/file_utils.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/common/file_perm_srv.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/common/wchar.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/common/pg_lzcompress_srv.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/common/string_srv.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/common/file_perm.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/common/base64_srv.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/common/encnames_shlib.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/common/string.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/common/string_shlib.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/common/md5_srv.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/common/keywords.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/common/controldata_utils.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/common/encnames_srv.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/common/sha2_shlib.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/common/psprintf.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/common/username_srv.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/common/checksum_helper_srv.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/common/scram-common_shlib.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/common/kwlookup_srv.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/common/unicode_norm_shlib.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/common/keywords_srv.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/common/base64_shlib.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/common/wait_error.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/common/controldata_utils_srv.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/common/pgfnames.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/common/hashfn_srv.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/common/rmtree.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/common/f2s_srv.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/common/saslprep_shlib.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/common/fe_memutils.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/common/d2s_srv.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/common/link-canary_shlib.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/common/stringinfo_srv.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/common/unicode_norm_srv.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/common/encnames.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/common/kwlookup.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/common/restricted_token.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/pl/plpgsql/src/pl_exec.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/pl/plpgsql/src/pl_funcs.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/pl/plpgsql/src/pl_handler.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/pl/plpgsql/src/pl_scanner.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/pl/plpgsql/src/pl_gram.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/pl/plpgsql/src/pl_comp.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/interfaces/libpq/legacy-pqsignal.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/interfaces/libpq/fe-auth-scram.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/interfaces/libpq/fe-auth.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/interfaces/libpq/fe-misc.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/interfaces/libpq/fe-exec.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/interfaces/libpq/fe-connect.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/interfaces/libpq/fe-print.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/interfaces/libpq/libpq-events.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/interfaces/libpq/fe-secure.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/interfaces/libpq/pqexpbuffer.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/interfaces/libpq/fe-protocol3.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/interfaces/libpq/fe-protocol2.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/interfaces/libpq/fe-lobj.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/fe_utils/cancel.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/fe_utils/print.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/fe_utils/mbprint.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/fe_utils/psqlscan.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/fe_utils/string_utils.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/fe_utils/conditional.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/bin/initdb/findtimezone.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/bin/initdb/localtime.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/bin/initdb/initdb.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/bin/pg_ctl/pg_ctl.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/bin/psql/copy.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/bin/psql/sql_help.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/bin/psql/startup.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/bin/psql/psqlscanslash.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/bin/psql/crosstabview.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/bin/psql/mainloop.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/bin/psql/help.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/bin/psql/prompt.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/bin/psql/input.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/bin/psql/tab-complete.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/bin/psql/common.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/bin/psql/command.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/bin/psql/large_obj.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/bin/psql/stringutils.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/bin/psql/variables.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/bin/psql/describe.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/bin/scripts/common.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/bin/scripts/createdb.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/timezone/pgtz.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/timezone/strftime.gcda
+Processing /workspaces/deep-learning_final/postgresql-13.23/src/timezone/localtime.gcda
+Finished .info-file creation
+Excluding /usr/lib/gcc/x86_64-linux-gnu/13/include/cpuid.h
+Excluding /usr/lib/gcc/x86_64-linux-gnu/13/include/smmintrin.h
+Removed 2 files
+Writing data to /workspaces/deep-learning_final/outputs/local_eval/opt_v102/coverage_workspace/coverage_filtered.info
+Summary coverage rate:
+  lines......: 28.5% (98693 of 346642 lines)
+  functions..: 36.6% (6470 of 17689 functions)
+  branches...: no data found
+Found 879 entries.
+Found common filename prefix "/workspaces/deep-learning_final/postgresql-13.23/src"
+Generating output.
+Processing file backend/optimizer/geqo/geqo_pool.c
+  lines=79 hit=0 functions=8 hit=0
+Processing file common/file_utils.c
+  lines=102 hit=48 functions=7 hit=4
+Processing file backend/optimizer/plan/setrefs.c
+  lines=963 hit=631 functions=42 hit=35
+Processing file backend/utils/cache/partcache.c
+  lines=128 hit=106 functions=5 hit=5
+Processing file backend/executor/nodeWorktablescan.c
+  lines=45 hit=0 functions=6 hit=0
+Processing file backend/parser/parse_agg.c
+  lines=747 hit=289 functions=22 hit=18
+Processing file backend/access/common/scankey.c
+  lines=29 hit=29 functions=3 hit=3
+Processing file backend/utils/adt/regexp.c
+  lines=496 hit=66 functions=32 hit=6
+Processing file backend/nodes/extensible.c
+  lines=36 hit=0 functions=6 hit=0
+Processing file backend/utils/adt/inet_net_pton.c
+  lines=275 hit=0 functions=7 hit=0
+Processing file backend/access/gin/ginpostinglist.c
+  lines=129 hit=0 functions=9 hit=0
+Processing file common/kwlookup.c
+  lines=17 hit=16 functions=1 hit=1
+Processing file backend/snowball/libstemmer/stem_UTF_8_french.c
+  lines=646 hit=0 functions=15 hit=0
+Processing file backend/snowball/libstemmer/stem_UTF_8_spanish.c
+  lines=402 hit=0 functions=13 hit=0
+Processing file backend/utils/sort/qsort_tuple.c
+  lines=148 hit=139 functions=5 hit=5
+Processing file backend/storage/ipc/shm_toc.c
+  lines=70 hit=0 functions=7 hit=0
+Processing file backend/access/table/tableamapi.c
+  lines=20 hit=10 functions=2 hit=2
+Processing file interfaces/libpq/libpq-events.c
+  lines=71 hit=0 functions=6 hit=0
+Processing file backend/utils/mb/mbutils.c
+  lines=479 hit=114 functions=51 hit=23
+Processing file backend/postmaster/postmaster.c
+  lines=1465 hit=710 functions=54 hit=40
+Processing file backend/access/hash/hashpage.c
+  lines=470 hit=154 functions=19 hit=10
+Processing file interfaces/libpq/fe-auth-scram.c
+  lines=320 hit=0 functions=12 hit=0
+Processing file backend/catalog/pg_cast.c
+  lines=36 hit=0 functions=1 hit=0
+Processing file backend/utils/adt/int8.c
+  lines=538 hit=59 functions=89 hit=10
+Processing file backend/utils/cache/ts_cache.c
+  lines=220 hit=43 functions=8 hit=3
+Processing file backend/replication/logical/proto.c
+  lines=255 hit=0 functions=24 hit=0
+Processing file backend/access/common/heaptuple.c
+  lines=499 hit=279 functions=27 hit=15
+Processing file backend/parser/parse_collate.c
+  lines=270 hit=173 functions=10 hit=8
+Processing file backend/access/brin/brin_inclusion.c
+  lines=237 hit=0 functions=6 hit=0
+Processing file port/sprompt.c
+  lines=38 hit=0 functions=1 hit=0
+Processing file backend/utils/adt/acl.c
+  lines=1802 hit=297 functions=162 hit=28
+Processing file backend/utils/cache/typcache.c
+  lines=847 hit=430 functions=49 hit=28
+Processing file backend/utils/mb/conv.c
+  lines=288 hit=0 functions=11 hit=0
+Processing file backend/access/hash/hashovfl.c
+  lines=372 hit=113 functions=7 hit=3
+Processing file backend/access/gin/ginutil.c
+  lines=258 hit=0 functions=15 hit=0
+Processing file backend/tsearch/spell.c
+  lines=1133 hit=0 functions=47 hit=0
+Processing file backend/catalog/pg_proc.c
+  lines=404 hit=285 functions=9 hit=7
+Processing file backend/access/tablesample/system.c
+  lines=65 hit=0 functions=6 hit=0
+Processing file backend/executor/nodeIndexonlyscan.c
+  lines=204 hit=111 functions=13 hit=6
+Processing file backend/optimizer/path/allpaths.c
+  lines=996 hit=536 functions=48 hit=30
+Processing file backend/utils/adt/tsvector_parser.c
+  lines=142 hit=0 functions=5 hit=0
+Processing file backend/nodes/value.c
+  lines=20 hit=10 functions=4 hit=2
+Processing file backend/replication/slotfuncs.c
+  lines=320 hit=35 functions=16 hit=4
+Processing file backend/access/brin/brin_tuple.c
+  lines=212 hit=0 functions=10 hit=0
+Processing file backend/commands/view.c
+  lines=150 hit=76 functions=6 hit=5
+Processing file backend/regex/regc_lex.c
+  lines=599 hit=73 functions=11 hit=5
+Processing file port/tar.c
+  lines=61 hit=0 functions=4 hit=0
+Processing file backend/utils/misc/queryenvironment.c
+  lines=32 hit=3 functions=6 hit=1
+Processing file timezone/pgtz.c
+  lines=148 hit=69 functions=10 hit=6
+Processing file backend/replication/logical/worker.c
+  lines=724 hit=2 functions=35 hit=1
+Processing file port/qsort_arg.c
+  lines=71 hit=66 functions=3 hit=3
+Processing file backend/access/transam/xact.c
+  lines=1758 hit=986 functions=106 hit=77
+Processing file backend/utils/adt/array_userfuncs.c
+  lines=291 hit=32 functions=12 hit=4
+Processing file backend/access/nbtree/nbtsplitloc.c
+  lines=275 hit=243 functions=13 hit=13
+Processing file backend/snowball/libstemmer/stem_ISO_8859_2_romanian.c
+  lines=329 hit=0 functions=14 hit=0
+Processing file backend/optimizer/geqo/geqo_random.c
+  lines=8 hit=0 functions=2 hit=0
+Processing file backend/nodes/bitmapset.c
+  lines=429 hit=305 functions=33 hit=28
+Processing file backend/executor/nodeSubqueryscan.c
+  lines=40 hit=31 functions=6 hit=4
+Processing file backend/commands/user.c
+  lines=616 hit=184 functions=12 hit=6
+Processing file interfaces/libpq/fe-protocol3.c
+  lines=866 hit=303 functions=21 hit=11
+Processing file backend/utils/adt/ri_triggers.c
+  lines=791 hit=337 functions=41 hit=19
+Processing file include/utils/palloc.h
+  lines=4 hit=4 functions=1 hit=1
+Processing file backend/utils/cache/plancache.c
+  lines=629 hit=377 functions=32 hit=23
+Processing file backend/optimizer/util/paramassign.c
+  lines=199 hit=64 functions=12 hit=6
+Processing file port/pgstrcasecmp.c
+  lines=56 hit=40 functions=6 hit=4
+Processing file backend/utils/adt/jsonpath_gram.c
+  lines=299 hit=0 functions=2 hit=0
+Processing file backend/commands/discard.c
+  lines=29 hit=0 functions=2 hit=0
+Processing file backend/utils/adt/char.c
+  lines=63 hit=18 functions=14 hit=4
+Processing file backend/access/index/amvalidate.c
+  lines=93 hit=0 functions=5 hit=0
+Processing file common/f2s.c
+  lines=247 hit=0 functions=14 hit=0
+Processing file backend/regex/regprefix.c
+  lines=78 hit=0 functions=2 hit=0
+Processing file include/access/tableam.h
+  lines=129 hit=84 functions=46 hit=32
+Processing file backend/tcop/dest.c
+  lines=72 hit=47 functions=9 hit=7
+Processing file fe_utils/print.c
+  lines=1560 hit=393 functions=48 hit=19
+Processing file port/strerror.c
+  lines=129 hit=0 functions=4 hit=0
+Processing file backend/utils/adt/pg_upgrade_support.c
+  lines=83 hit=0 functions=11 hit=0
+Processing file backend/access/rmgrdesc/nbtdesc.c
+  lines=98 hit=0 functions=2 hit=0
+Processing file backend/utils/adt/network_selfuncs.c
+  lines=270 hit=0 functions=14 hit=0
+Processing file backend/executor/nodeWindowAgg.c
+  lines=1225 hit=0 functions=29 hit=0
+Processing file backend/snowball/libstemmer/stem_UTF_8_swedish.c
+  lines=106 hit=0 functions=7 hit=0
+Processing file backend/utils/cache/evtcache.c
+  lines=75 hit=32 functions=4 hit=2
+Processing file bin/scripts/common.c
+  lines=164 hit=45 functions=12 hit=4
+Processing file backend/utils/adt/pseudotypes.c
+  lines=70 hit=2 functions=58 hit=1
+Processing file backend/access/rmgrdesc/clogdesc.c
+  lines=20 hit=0 functions=2 hit=0
+Processing file include/pgstat.h
+  lines=10 hit=10 functions=2 hit=2
+Processing file backend/access/gin/ginxlog.c
+  lines=347 hit=0 functions=17 hit=0
+Processing file backend/optimizer/util/relnode.c
+  lines=646 hit=410 functions=27 hit=23
+Processing file include/postgres.h
+  lines=12 hit=12 functions=4 hit=4
+Processing file backend/access/hash/hash.c
+  lines=303 hit=69 functions=13 hit=3
+Processing file backend/storage/freespace/indexfsm.c
+  lines=14 hit=4 functions=4 hit=1
+Processing file backend/access/hash/hash_xlog.c
+  lines=457 hit=0 functions=15 hit=0
+Processing file port/path.c
+  lines=236 hit=125 functions=31 hit=18
+Processing file backend/access/rmgrdesc/xlogdesc.c
+  lines=87 hit=0 functions=2 hit=0
+Processing file backend/replication/walreceiver.c
+  lines=500 hit=0 functions=17 hit=0
+Processing file common/relpath.c
+  lines=47 hit=21 functions=4 hit=2
+Processing file bin/psql/describe.c
+  lines=2347 hit=0 functions=48 hit=0
+Processing file common/archive.c
+  lines=38 hit=0 functions=1 hit=0
+Processing file backend/utils/adt/xml.c
+  lines=720 hit=0 functions=74 hit=0
+Processing file common/scram-common.c
+  lines=96 hit=0 functions=8 hit=0
+Processing file port/thread.c
+  lines=5 hit=2 functions=1 hit=1
+Processing file include/lib/qunique.h
+  lines=16 hit=8 functions=2 hit=1
+Processing file backend/commands/policy.c
+  lines=402 hit=0 functions=11 hit=0
+Processing file backend/tcop/cmdtag.c
+  lines=26 hit=8 functions=6 hit=3
+Processing file backend/utils/cache/spccache.c
+  lines=61 hit=39 functions=6 hit=4
+Processing file common/controldata_utils.c
+  lines=74 hit=18 functions=2 hit=1
+Processing file interfaces/libpq/fe-print.c
+  lines=360 hit=0 functions=8 hit=0
+Processing file backend/regex/regc_cvec.c
+  lines=37 hit=27 functions=6 hit=5
+Processing file backend/partitioning/partprune.c
+  lines=1008 hit=451 functions=22 hit=19
+Processing file backend/utils/adt/array_expanded.c
+  lines=145 hit=3 functions=8 hit=1
+Processing file backend/access/rmgrdesc/committsdesc.c
+  lines=32 hit=0 functions=2 hit=0
+Processing file backend/parser/parse_oper.c
+  lines=309 hit=166 functions=20 hit=11
+Processing file backend/replication/logical/logicalfuncs.c
+  lines=122 hit=0 functions=10 hit=0
+Processing file backend/utils/adt/uuid.c
+  lines=150 hit=0 functions=21 hit=0
+Processing file backend/utils/adt/inet_cidr_ntop.c
+  lines=111 hit=0 functions=3 hit=0
+Processing file backend/access/spgist/spgkdtreeproc.c
+  lines=152 hit=0 functions=7 hit=0
+Processing file backend/utils/adt/expandedrecord.c
+  lines=469 hit=111 functions=20 hit=7
+Processing file bin/psql/large_obj.c
+  lines=122 hit=0 functions=8 hit=0
+Processing file backend/tcop/utility.c
+  lines=1941 hit=563 functions=17 hit=14
+Processing file backend/commands/dbcommands.c
+  lines=720 hit=235 functions=22 hit=9
+Processing file backend/executor/nodeTableFuncscan.c
+  lines=158 hit=0 functions=9 hit=0
+Processing file backend/utils/adt/selfuncs.c
+  lines=2211 hit=1079 functions=71 hit=47
+Processing file backend/parser/parser.c
+  lines=187 hit=59 functions=6 hit=2
+Processing file backend/snowball/libstemmer/stem_UTF_8_danish.c
+  lines=137 hit=0 functions=8 hit=0
+Processing file backend/port/pg_sema.c
+  lines=59 hit=42 functions=10 hit=9
+Processing file backend/optimizer/util/restrictinfo.c
+  lines=154 hit=106 functions=13 hit=10
+Processing file backend/parser/parse_cte.c
+  lines=340 hit=46 functions=10 hit=3
+Processing file backend/access/tablesample/tablesample.c
+  lines=6 hit=0 functions=1 hit=0
+Processing file backend/utils/time/snapmgr.c
+  lines=698 hit=218 functions=54 hit=31
+Processing file backend/access/transam/commit_ts.c
+  lines=285 hit=138 functions=29 hit=18
+Processing file backend/lib/dshash.c
+  lines=216 hit=0 functions=23 hit=0
+Processing file backend/utils/adt/rangetypes_typanalyze.c
+  lines=123 hit=0 functions=4 hit=0
+Processing file backend/utils/cache/relfilenodemap.c
+  lines=66 hit=0 functions=3 hit=0
+Processing file bin/psql/prompt.c
+  lines=187 hit=0 functions=1 hit=0
+Processing file common/pg_lzcompress.c
+  lines=138 hit=118 functions=4 hit=3
+Processing file backend/utils/adt/rangetypes_spgist.c
+  lines=328 hit=0 functions=9 hit=0
+Processing file backend/access/index/indexam.c
+  lines=210 hit=130 functions=25 hit=18
+Processing file backend/access/transam/xlogfuncs.c
+  lines=205 hit=2 functions=21 hit=1
+Processing file backend/access/spgist/spgtextproc.c
+  lines=288 hit=0 functions=9 hit=0
+Processing file backend/access/transam/generic_xlog.c
+  lines=154 hit=0 functions=10 hit=0
+Processing file backend/optimizer/util/orclauses.c
+  lines=77 hit=12 functions=4 hit=1
+Processing file backend/optimizer/util/tlist.c
+  lines=374 hit=305 functions=33 hit=30
+Processing file backend/utils/fmgr/fmgr.c
+  lines=793 hit=317 functions=68 hit=37
+Processing file backend/executor/nodeUnique.c
+  lines=41 hit=0 functions=4 hit=0
+Processing file backend/utils/mmgr/freepage.c
+  lines=605 hit=0 functions=29 hit=0
+Processing file include/access/gin_private.h
+  lines=8 hit=0 functions=1 hit=0
+Processing file backend/parser/analyze.c
+  lines=884 hit=656 functions=30 hit=24
+Processing file backend/commands/statscmds.c
+  lines=243 hit=0 functions=8 hit=0
+Processing file backend/access/gin/ginbulk.c
+  lines=99 hit=0 functions=10 hit=0
+Processing file backend/storage/smgr/smgr.c
+  lines=141 hit=100 functions=22 hit=17
+Processing file backend/lib/pairingheap.c
+  lines=82 hit=43 functions=8 hit=6
+Processing file include/utils/sortsupport.h
+  lines=30 hit=14 functions=2 hit=1
+Processing file interfaces/libpq/fe-connect.c
+  lines=2123 hit=661 functions=101 hit=50
+Processing file backend/access/gist/gistget.c
+  lines=260 hit=0 functions=8 hit=0
+Processing file backend/utils/adt/arrayutils.c
+  lines=71 hit=34 functions=9 hit=5
+Processing file backend/access/rmgrdesc/spgdesc.c
+  lines=75 hit=0 functions=2 hit=0
+Processing file backend/access/rmgrdesc/replorigindesc.c
+  lines=25 hit=0 functions=2 hit=0
+Processing file backend/executor/execTuples.c
+  lines=705 hit=499 functions=82 hit=64
+Processing file backend/utils/mmgr/mcxt.c
+  lines=298 hit=183 functions=36 hit=28
+Processing file backend/executor/execCurrent.c
+  lines=95 hit=0 functions=3 hit=0
+Processing file include/access/transam.h
+  lines=13 hit=9 functions=4 hit=3
+Processing file common/stringinfo.c
+  lines=79 hit=75 functions=11 hit=11
+Processing file backend/access/heap/syncscan.c
+  lines=54 hit=19 functions=5 hit=2
+Processing file backend/utils/adt/varchar.c
+  lines=376 hit=29 functions=46 hit=5
+Processing file backend/access/spgist/spgvalidate.c
+  lines=105 hit=0 functions=1 hit=0
+Processing file backend/utils/adt/jsonb_gin.c
+  lines=510 hit=0 functions=28 hit=0
+Processing file backend/catalog/pg_shdepend.c
+  lines=470 hit=145 functions=21 hit=12
+Processing file port/pg_strong_random.c
+  lines=20 hit=14 functions=2 hit=2
+Processing file backend/executor/execExpr.c
+  lines=1393 hit=796 functions=27 hit=21
+Processing file backend/snowball/libstemmer/stem_UTF_8_russian.c
+  lines=239 hit=0 functions=13 hit=0
+Processing file backend/nodes/outfuncs.c
+  lines=3008 hit=800 functions=231 hit=57
+Processing file pl/plpgsql/src/pl_exec.c
+  lines=2708 hit=244 functions=94 hit=14
+Processing file backend/libpq/crypt.c
+  lines=72 hit=0 functions=5 hit=0
+Processing file backend/catalog/indexing.c
+  lines=54 hit=53 functions=8 hit=8
+Processing file backend/optimizer/geqo/geqo_recombination.c
+  lines=9 hit=0 functions=1 hit=0
+Processing file backend/executor/nodeCustom.c
+  lines=82 hit=0 functions=11 hit=0
+Processing file backend/replication/logical/decode.c
+  lines=389 hit=0 functions=17 hit=0
+Processing file backend/utils/adt/amutils.c
+  lines=155 hit=0 functions=7 hit=0
+Processing file backend/catalog/index.c
+  lines=1121 hit=473 functions=38 hit=19
+Processing file backend/optimizer/path/joinrels.c
+  lines=500 hit=238 functions=17 hit=12
+Processing file backend/access/gin/gindatapage.c
+  lines=659 hit=0 functions=29 hit=0
+Processing file backend/utils/hash/dynahash.c
+  lines=510 hit=368 functions=35 hit=31
+Processing file backend/snowball/libstemmer/stem_UTF_8_german.c
+  lines=289 hit=0 functions=9 hit=0
+Processing file include/executor/tuptable.h
+  lines=37 hit=36 functions=10 hit=10
+Processing file backend/regex/regc_color.c
+  lines=421 hit=162 functions=21 hit=13
+Processing file include/mb/pg_wchar.h
+  lines=8 hit=0 functions=4 hit=0
+Processing file include/executor/executor.h
+  lines=31 hit=31 functions=7 hit=7
+Processing file backend/access/gist/gistbuildbuffers.c
+  lines=217 hit=0 functions=17 hit=0
+Processing file backend/parser/parse_param.c
+  lines=106 hit=28 functions=9 hit=4
+Processing file bin/initdb/findtimezone.c
+  lines=210 hit=102 functions=14 hit=11
+Processing file interfaces/libpq/fe-lobj.c
+  lines=380 hit=0 functions=20 hit=0
+Processing file backend/catalog/pg_subscription.c
+  lines=174 hit=11 functions=12 hit=1
+Processing file backend/access/hash/hashutil.c
+  lines=147 hit=48 functions=16 hit=8
+Processing file backend/utils/adt/xid.c
+  lines=124 hit=7 functions=27 hit=2
+Processing file backend/access/transam/xlogutils.c
+  lines=231 hit=0 functions=20 hit=0
+Processing file backend/foreign/foreign.c
+  lines=252 hit=0 functions=22 hit=0
+Processing file backend/parser/parse_node.c
+  lines=158 hit=106 functions=9 hit=8
+Processing file backend/utils/adt/geo_ops.c
+  lines=1968 hit=0 functions=271 hit=0
+Processing file backend/utils/time/combocid.c
+  lines=77 hit=52 functions=10 hit=7
+Processing file backend/access/table/tableam.c
+  lines=166 hit=52 functions=19 hit=6
+Processing file backend/access/heap/heaptoast.c
+  lines=211 hit=110 functions=6 hit=3
+Processing file backend/utils/adt/network.c
+  lines=708 hit=0 functions=71 hit=0
+Processing file backend/commands/extension.c
+  lines=1041 hit=270 functions=43 hit=19
+Processing file backend/optimizer/path/indxpath.c
+  lines=991 hit=536 functions=43 hit=33
+Processing file backend/parser/parse_target.c
+  lines=567 hit=284 functions=20 hit=17
+Processing file backend/rewrite/rewriteRemove.c
+  lines=17 hit=15 functions=1 hit=1
+Processing file backend/utils/adt/tsvector_op.c
+  lines=1114 hit=0 functions=50 hit=0
+Processing file backend/utils/adt/array_typanalyze.c
+  lines=217 hit=192 functions=9 hit=7
+Processing file backend/storage/file/buffile.c
+  lines=247 hit=0 functions=21 hit=0
+Processing file backend/access/transam/transam.c
+  lines=87 hit=53 functions=13 hit=10
+Processing file backend/commands/amcmds.c
+  lines=94 hit=15 functions=9 hit=3
+Processing file backend/utils/adt/pg_locale.c
+  lines=425 hit=123 functions=25 hit=14
+Processing file backend/utils/adt/json.c
+  lines=514 hit=0 functions=29 hit=0
+Processing file include/port/atomics/generic-gcc.h
+  lines=6 hit=6 functions=3 hit=3
+Processing file backend/utils/adt/arrayfuncs.c
+  lines=2245 hit=603 functions=85 hit=24
+Processing file backend/commands/indexcmds.c
+  lines=1106 hit=435 functions=21 hit=11
+Processing file backend/access/heap/pruneheap.c
+  lines=210 hit=177 functions=9 hit=9
+Processing file backend/storage/file/copydir.c
+  lines=69 hit=54 functions=2 hit=2
+Processing file backend/replication/backup_manifest.c
+  lines=115 hit=0 functions=6 hit=0
+Processing file backend/parser/parse_coerce.c
+  lines=871 hit=498 functions=28 hit=23
+Processing file backend/utils/adt/rangetypes_selfuncs.c
+  lines=342 hit=0 functions=13 hit=0
+Processing file backend/catalog/pg_largeobject.c
+  lines=44 hit=0 functions=3 hit=0
+Processing file backend/commands/copy.c
+  lines=1676 hit=691 functions=55 hit=39
+Processing file backend/access/spgist/spgutils.c
+  lines=378 hit=0 functions=22 hit=0
+Processing file backend/jit/jit.c
+  lines=56 hit=26 functions=7 hit=4
+Processing file backend/utils/misc/pg_controldata.c
+  lines=156 hit=0 functions=4 hit=0
+Processing file common/d2s.c
+  lines=321 hit=0 functions=13 hit=0
+Processing file backend/tsearch/ts_selfuncs.c
+  lines=102 hit=0 functions=6 hit=0
+Processing file backend/executor/nodeFunctionscan.c
+  lines=159 hit=79 functions=6 hit=4
+Processing file backend/access/gin/ginvalidate.c
+  lines=96 hit=0 functions=1 hit=0
+Processing file fe_utils/psqlscan.l
+  lines=511 hit=184 functions=18 hit=11
+genhtml: WARNING: ('unmapped') no data for line:1479, TLA:UNC, file:/workspaces/deep-learning_final/postgresql-13.23/src/fe_utils/psqlscan.l
+Processing file backend/access/brin/brin_revmap.c
+  lines=211 hit=0 functions=11 hit=0
+Processing file port/snprintf.c
+  lines=605 hit=308 functions=24 hit=20
+Processing file backend/utils/adt/jsonb_op.c
+  lines=147 hit=0 functions=14 hit=0
+Processing file backend/utils/adt/like_match.c
+  lines=86 hit=15 functions=6 hit=1
+Processing file backend/utils/adt/tsgistidx.c
+  lines=334 hit=0 functions=23 hit=0
+Processing file port/pgmkdirp.c
+  lines=32 hit=24 functions=1 hit=1
+Processing file common/file_perm.c
+  lines=14 hit=10 functions=2 hit=2
+Processing file backend/executor/nodeHashjoin.c
+  lines=462 hit=201 functions=18 hit=8
+Processing file backend/catalog/pg_publication.c
+  lines=194 hit=21 functions=16 hit=4
+Processing file include/catalog/index.h
+  lines=10 hit=0 functions=2 hit=0
+Processing file backend/nodes/read.c
+  lines=143 hit=104 functions=6 hit=6
+Processing file backend/tsearch/regis.c
+  lines=128 hit=0 functions=6 hit=0
+Processing file backend/access/nbtree/nbtree.c
+  lines=445 hit=261 functions=24 hit=14
+Processing file backend/tsearch/ts_locale.c
+  lines=102 hit=0 functions=11 hit=0
+Processing file backend/utils/sort/tuplesort.c
+  lines=1304 hit=322 functions=78 hit=25
+Processing file backend/regex/regexec.c
+  lines=495 hit=91 functions=16 hit=4
+Processing file backend/executor/tqueue.c
+  lines=56 hit=0 functions=8 hit=0
+Processing file backend/commands/seclabel.c
+  lines=180 hit=22 functions=8 hit=2
+Processing file backend/executor/execScan.c
+  lines=81 hit=40 functions=5 hit=5
+Processing file backend/utils/mb/stringinfo_mb.c
+  lines=25 hit=0 functions=1 hit=0
+Processing file interfaces/libpq/legacy-pqsignal.c
+  lines=11 hit=0 functions=1 hit=0
+Processing file backend/executor/nodeSubplan.c
+  lines=443 hit=143 functions=14 hit=4
+Processing file backend/utils/adt/partitionfuncs.c
+  lines=79 hit=48 functions=4 hit=2
+Processing file backend/snowball/libstemmer/stem_ISO_8859_1_italian.c
+  lines=403 hit=0 functions=13 hit=0
+Processing file backend/utils/adt/windowfuncs.c
+  lines=129 hit=0 functions=17 hit=0
+Processing file backend/access/nbtree/nbtinsert.c
+  lines=688 hit=423 functions=13 hit=11
+Processing file backend/replication/logical/launcher.c
+  lines=381 hit=80 functions=26 hit=9
+Processing file backend/utils/adt/mac.c
+  lines=197 hit=0 functions=23 hit=0
+Processing file backend/storage/ipc/shm_mq.c
+  lines=374 hit=0 functions=21 hit=0
+Processing file backend/regex/regfree.c
+  lines=4 hit=0 functions=1 hit=0
+Processing file backend/tsearch/wparser.c
+  lines=227 hit=0 functions=21 hit=0
+Processing file backend/access/heap/heapam_visibility.c
+  lines=562 hit=186 functions=15 hit=12
+Processing file backend/utils/adt/float.c
+  lines=1299 hit=25 functions=155 hit=4
+Processing file backend/executor/nodeForeignscan.c
+  lines=114 hit=0 functions=11 hit=0
+Processing file backend/optimizer/util/pathnode.c
+  lines=1463 hit=808 functions=63 hit=38
+Processing file backend/utils/init/miscinit.c
+  lines=444 hit=255 functions=44 hit=35
+Processing file backend/access/rmgrdesc/xactdesc.c
+  lines=202 hit=0 functions=11 hit=0
+Processing file backend/replication/syncrep_gram.y
+  lines=25 hit=0 functions=1 hit=0
+Processing file backend/executor/nodeBitmapAnd.c
+  lines=54 hit=0 functions=5 hit=0
+Processing file backend/tsearch/dict_ispell.c
+  lines=55 hit=0 functions=2 hit=0
+Processing file include/utils/float.h
+  lines=88 hit=4 functions=26 hit=2
+Processing file common/ryu_common.h
+  lines=25 hit=0 functions=6 hit=0
+Processing file backend/snowball/libstemmer/stem_UTF_8_italian.c
+  lines=407 hit=0 functions=13 hit=0
+Processing file backend/commands/async.c
+  lines=574 hit=52 functions=45 hit=8
+Processing file backend/executor/nodeLockRows.c
+  lines=125 hit=73 functions=4 hit=3
+Processing file backend/executor/execProcnode.c
+  lines=373 hit=203 functions=9 hit=9
+Processing file backend/catalog/objectaddress.c
+  lines=2173 hit=296 functions=49 hit=16
+Processing file backend/executor/execUtils.c
+  lines=377 hit=260 functions=38 hit=30
+Processing file common/username.c
+  lines=16 hit=11 functions=2 hit=2
+Processing file backend/utils/cache/inval.c
+  lines=338 hit=265 functions=36 hit=29
+Processing file backend/executor/execIndexing.c
+  lines=206 hit=58 functions=7 hit=3
+Processing file backend/utils/adt/like.c
+  lines=140 hit=23 functions=16 hit=3
+Processing file backend/snowball/libstemmer/stem_UTF_8_hungarian.c
+  lines=297 hit=0 functions=17 hit=0
+Processing file backend/access/spgist/spgxlog.c
+  lines=438 hit=0 functions=14 hit=0
+Processing file common/saslprep.c
+  lines=117 hit=0 functions=5 hit=0
+Processing file backend/utils/adt/oracle_compat.c
+  lines=368 hit=67 functions=17 hit=3
+Processing file backend/executor/nodeGroup.c
+  lines=64 hit=0 functions=4 hit=0
+Processing file backend/tcop/pquery.c
+  lines=546 hit=378 functions=19 hit=18
+Processing file backend/nodes/nodeFuncs.c
+  lines=2138 hit=957 functions=32 hit=29
+Processing file backend/parser/parse_utilcmd.c
+  lines=1505 hit=767 functions=28 hit=23
+Processing file backend/catalog/pg_conversion.c
+  lines=63 hit=0 functions=3 hit=0
+Processing file backend/regex/rege_dfa.c
+  lines=367 hit=193 functions=12 hit=9
+Processing file backend/executor/nodeMaterial.c
+  lines=87 hit=69 functions=6 hit=5
+Processing file backend/utils/adt/jsonb_util.c
+  lines=619 hit=84 functions=36 hit=12
+Processing file backend/nodes/print.c
+  lines=234 hit=72 functions=10 hit=3
+Processing file backend/access/rmgrdesc/standbydesc.c
+  lines=58 hit=0 functions=4 hit=0
+Processing file backend/replication/walsender.c
+  lines=1176 hit=43 functions=52 hit=5
+Processing file include/storage/checksum_impl.h
+  lines=20 hit=0 functions=2 hit=0
+Processing file backend/access/rmgrdesc/logicalmsgdesc.c
+  lines=12 hit=0 functions=2 hit=0
+Processing file backend/access/rmgrdesc/brindesc.c
+  lines=56 hit=0 functions=2 hit=0
+Processing file backend/commands/dropcmds.c
+  lines=226 hit=64 functions=5 hit=4
+Processing file backend/access/brin/brin_pageops.c
+  lines=287 hit=0 functions=11 hit=0
+Processing file backend/postmaster/pgarch.c
+  lines=189 hit=0 functions=9 hit=0
+Processing file backend/utils/mmgr/generation.c
+  lines=123 hit=0 functions=9 hit=0
+Processing file backend/commands/proclang.c
+  lines=88 hit=62 functions=3 hit=2
+Processing file backend/parser/scansup.c
+  lines=75 hit=38 functions=5 hit=5
+Processing file backend/utils/misc/guc.c
+  lines=2683 hit=1099 functions=152 hit=98
+Processing file backend/access/common/bufmask.c
+  lines=35 hit=0 functions=5 hit=0
+Processing file backend/commands/trigger.c
+  lines=1867 hit=715 functions=64 hit=41
+Processing file port/pg_bitutils.c
+  lines=39 hit=12 functions=8 hit=3
+Processing file backend/utils/adt/jsonpath_scan.l
+  lines=262 hit=0 functions=17 hit=0
+Processing file backend/port/pg_shmem.c
+  lines=173 hit=87 functions=10 hit=8
+Processing file backend/catalog/aclchk.c
+  lines=2232 hit=535 functions=85 hit=38
+Processing file backend/libpq/be-fsstubs.c
+  lines=263 hit=6 functions=29 hit=2
+Processing file backend/utils/adt/tsquery_rewrite.c
+  lines=187 hit=0 functions=5 hit=0
+Processing file backend/catalog/namespace.c
+  lines=1401 hit=645 functions=91 hit=49
+Processing file backend/commands/schemacmds.c
+  lines=135 hit=37 functions=6 hit=2
+Processing file backend/libpq/hba.c
+  lines=1076 hit=237 functions=31 hit=13
+Processing file backend/statistics/mcv.c
+  lines=523 hit=0 functions=18 hit=0
+Processing file backend/access/hash/hashsearch.c
+  lines=233 hit=0 functions=7 hit=0
+Processing file backend/storage/ipc/standby.c
+  lines=297 hit=58 functions=28 hit=6
+Processing file backend/utils/fmgr/dfmgr.c
+  lines=209 hit=79 functions=15 hit=7
+Processing file backend/optimizer/util/var.c
+  lines=276 hit=168 functions=20 hit=16
+Processing file bin/initdb/initdb.c
+  lines=1059 hit=630 functions=56 hit=51
+Processing file backend/utils/adt/xid8funcs.c
+  lines=217 hit=0 functions=21 hit=0
+Processing file bin/psql/tab-complete.c
+  lines=1696 hit=0 functions=28 hit=0
+Processing file common/hashfn.c
+  lines=168 hit=84 functions=7 hit=5
+Processing file backend/executor/nodeNamedtuplestorescan.c
+  lines=45 hit=0 functions=6 hit=0
+Processing file backend/tsearch/dict_thesaurus.c
+  lines=379 hit=0 functions=17 hit=0
+Processing file backend/access/nbtree/nbtsort.c
+  lines=558 hit=283 functions=22 hit=15
+Processing file interfaces/libpq/pqexpbuffer.c
+  lines=114 hit=74 functions=13 hit=11
+Processing file port/qsort.c
+  lines=73 hit=71 functions=4 hit=3
+Processing file backend/access/gist/gistutil.c
+  lines=303 hit=0 functions=25 hit=0
+Processing file common/unicode_norm.c
+  lines=180 hit=0 functions=11 hit=0
+Processing file backend/access/nbtree/nbtpage.c
+  lines=711 hit=247 functions=24 hit=15
+Processing file backend/commands/define.c
+  lines=124 hit=41 functions=9 hit=5
+Processing file backend/replication/logical/origin.c
+  lines=457 hit=64 functions=29 hit=4
+Processing file backend/utils/adt/tsginidx.c
+  lines=125 hit=0 functions=12 hit=0
+Processing file backend/optimizer/plan/analyzejoins.c
+  lines=282 hit=182 functions=13 hit=12
+Processing file backend/executor/nodeGather.c
+  lines=137 hit=0 functions=8 hit=0
+Processing file backend/bootstrap/bootscanner.l
+  lines=52 hit=43 functions=2 hit=0
+Processing file backend/parser/gram.y
+  lines=6706 hit=1831 functions=39 hit=31
+Processing file backend/utils/error/elog.c
+  lines=1228 hit=394 functions=64 hit=33
+Processing file backend/snowball/libstemmer/stem_UTF_8_lithuanian.c
+  lines=158 hit=0 functions=9 hit=0
+Processing file include/storage/pmsignal.h
+  lines=4 hit=0 functions=1 hit=0
+Processing file backend/storage/ipc/dsm_impl.c
+  lines=206 hit=37 functions=8 hit=3
+Processing file backend/statistics/dependencies.c
+  lines=379 hit=0 functions=19 hit=0
+Processing file backend/utils/adt/cash.c
+  lines=411 hit=0 functions=43 hit=0
+Processing file common/checksum_helper.c
+  lines=101 hit=0 functions=5 hit=0
+Processing file backend/utils/adt/tsrank.c
+  lines=435 hit=0 functions=24 hit=0
+Processing file backend/main/main.c
+  lines=99 hit=42 functions=5 hit=4
+Processing file backend/utils/adt/geo_spgist.c
+  lines=341 hit=0 functions=33 hit=0
+Processing file backend/replication/repl_gram.y
+  lines=95 hit=0
+Processing file backend/access/common/printtup.c
+  lines=244 hit=144 functions=15 hit=12
+Processing file backend/commands/tablecmds.c
+  lines=5793 hit=2180 functions=173 hit=85
+Processing file include/utils/rel.h
+  lines=4 hit=4 functions=1 hit=1
+Processing file backend/optimizer/prep/preptlist.c
+  lines=110 hit=91 functions=3 hit=3
+Processing file backend/utils/adt/pg_lsn.c
+  lines=89 hit=0 functions=17 hit=0
+Processing file backend/replication/repl_gram.c
+  lines=226 hit=0 functions=2 hit=0
+Processing file backend/catalog/catalog.c
+  lines=133 hit=119 functions=15 hit=13
+Processing file backend/optimizer/prep/prepjointree.c
+  lines=1025 hit=705 functions=41 hit=36
+Processing file include/storage/s_lock.h
+  lines=15 hit=12 functions=3 hit=2
+Processing file include/port/atomics/arch-x86.h
+  lines=14 hit=7 functions=4 hit=2
+Processing file backend/commands/sequence.c
+  lines=701 hit=353 functions=25 hit=11
+Processing file backend/utils/adt/jsonpath_exec.c
+  lines=1033 hit=0 functions=64 hit=0
+Processing file backend/access/gin/ginfast.c
+  lines=367 hit=0 functions=10 hit=0
+Processing file backend/parser/parse_type.c
+  lines=284 hit=127 functions=25 hit=18
+Processing file backend/commands/variable.c
+  lines=361 hit=163 functions=21 hit=18
+Processing file backend/storage/freespace/fsmpage.c
+  lines=96 hit=59 functions=7 hit=5
+Processing file backend/libpq/be-secure.c
+  lines=50 hit=32 functions=9 hit=5
+Processing file backend/utils/cache/lsyscache.c
+  lines=1056 hit=684 functions=105 hit=80
+Processing file backend/optimizer/path/tidpath.c
+  lines=114 hit=77 functions=9 hit=9
+Processing file backend/storage/lmgr/spin.c
+  lines=4 hit=4 functions=2 hit=2
+Processing file backend/access/rmgrdesc/gindesc.c
+  lines=124 hit=0 functions=3 hit=0
+Processing file backend/storage/ipc/procarray.c
+  lines=1122 hit=300 functions=63 hit=19
+Processing file pl/plpgsql/src/pl_reserved_kwlist_d.h
+  lines=9 hit=9 functions=1 hit=1
+Processing file pl/plpgsql/src/pl_unreserved_kwlist_d.h
+  lines=9 hit=9 functions=1 hit=1
+Processing file backend/postmaster/startup.c
+  lines=83 hit=20 functions=11 hit=2
+Processing file backend/storage/ipc/barrier.c
+  lines=68 hit=0 functions=8 hit=0
+Processing file backend/optimizer/plan/planmain.c
+  lines=55 hit=52 functions=1 hit=1
+Processing file backend/storage/freespace/freespace.c
+  lines=221 hit=152 functions=21 hit=16
+Processing file backend/rewrite/rewriteSupport.c
+  lines=25 hit=12 functions=3 hit=1
+Processing file backend/tsearch/dict_simple.c
+  lines=35 hit=0 functions=2 hit=0
+Processing file backend/libpq/pqsignal.c
+  lines=36 hit=35 functions=2 hit=2
+Processing file backend/catalog/pg_collation.c
+  lines=70 hit=43 functions=2 hit=1
+Processing file backend/executor/tstoreReceiver.c
+  lines=72 hit=38 functions=7 hit=6
+Processing file include/port/pg_bitutils.h
+  lines=28 hit=22 functions=10 hit=8
+Processing file backend/utils/adt/lockfuncs.c
+  lines=356 hit=0 functions=26 hit=0
+Processing file backend/parser/gram.c
+  lines=4445 hit=1400 functions=2 hit=2
+Processing file backend/storage/large_object/inv_api.c
+  lines=299 hit=0 functions=14 hit=0
+Processing file backend/commands/portalcmds.c
+  lines=118 hit=52 functions=5 hit=4
+Processing file interfaces/libpq/fe-auth.c
+  lines=270 hit=24 functions=9 hit=3
+Processing file bin/psql/sql_help.c
+  lines=552 hit=0 functions=184 hit=0
+Processing file interfaces/libpq/fe-exec.c
+  lines=1406 hit=333 functions=100 hit=34
+Processing file backend/snowball/libstemmer/stem_UTF_8_greek.c
+  lines=1397 hit=0 functions=37 hit=0
+Processing file backend/snowball/libstemmer/stem_UTF_8_turkish.c
+  lines=1239 hit=0 functions=43 hit=0
+Processing file backend/access/transam/xlogarchive.c
+  lines=175 hit=0 functions=11 hit=0
+Processing file backend/snowball/libstemmer/stem_UTF_8_norwegian.c
+  lines=107 hit=0 functions=7 hit=0
+Processing file backend/replication/logical/message.c
+  lines=18 hit=0 functions=2 hit=0
+Processing file pl/plpgsql/src/pl_handler.c
+  lines=169 hit=85 functions=11 hit=11
+Processing file backend/regex/regc_locale.c
+  lines=169 hit=14 functions=9 hit=3
+Processing file backend/commands/subscriptioncmds.c
+  lines=411 hit=0 functions=10 hit=0
+Processing file backend/libpq/auth.c
+  lines=539 hit=24 functions=14 hit=2
+Processing file backend/storage/file/reinit.c
+  lines=115 hit=0 functions=4 hit=0
+Processing file backend/executor/nodeTidscan.c
+  lines=178 hit=0 functions=9 hit=0
+Processing file backend/utils/mmgr/slab.c
+  lines=128 hit=0 functions=9 hit=0
+Processing file backend/bootstrap/bootstrap.c
+  lines=369 hit=299 functions=17 hit=17
+Processing file backend/optimizer/path/joinpath.c
+  lines=447 hit=379 functions=16 hit=16
+Processing file backend/access/rmgrdesc/seqdesc.c
+  lines=14 hit=0 functions=2 hit=0
+Processing file backend/replication/logical/reorderbuffer.c
+  lines=1209 hit=8 functions=68 hit=1
+Processing file backend/executor/nodeSort.c
+  lines=107 hit=55 functions=10 hit=4
+Processing file backend/utils/adt/levenshtein.c
+  lines=103 hit=0 functions=2 hit=0
+Processing file backend/commands/createas.c
+  lines=163 hit=119 functions=9 hit=7
+Processing file backend/access/index/genam.c
+  lines=205 hit=155 functions=14 hit=12
+Processing file include/nodes/nodeFuncs.h
+  lines=28 hit=26 functions=8 hit=8
+Processing file backend/access/nbtree/nbtsearch.c
+  lines=683 hit=433 functions=20 hit=17
+Processing file backend/access/gin/gininsert.c
+  lines=163 hit=0 functions=9 hit=0
+Processing file backend/commands/operatorcmds.c
+  lines=209 hit=0 functions=5 hit=0
+Processing file backend/lib/rbtree.c
+  lines=246 hit=0 functions=15 hit=0
+Processing file backend/utils/adt/bool.c
+  lines=150 hit=46 functions=20 hit=5
+Processing file backend/commands/typecmds.c
+  lines=1212 hit=123 functions=39 hit=5
+Processing file backend/snowball/libstemmer/stem_UTF_8_romanian.c
+  lines=331 hit=0 functions=14 hit=0
+Processing file backend/lib/bloomfilter.c
+  lines=53 hit=0 functions=9 hit=0
+Processing file backend/commands/constraint.c
+  lines=39 hit=0 functions=1 hit=0
+Processing file backend/catalog/pg_operator.c
+  lines=259 hit=0 functions=8 hit=0
+Processing file include/storage/proclist.h
+  lines=47 hit=37 functions=8 hit=8
+Processing file backend/utils/adt/enum.c
+  lines=183 hit=0 functions=21 hit=0
+Processing file backend/parser/parse_expr.c
+  lines=1342 hit=505 functions=39 hit=21
+Processing file backend/commands/publicationcmds.c
+  lines=285 hit=0 functions=15 hit=0
+Processing file backend/utils/adt/ruleutils.c
+  lines=4348 hit=1366 functions=138 hit=76
+Processing file bin/scripts/createdb.c
+  lines=176 hit=60 functions=2 hit=1
+Processing file backend/access/spgist/spgvacuum.c
+  lines=310 hit=0 functions=11 hit=0
+Processing file backend/utils/adt/tsquery_cleanup.c
+  lines=158 hit=0 functions=9 hit=0
+Processing file backend/commands/comment.c
+  lines=129 hit=85 functions=6 hit=5
+Processing file backend/postmaster/bgworker.c
+  lines=347 hit=107 functions=22 hit=9
+Processing file backend/parser/parse_func.c
+  lines=791 hit=403 functions=14 hit=11
+Processing file include/common/int.h
+  lines=18 hit=16 functions=9 hit=8
+Processing file backend/access/nbtree/nbtxlog.c
+  lines=477 hit=0 functions=16 hit=0
+Processing file backend/postmaster/bgwriter.c
+  lines=61 hit=34 functions=1 hit=1
+Processing file include/utils/relptr.h
+  lines=4 hit=0 functions=1 hit=0
+Processing file backend/access/transam/xlog.c
+  lines=3557 hit=1289 functions=150 hit=77
+Processing file backend/lib/hyperloglog.c
+  lines=62 hit=11 functions=6 hit=1
+Processing file backend/access/transam/multixact.c
+  lines=823 hit=216 functions=58 hit=22
+Processing file backend/snowball/libstemmer/stem_UTF_8_dutch.c
+  lines=362 hit=0 functions=12 hit=0
+Processing file backend/postmaster/fork_process.c
+  lines=16 hit=9 functions=1 hit=1
+Processing file backend/utils/sort/logtape.c
+  lines=361 hit=0 functions=27 hit=0
+Processing file backend/storage/smgr/md.c
+  lines=346 hit=213 functions=30 hit=25
+Processing file backend/replication/basebackup.c
+  lines=619 hit=0 functions=16 hit=0
+Processing file bin/psql/mainloop.c
+  lines=257 hit=110 functions=1 hit=1
+Processing file backend/utils/misc/rls.c
+  lines=32 hit=12 functions=3 hit=1
+Processing file backend/access/gist/gist.c
+  lines=575 hit=0 functions=17 hit=0
+Processing file backend/libpq/pqmq.c
+  lines=139 hit=0 functions=12 hit=0
+Processing file port/getpeereid.c
+  lines=8 hit=0 functions=1 hit=0
+Processing file backend/tsearch/to_tsany.c
+  lines=284 hit=0 functions=26 hit=0
+Processing file backend/rewrite/rewriteHandler.c
+  lines=1171 hit=655 functions=29 hit=25
+Processing file backend/snowball/libstemmer/stem_UTF_8_finnish.c
+  lines=341 hit=0 functions=14 hit=0
+Processing file backend/snowball/libstemmer/api.c
+  lines=35 hit=0 functions=3 hit=0
+Processing file backend/access/gin/ginvacuum.c
+  lines=282 hit=0 functions=9 hit=0
+Processing file backend/access/nbtree/nbtdedup.c
+  lines=208 hit=35 functions=9 hit=3
+Processing file backend/utils/adt/geo_selfuncs.c
+  lines=12 hit=0 functions=6 hit=0
+Processing file backend/storage/sync/sync.c
+  lines=131 hit=94 functions=7 hit=6
+Processing file backend/access/transam/twophase.c
+  lines=717 hit=48 functions=38 hit=7
+Processing file backend/utils/adt/date.c
+  lines=1076 hit=0 functions=137 hit=0
+Processing file include/utils/expandedrecord.h
+  lines=10 hit=3 functions=2 hit=1
+Processing file backend/libpq/pqformat.c
+  lines=158 hit=38 functions=26 hit=8
+Processing file backend/snowball/libstemmer/stem_ISO_8859_1_indonesian.c
+  lines=220 hit=0 functions=13 hit=0
+Processing file backend/access/rmgrdesc/mxactdesc.c
+  lines=57 hit=0 functions=3 hit=0
+Processing file interfaces/libpq/fe-secure.c
+  lines=111 hit=31 functions=21 hit=5
+Processing file backend/storage/ipc/shmem.c
+  lines=146 hit=88 functions=13 hit=11
+Processing file backend/utils/adt/pgstatfuncs.c
+  lines=885 hit=0 functions=95 hit=0
+Processing file backend/access/common/tupconvert.c
+  lines=88 hit=5 functions=6 hit=1
+Processing file backend/utils/misc/pg_config.c
+  lines=26 hit=0 functions=1 hit=0
+Processing file pl/plpgsql/src/pl_gram.y
+  lines=1369 hit=84 functions=28 hit=5
+Processing file backend/storage/lmgr/lock.c
+  lines=1270 hit=501 functions=59 hit=31
+Processing file backend/storage/ipc/ipc.c
+  lines=80 hit=72 functions=9 hit=9
+Processing file backend/utils/adt/expandeddatum.c
+  lines=32 hit=17 functions=7 hit=3
+Processing file port/quotes.c
+  lines=11 hit=9 functions=1 hit=1
+Processing file backend/access/rmgrdesc/smgrdesc.c
+  lines=24 hit=0 functions=2 hit=0
+Processing file backend/partitioning/partdesc.c
+  lines=102 hit=85 functions=6 hit=6
+Processing file backend/utils/adt/trigfuncs.c
+  lines=24 hit=0 functions=1 hit=0
+Processing file common/d2s_intrinsics.h
+  lines=8 hit=0 functions=4 hit=0
+Processing file backend/snowball/libstemmer/stem_ISO_8859_2_hungarian.c
+  lines=295 hit=0 functions=17 hit=0
+Processing file backend/nodes/params.c
+  lines=109 hit=15 functions=7 hit=2
+Processing file include/replication/worker_internal.h
+  lines=2 hit=0 functions=1 hit=0
+Processing file fe_utils/cancel.c
+  lines=31 hit=18 functions=4 hit=3
+Processing file backend/executor/nodeSamplescan.c
+  lines=107 hit=0 functions=8 hit=0
+Processing file backend/access/table/toast_helper.c
+  lines=117 hit=75 functions=6 hit=5
+Processing file port/chklocale.c
+  lines=41 hit=21 functions=1 hit=1
+Processing file backend/replication/logical/logical.c
+  lines=375 hit=4 functions=23 hit=1
+Processing file backend/snowball/libstemmer/stem_ISO_8859_1_french.c
+  lines=646 hit=0 functions=15 hit=0
+Processing file bin/pg_ctl/pg_ctl.c
+  lines=710 hit=218 functions=30 hit=14
+Processing file backend/access/gin/ginarrayproc.c
+  lines=119 hit=0 functions=5 hit=0
+Processing file backend/commands/analyze.c
+  lines=914 hit=692 functions=17 hit=15
+Processing file common/wchar.c
+  lines=733 hit=39 functions=70 hit=9
+Processing file backend/utils/adt/tsquery_gist.c
+  lines=118 hit=0 functions=10 hit=0
+Processing file backend/access/rmgrdesc/genericdesc.c
+  lines=15 hit=0 functions=2 hit=0
+Processing file backend/regex/regerror.c
+  lines=35 hit=0 functions=1 hit=0
+Processing file common/base64.c
+  lines=81 hit=0 functions=4 hit=0
+Processing file backend/commands/explain.c
+  lines=2159 hit=615 functions=78 hit=42
+Processing file backend/access/index/amapi.c
+  lines=40 hit=14 functions=3 hit=2
+Processing file backend/commands/prepare.c
+  lines=222 hit=0 functions=14 hit=0
+Processing file backend/commands/tsearchcmds.c
+  lines=704 hit=282 functions=25 hit=14
+Processing file backend/optimizer/geqo/geqo_main.c
+  lines=45 hit=0 functions=3 hit=0
+Processing file common/logging.c
+  lines=111 hit=65 functions=7 hit=6
+Processing file backend/access/gist/gistbuild.c
+  lines=288 hit=0 functions=15 hit=0
+Processing file backend/nodes/makefuncs.c
+  lines=300 hit=250 functions=33 hit=29
+Processing file backend/utils/adt/varbit.c
+  lines=673 hit=0 functions=48 hit=0
+Processing file backend/utils/adt/array_selfuncs.c
+  lines=319 hit=5 functions=13 hit=1
+Processing file backend/access/gin/ginbtree.c
+  lines=287 hit=0 functions=9 hit=0
+Processing file backend/access/gist/gistvacuum.c
+  lines=195 hit=0 functions=6 hit=0
+Processing file backend/tcop/fastpath.c
+  lines=186 hit=0 functions=6 hit=0
+Processing file include/replication/walreceiver.h
+  lines=10 hit=0 functions=1 hit=0
+Processing file backend/tcop/postgres.c
+  lines=1415 hit=461 functions=56 hit=33
+Processing file backend/storage/lmgr/s_lock.c
+  lines=36 hit=10 functions=6 hit=3
+Processing file backend/snowball/libstemmer/stem_UTF_8_porter.c
+  lines=386 hit=0 functions=14 hit=0
+Processing file backend/libpq/pqcomm.c
+  lines=524 hit=207 functions=41 hit=26
+Processing file backend/optimizer/path/costsize.c
+  lines=1613 hit=1250 functions=68 hit=52
+Processing file backend/postmaster/walwriter.c
+  lines=53 hit=31 functions=1 hit=1
+Processing file backend/access/heap/heapam.c
+  lines=3025 hit=1184 functions=83 hit=43
+Processing file backend/access/transam/xloginsert.c
+  lines=340 hit=226 functions=17 hit=12
+Processing file backend/access/common/attmap.c
+  lines=96 hit=45 functions=6 hit=5
+Processing file backend/optimizer/util/appendinfo.c
+  lines=260 hit=137 functions=9 hit=7
+Processing file backend/utils/sort/sharedtuplestore.c
+  lines=191 hit=0 functions=12 hit=0
+Processing file backend/catalog/pg_depend.c
+  lines=315 hit=119 functions=20 hit=9
+Processing file backend/replication/logical/snapbuild.c
+  lines=551 hit=15 functions=30 hit=2
+Processing file include/access/gist.h
+  lines=9 hit=0 functions=2 hit=0
+Processing file backend/access/gist/gistsplit.c
+  lines=233 hit=0 functions=10 hit=0
+Processing file backend/utils/misc/help_config.c
+  lines=34 hit=0 functions=3 hit=0
+Processing file backend/executor/execPartition.c
+  lines=566 hit=282 functions=16 hit=13
+Processing file backend/optimizer/plan/planagg.c
+  lines=154 hit=29 functions=5 hit=2
+Processing file backend/utils/misc/ps_status.c
+  lines=76 hit=53 functions=4 hit=3
+Processing file include/libpq/pqformat.h
+  lines=49 hit=38 functions=10 hit=8
+Processing file backend/optimizer/plan/initsplan.c
+  lines=688 hit=527 functions=22 hit=21
+Processing file common/link-canary.c
+  lines=3 hit=3 functions=1 hit=1
+Processing file backend/replication/syncrep_scanner.l
+  lines=57 hit=0 functions=4 hit=0
+Processing file backend/access/hash/hashvalidate.c
+  lines=112 hit=0 functions=2 hit=0
+Processing file backend/utils/error/assert.c
+  lines=10 hit=0 functions=1 hit=0
+Processing file backend/utils/mmgr/portalmem.c
+  lines=342 hit=160 functions=27 hit=18
+Processing file backend/snowball/libstemmer/stem_UTF_8_arabic.c
+  lines=783 hit=0 functions=24 hit=0
+Processing file backend/optimizer/plan/subselect.c
+  lines=907 hit=529 functions=35 hit=26
+Processing file port/fls.c
+  lines=6 hit=5 functions=1 hit=1
+Processing file backend/snowball/libstemmer/stem_KOI8_R_russian.c
+  lines=255 hit=0 functions=13 hit=0
+Processing file backend/executor/nodeBitmapOr.c
+  lines=61 hit=0 functions=5 hit=0
+Processing file backend/utils/cache/syscache.c
+  lines=183 hit=153 functions=26 hit=24
+Processing file bin/psql/common.c
+  lines=892 hit=169 functions=33 hit=16
+Processing file backend/utils/adt/tsvector.c
+  lines=242 hit=0 functions=8 hit=0
+Processing file backend/access/common/indextuple.c
+  lines=163 hit=125 functions=5 hit=5
+Processing file backend/utils/adt/numutils.c
+  lines=203 hit=98 functions=13 hit=8
+Processing file backend/snowball/libstemmer/stem_UTF_8_english.c
+  lines=557 hit=0 functions=18 hit=0
+Processing file backend/utils/misc/pg_rusage.c
+  lines=23 hit=17 functions=2 hit=2
+Processing file backend/tsearch/wparser_def.c
+  lines=590 hit=8 functions=53 hit=1
+Processing file backend/statistics/mvdistinct.c
+  lines=201 hit=0 functions=17 hit=0
+Processing file port/noblock.c
+  lines=14 hit=5 functions=2 hit=1
+Processing file backend/tsearch/dict_synonym.c
+  lines=90 hit=0 functions=4 hit=0
+Processing file backend/snowball/libstemmer/stem_UTF_8_tamil.c
+  lines=1055 hit=0 functions=17 hit=0
+Processing file backend/utils/misc/timeout.c
+  lines=169 hit=84 functions=19 hit=12
+Processing file backend/postmaster/syslogger.c
+  lines=376 hit=6 functions=14 hit=2
+Processing file backend/optimizer/util/placeholder.c
+  lines=120 hit=67 functions=9 hit=9
+Processing file backend/storage/buffer/bufmgr.c
+  lines=1139 hit=684 functions=69 hit=54
+Processing file backend/access/tablesample/bernoulli.c
+  lines=57 hit=0 functions=5 hit=0
+Processing file backend/executor/execExprInterp.c
+  lines=1474 hit=646 functions=65 hit=39
+Processing file backend/storage/lmgr/deadlock.c
+  lines=304 hit=17 functions=12 hit=1
+Processing file common/sha2.c
+  lines=254 hit=0 functions=16 hit=0
+Processing file bin/psql/help.c
+  lines=348 hit=0 functions=5 hit=0
+Processing file backend/utils/adt/formatting.c
+  lines=2267 hit=0 functions=62 hit=0
+Processing file backend/utils/adt/jsonb.c
+  lines=825 hit=24 functions=47 hit=4
+Processing file backend/storage/lmgr/proc.c
+  lines=546 hit=226 functions=27 hit=12
+Processing file backend/catalog/pg_aggregate.c
+  lines=268 hit=0 functions=2 hit=0
+Processing file backend/executor/nodeBitmapIndexscan.c
+  lines=82 hit=51 functions=5 hit=3
+Processing file interfaces/libpq/fe-misc.c
+  lines=384 hit=156 functions=30 hit=21
+Processing file backend/access/transam/slru.c
+  lines=461 hit=264 functions=23 hit=18
+Processing file backend/utils/adt/jsonpath_gram.y
+  lines=197 hit=0 functions=13 hit=0
+Processing file backend/utils/adt/tsquery.c
+  lines=596 hit=0 functions=23 hit=0
+Processing file backend/executor/nodeAgg.c
+  lines=1558 hit=915 functions=63 hit=40
+Processing file backend/executor/execParallel.c
+  lines=578 hit=0 functions=20 hit=0
+Processing file backend/parser/parse_enr.c
+  lines=4 hit=2 functions=2 hit=1
+Processing file backend/optimizer/util/plancat.c
+  lines=796 hit=398 functions=26 hit=19
+Processing file common/fe_memutils.c
+  lines=64 hit=27 functions=14 hit=8
+Processing file backend/snowball/libstemmer/stem_ISO_8859_1_dutch.c
+  lines=357 hit=0 functions=12 hit=0
+Processing file backend/optimizer/prep/prepunion.c
+  lines=337 hit=181 functions=12 hit=10
+Processing file backend/replication/syncrep.c
+  lines=316 hit=42 functions=18 hit=6
+Processing file common/jsonapi.c
+  lines=477 hit=68 functions=17 hit=6
+Processing file backend/optimizer/geqo/geqo_erx.c
+  lines=107 hit=0 functions=8 hit=0
+Processing file backend/snowball/libstemmer/stem_ISO_8859_1_finnish.c
+  lines=341 hit=0 functions=14 hit=0
+Processing file backend/lib/integerset.c
+  lines=255 hit=0 functions=16 hit=0
+Processing file backend/executor/nodeLimit.c
+  lines=172 hit=68 functions=6 hit=5
+Processing file backend/utils/misc/sampling.c
+  lines=85 hit=28 functions=10 hit=6
+Processing file port/pgsleep.c
+  lines=6 hit=6 functions=1 hit=1
+Processing file backend/snowball/libstemmer/stem_ISO_8859_1_english.c
+  lines=553 hit=0 functions=18 hit=0
+Processing file backend/replication/slot.c
+  lines=612 hit=111 functions=30 hit=14
+Processing file backend/catalog/toasting.c
+  lines=123 hit=109 functions=7 hit=7
+Processing file backend/executor/nodeModifyTable.c
+  lines=839 hit=453 functions=21 hit=15
+Processing file common/pgfnames.c
+  lines=25 hit=0 functions=2 hit=0
+Processing file backend/executor/execJunk.c
+  lines=77 hit=49 functions=7 hit=6
+Processing file backend/utils/adt/tsquery_util.c
+  lines=176 hit=0 functions=13 hit=0
+Processing file bin/psql/psqlscanslash.l
+  lines=288 hit=80 functions=7 hit=3
+genhtml: WARNING: ('unmapped') no data for line:832, TLA:UNC, file:/workspaces/deep-learning_final/postgresql-13.23/src/bin/psql/psqlscanslash.l
+	(use "genhtml --ignore-errors unmapped,unmapped ..." to suppress this warning)
+Processing file bin/psql/command.c
+  lines=2116 hit=180 functions=95 hit=9
+Processing file backend/nodes/copyfuncs.c
+  lines=3205 hit=1278 functions=283 hit=99
+Processing file port/pqsignal.c
+  lines=9 hit=8 functions=2 hit=2
+Processing file backend/utils/adt/int.c
+  lines=581 hit=127 functions=94 hit=20
+Processing file backend/snowball/libstemmer/stem_ISO_8859_1_german.c
+  lines=287 hit=0 functions=9 hit=0
+Processing file backend/snowball/libstemmer/stem_UTF_8_portuguese.c
+  lines=369 hit=0 functions=13 hit=0
+Processing file pl/plpgsql/src/pl_comp.c
+  lines=876 hit=328 functions=38 hit=17
+Processing file backend/catalog/heap.c
+  lines=1035 hit=666 functions=42 hit=31
+Processing file bin/initdb/localtime.c
+  lines=807 hit=263 functions=31 hit=16
+Processing file backend/regex/regc_pg_locale.c
+  lines=312 hit=13 functions=14 hit=1
+Processing file backend/access/rmgrdesc/heapdesc.c
+  lines=165 hit=0 functions=5 hit=0
+Processing file bin/psql/variables.c
+  lines=162 hit=91 functions=12 hit=7
+Processing file bin/psql/startup.c
+  lines=557 hit=301 functions=38 hit=37
+Processing file backend/catalog/pg_db_role_setting.c
+  lines=76 hit=19 functions=3 hit=2
+Processing file port/pg_crc32c_sb8.c
+  lines=28 hit=0 functions=1 hit=0
+Processing file timezone/strftime.c
+  lines=232 hit=58 functions=5 hit=5
+Processing file backend/executor/nodeBitmapHeapscan.c
+  lines=321 hit=138 functions=15 hit=7
+Processing file backend/executor/nodeIndexscan.c
+  lines=545 hit=173 functions=22 hit=8
+Processing file backend/tsearch/ts_parse.c
+  lines=274 hit=0 functions=15 hit=0
+Processing file backend/commands/cluster.c
+  lines=403 hit=144 functions=10 hit=3
+Processing file backend/storage/ipc/sinval.c
+  lines=42 hit=37 functions=4 hit=4
+Processing file include/utils/memutils.h
+  lines=3 hit=3 functions=1 hit=1
+Processing file backend/rewrite/rowsecurity.c
+  lines=182 hit=12 functions=7 hit=1
+Processing file backend/access/transam/clog.c
+  lines=233 hit=124 functions=22 hit=18
+Processing file backend/utils/fmgr/funcapi.c
+  lines=729 hit=290 functions=24 hit=17
+Processing file backend/access/brin/brin_xlog.c
+  lines=151 hit=0 functions=9 hit=0
+Processing file backend/access/common/printsimple.c
+  lines=46 hit=0 functions=2 hit=0
+Processing file bin/psql/stringutils.c
+  lines=107 hit=0 functions=3 hit=0
+Processing file backend/utils/adt/quote.c
+  lines=36 hit=0 functions=5 hit=0
+Processing file backend/snowball/libstemmer/stem_ISO_8859_1_spanish.c
+  lines=400 hit=0 functions=13 hit=0
+Processing file backend/catalog/pg_enum.c
+  lines=211 hit=3 functions=12 hit=1
+Processing file backend/optimizer/path/pathkeys.c
+  lines=474 hit=359 functions=30 hit=26
+Processing file backend/nodes/tidbitmap.c
+  lines=486 hit=101 functions=30 hit=10
+Processing file backend/commands/foreigncmds.c
+  lines=571 hit=0 functions=25 hit=0
+Processing file backend/utils/misc/tzparser.c
+  lines=164 hit=95 functions=5 hit=5
+Processing file include/lib/ilist.h
+  lines=79 hit=43 functions=22 hit=10
+Processing file backend/access/gist/gistxlog.c
+  lines=260 hit=0 functions=17 hit=0
+Processing file backend/regex/regexport.c
+  lines=65 hit=0 functions=11 hit=0
+Processing file backend/storage/file/fd.c
+  lines=853 hit=445 functions=86 hit=61
+Processing file backend/storage/lmgr/condition_variable.c
+  lines=94 hit=60 functions=7 hit=6
+Processing file backend/rewrite/rewriteDefine.c
+  lines=290 hit=133 functions=10 hit=7
+Processing file backend/executor/instrument.c
+  lines=131 hit=31 functions=13 hit=4
+Processing file backend/executor/functions.c
+  lines=594 hit=128 functions=25 hit=8
+Processing file backend/optimizer/plan/createplan.c
+  lines=2210 hit=1168 functions=109 hit=68
+Processing file backend/utils/adt/like_support.c
+  lines=547 hit=188 functions=40 hit=13
+Processing file backend/access/common/relation.c
+  lines=42 hit=36 functions=5 hit=5
+Processing file backend/utils/sort/sortsupport.c
+  lines=44 hit=39 functions=5 hit=5
+Processing file backend/utils/adt/mac8.c
+  lines=257 hit=0 functions=22 hit=0
+Processing file backend/utils/init/postinit.c
+  lines=307 hit=216 functions=16 hit=13
+Processing file include/storage/bufmgr.h
+  lines=9 hit=3 functions=1 hit=1
+Processing file backend/storage/buffer/localbuf.c
+  lines=165 hit=110 functions=10 hit=8
+Processing file backend/storage/lmgr/predicate.c
+  lines=1388 hit=162 functions=72 hit=19
+Processing file backend/access/common/tupdesc.c
+  lines=366 hit=239 functions=16 hit=13
+Processing file backend/executor/nodeCtescan.c
+  lines=82 hit=0 functions=6 hit=0
+Processing file backend/access/transam/subtrans.c
+  lines=88 hit=61 functions=13 hit=11
+Processing file backend/snowball/libstemmer/stem_ISO_8859_1_norwegian.c
+  lines=106 hit=0 functions=7 hit=0
+Processing file backend/utils/adt/timestamp.c
+  lines=2143 hit=36 functions=157 hit=9
+Processing file backend/catalog/pg_constraint.c
+  lines=453 hit=275 functions=15 hit=8
+Processing file backend/utils/mb/wstrncmp.c
+  lines=21 hit=0 functions=3 hit=0
+Processing file backend/utils/adt/genfile.c
+  lines=232 hit=0 functions=21 hit=0
+Processing file backend/snowball/dict_snowball.c
+  lines=68 hit=3 functions=6 hit=3
+Processing file backend/optimizer/util/inherit.c
+  lines=222 hit=152 functions=8 hit=6
+Processing file backend/postmaster/autovacuum.c
+  lines=964 hit=489 functions=34 hit=26
+Processing file common/kwlist_d.h
+  lines=9 hit=9 functions=1 hit=1
+Processing file backend/storage/ipc/ipci.c
+  lines=86 hit=80 functions=2 hit=1
+Processing file backend/commands/alter.c
+  lines=350 hit=29 functions=10 hit=2
+Processing file common/exec.c
+  lines=132 hit=77 functions=7 hit=7
+Processing file backend/utils/adt/format_type.c
+  lines=165 hit=43 functions=8 hit=4
+Processing file backend/libpq/ifaddr.c
+  lines=76 hit=26 functions=6 hit=1
+Processing file include/nodes/pg_list.h
+  lines=45 hit=38 functions=15 hit=13
+Processing file include/port/atomics/generic.h
+  lines=29 hit=25 functions=11 hit=9
+Processing file backend/commands/vacuum.c
+  lines=595 hit=423 functions=17 hit=15
+Processing file backend/utils/mb/wstrcmp.c
+  lines=5 hit=0 functions=1 hit=0
+Processing file backend/snowball/libstemmer/stem_ISO_8859_1_swedish.c
+  lines=105 hit=0 functions=7 hit=0
+Processing file backend/nodes/readfuncs.c
+  lines=1512 hit=659 functions=132 hit=43
+Processing file backend/storage/lmgr/lwlock.c
+  lines=404 hit=229 functions=32 hit=22
+Processing file backend/access/transam/xlogreader.c
+  lines=535 hit=171 functions=19 hit=12
+Processing file backend/access/gin/ginentrypage.c
+  lines=273 hit=0 functions=17 hit=0
+Processing file backend/access/nbtree/nbtcompare.c
+  lines=139 hit=83 functions=21 hit=14
+Processing file backend/storage/ipc/latch.c
+  lines=274 hit=220 functions=19 hit=19
+Processing file pl/plpgsql/src/pl_scanner.c
+  lines=152 hit=85 functions=16 hit=11
+Processing file port/pg_crc32c_sse42.c
+  lines=13 hit=13 functions=1 hit=1
+Processing file backend/snowball/libstemmer/stem_UTF_8_indonesian.c
+  lines=220 hit=0 functions=13 hit=0
+Processing file backend/access/rmgrdesc/tblspcdesc.c
+  lines=20 hit=0 functions=2 hit=0
+Processing file backend/access/gist/gistproc.c
+  lines=533 hit=0 functions=31 hit=0
+Processing file backend/catalog/partition.c
+  lines=102 hit=59 functions=10 hit=8
+Processing file backend/access/table/table.c
+  lines=28 hit=22 functions=4 hit=4
+Processing file backend/access/heap/visibilitymap.c
+  lines=147 hit=103 functions=9 hit=8
+Processing file backend/optimizer/plan/planner.c
+  lines=2142 hit=1205 functions=52 hit=38
+Processing file backend/regex/regcomp.c
+  lines=846 hit=353 functions=32 hit=22
+Processing file backend/executor/nodeGatherMerge.c
+  lines=219 hit=0 functions=14 hit=0
+Processing file backend/access/spgist/spgproc.c
+  lines=27 hit=0 functions=3 hit=0
+Processing file backend/replication/logical/tablesync.c
+  lines=313 hit=0 functions=12 hit=0
+Processing file backend/postmaster/checkpointer.c
+  lines=335 hit=191 functions=15 hit=12
+Processing file backend/utils/adt/tid.c
+  lines=164 hit=7 functions=19 hit=2
+Processing file backend/executor/nodeHash.c
+  lines=1100 hit=310 functions=54 hit=20
+Processing file backend/storage/ipc/procsignal.c
+  lines=132 hit=67 functions=12 hit=7
+Processing file backend/snowball/libstemmer/stem_ISO_8859_1_portuguese.c
+  lines=366 hit=0 functions=13 hit=0
+Processing file bin/psql/crosstabview.c
+  lines=236 hit=0 functions=15 hit=0
+Processing file backend/commands/tablespace.c
+  lines=397 hit=48 functions=17 hit=7
+Processing file common/string.c
+  lines=23 hit=8 functions=4 hit=2
+Processing file timezone/localtime.c
+  lines=807 hit=266 functions=31 hit=17
+Processing file fe_utils/conditional.c
+  lines=62 hit=31 functions=13 hit=7
+Processing file backend/access/spgist/spginsert.c
+  lines=67 hit=0 functions=4 hit=0
+Processing file include/common/kwlookup.h
+  lines=2 hit=2 functions=1 hit=1
+Processing file backend/utils/adt/datetime.c
+  lines=2088 hit=49 functions=50 hit=4
+Processing file backend/access/heap/hio.c
+  lines=163 hit=105 functions=5 hit=4
+Processing file backend/access/rmgrdesc/gistdesc.c
+  lines=65 hit=0 functions=7 hit=0
+Processing file backend/utils/cache/attoptcache.c
+  lines=45 hit=34 functions=3 hit=3
+Processing file common/rmtree.c
+  lines=25 hit=0 functions=1 hit=0
+Processing file backend/snowball/libstemmer/stem_UTF_8_nepali.c
+  lines=106 hit=0 functions=7 hit=0
+Processing file common/wait_error.c
+  lines=29 hit=0 functions=3 hit=0
+Processing file backend/access/hash/hashfunc.c
+  lines=121 hit=26 functions=24 hit=6
+Processing file backend/utils/adt/encode.c
+  lines=217 hit=0 functions=16 hit=0
+Processing file backend/catalog/dependency.c
+  lines=928 hit=573 functions=26 hit=24
+Processing file backend/libpq/auth-scram.c
+  lines=342 hit=0 functions=19 hit=0
+Processing file backend/storage/ipc/sinvaladt.c
+  lines=203 hit=166 functions=11 hit=9
+Processing file backend/executor/nodeNestloop.c
+  lines=95 hit=84 functions=4 hit=3
+Processing file backend/storage/buffer/buf_table.c
+  lines=26 hit=24 functions=6 hit=6
+Processing file backend/storage/buffer/buf_init.c
+  lines=33 hit=33 functions=2 hit=2
+Processing file backend/lib/knapsack.c
+  lines=23 hit=21 functions=1 hit=1
+Processing file backend/utils/cache/catcache.c
+  lines=597 hit=497 functions=46 hit=39
+Processing file backend/utils/adt/version.c
+  lines=2 hit=2 functions=1 hit=1
+Processing file backend/bootstrap/bootparse.c
+  lines=232 hit=130 functions=2 hit=2
+Processing file backend/utils/adt/jsonfuncs.c
+  lines=1969 hit=4 functions=143 hit=1
+Processing file include/tcop/utility.h
+  lines=2 hit=0 functions=1 hit=0
+Processing file backend/bootstrap/bootparse.y
+  lines=161 hit=135 functions=2 hit=2
+Processing file backend/access/heap/rewriteheap.c
+  lines=321 hit=12 functions=12 hit=1
+Processing file backend/storage/ipc/pmsignal.c
+  lines=86 hit=62 functions=13 hit=10
+Processing file backend/access/nbtree/nbtvalidate.c
+  lines=88 hit=0 functions=1 hit=0
+Processing file backend/libpq/be-secure-common.c
+  lines=57 hit=0 functions=2 hit=0
+Processing file backend/executor/spi.c
+  lines=1100 hit=398 functions=81 hit=33
+Processing file backend/access/brin/brin.c
+  lines=502 hit=0 functions=25 hit=0
+Processing file backend/regex/regc_nfa.c
+  lines=1088 hit=549 functions=55 hit=41
+Processing file backend/storage/buffer/freelist.c
+  lines=157 hit=84 functions=13 hit=9
+Processing file common/md5.c
+  lines=168 hit=0 functions=7 hit=0
+Processing file backend/catalog/pg_inherits.c
+  lines=128 hit=92 functions=7 hit=7
+Processing file backend/postmaster/pgstat.c
+  lines=2308 hit=1050 functions=128 hit=76
+Processing file backend/utils/resowner/resowner.c
+  lines=377 hit=269 functions=56 hit=39
+Processing file backend/access/heap/heapam_handler.c
+  lines=770 hit=286 functions=34 hit=23
+Processing file include/utils/partcache.h
+  lines=14 hit=12 functions=7 hit=6
+Processing file backend/executor/execAmi.c
+  lines=283 hit=82 functions=7 hit=5
+Processing file backend/access/common/reloptions.c
+  lines=547 hit=216 functions=41 hit=15
+Processing file backend/parser/scan.l
+  lines=469 hit=204 functions=19 hit=11
+Processing file backend/access/hash/hashinsert.c
+  lines=126 hit=64 functions=4 hit=2
+Processing file include/common/hashfn.h
+  lines=22 hit=15 functions=7 hit=4
+Processing file port/inet_net_ntop.c
+  lines=97 hit=0 functions=4 hit=0
+Processing file backend/utils/mmgr/aset.c
+  lines=265 hit=209 functions=10 hit=9
+Processing file bin/psql/input.c
+  lines=132 hit=17 functions=10 hit=1
+Processing file backend/executor/nodeProjectSet.c
+  lines=85 hit=81 functions=5 hit=5
+Processing file backend/snowball/libstemmer/stem_ISO_8859_1_irish.c
+  lines=191 hit=0 functions=11 hit=0
+Processing file backend/rewrite/rewriteManip.c
+  lines=495 hit=253 functions=31 hit=20
+Processing file backend/storage/file/sharedfileset.c
+  lines=72 hit=0 functions=10 hit=0
+Processing file include/utils/arrayaccess.h
+  lines=34 hit=20 functions=2 hit=2
+Processing file backend/executor/execMain.c
+  lines=886 hit=412 functions=41 hit=28
+Processing file backend/executor/nodeResult.c
+  lines=61 hit=45 functions=6 hit=4
+Processing file backend/utils/misc/superuser.c
+  lines=21 hit=20 functions=3 hit=3
+Processing file backend/utils/adt/misc.c
+  lines=282 hit=4 functions=19 hit=1
+Processing file backend/replication/walreceiverfuncs.c
+  lines=133 hit=34 functions=10 hit=4
+Processing file backend/access/gin/ginget.c
+  lines=604 hit=0 functions=16 hit=0
+Processing file backend/commands/event_trigger.c
+  lines=715 hit=69 functions=43 hit=18
+Processing file backend/commands/lockcmds.c
+  lines=95 hit=0 functions=6 hit=0
+Processing file bin/psql/copy.c
+  lines=271 hit=0 functions=6 hit=0
+Processing file backend/partitioning/partbounds.c
+  lines=1396 hit=453 functions=51 hit=19
+Processing file backend/access/rmgrdesc/hashdesc.c
+  lines=102 hit=0 functions=2 hit=0
+Processing file include/port/atomics.h
+  lines=39 hit=31 functions=17 hit=13
+Processing file backend/storage/ipc/signalfuncs.c
+  lines=48 hit=0 functions=6 hit=0
+Processing file backend/commands/collationcmds.c
+  lines=230 hit=73 functions=8 hit=4
+Processing file backend/catalog/pg_type.c
+  lines=292 hit=176 functions=6 hit=4
+Processing file backend/commands/matview.c
+  lines=265 hit=230 functions=15 hit=14
+Processing file backend/executor/execGrouping.c
+  lines=127 hit=93 functions=12 hit=8
+Processing file backend/access/spgist/spgscan.c
+  lines=413 hit=0 functions=23 hit=0
+Processing file backend/utils/adt/tsquery_op.c
+  lines=160 hit=0 functions=20 hit=0
+Processing file backend/lib/ilist.c
+  lines=9 hit=0 functions=1 hit=0
+Processing file include/access/nbtree.h
+  lines=57 hit=47 functions=14 hit=12
+Processing file backend/snowball/libstemmer/stem_ISO_8859_1_porter.c
+  lines=383 hit=0 functions=14 hit=0
+Processing file common/config_info.c
+  lines=104 hit=0 functions=1 hit=0
+Processing file backend/utils/adt/network_gist.c
+  lines=281 hit=0 functions=10 hit=0
+Processing file backend/storage/page/itemptr.c
+  lines=21 hit=20 functions=2 hit=2
+Processing file backend/catalog/objectaccess.c
+  lines=28 hit=0 functions=6 hit=0
+Processing file backend/utils/adt/rangetypes_gist.c
+  lines=477 hit=0 functions=19 hit=0
+Processing file common/restricted_token.c
+  lines=2 hit=2 functions=1 hit=1
+Processing file backend/executor/nodeSeqscan.c
+  lines=69 hit=44 functions=10 hit=5
+Processing file backend/utils/cache/relcache.c
+  lines=1921 hit=1497 functions=75 hit=68
+Processing file backend/utils/misc/guc-file.l
+  lines=397 hit=166 functions=11 hit=8
+Processing file backend/utils/adt/regproc.c
+  lines=632 hit=95 functions=64 hit=9
+Processing file backend/executor/nodeIncrementalSort.c
+  lines=289 hit=0 functions=12 hit=0
+Processing file backend/utils/adt/dbsize.c
+  lines=381 hit=0 functions=28 hit=0
+Processing file backend/nodes/list.c
+  lines=383 hit=257 functions=61 hit=43
+Processing file backend/optimizer/geqo/geqo_eval.c
+  lines=64 hit=0 functions=4 hit=0
+Processing file interfaces/libpq/fe-protocol2.c
+  lines=609 hit=0 functions=13 hit=0
+Processing file include/lib/simplehash.h
+  lines=245 hit=64 functions=40 hit=9
+Processing file backend/utils/adt/oid.c
+  lines=168 hit=74 functions=26 hit=10
+Processing file backend/access/gist/gistscan.c
+  lines=113 hit=0 functions=4 hit=0
+Processing file common/ip.c
+  lines=70 hit=53 functions=5 hit=5
+Processing file backend/parser/parse_relation.c
+  lines=1139 hit=670 functions=53 hit=42
+Processing file backend/utils/mmgr/dsa.c
+  lines=649 hit=0 functions=35 hit=0
+Processing file backend/parser/parse_clause.c
+  lines=998 hit=467 functions=40 hit=30
+Processing file backend/access/hash/hashsort.c
+  lines=23 hit=0 functions=4 hit=0
+Processing file port/pg_crc32c_sse42_choose.c
+  lines=9 hit=8 functions=2 hit=2
+Processing file backend/utils/adt/jsonpath.c
+  lines=476 hit=0 functions=22 hit=0
+Processing file common/psprintf.c
+  lines=27 hit=20 functions=2 hit=2
+Processing file backend/executor/nodeAppend.c
+  lines=181 hit=83 functions=12 hit=5
+Processing file fe_utils/mbprint.c
+  lines=176 hit=81 functions=8 hit=6
+Processing file backend/access/gin/ginlogic.c
+  lines=61 hit=0 functions=7 hit=0
+Processing file backend/access/transam/parallel.c
+  lines=478 hit=0 functions=19 hit=0
+Processing file backend/storage/page/bufpage.c
+  lines=362 hit=257 functions=21 hit=16
+Processing file backend/access/gist/gistvalidate.c
+  lines=98 hit=0 functions=1 hit=0
+Processing file backend/access/common/session.c
+  lines=53 hit=3 functions=4 hit=1
+Processing file backend/access/brin/brin_minmax.c
+  lines=138 hit=0 functions=5 hit=0
+Processing file pl/plpgsql/src/pl_funcs.c
+  lines=999 hit=34 functions=76 hit=6
+Processing file backend/optimizer/path/equivclass.c
+  lines=928 hit=569 functions=33 hit=24
+Processing file port/pgcheckdir.c
+  lines=28 hit=7 functions=1 hit=1
+Processing file backend/optimizer/geqo/geqo_selection.c
+  lines=17 hit=0 functions=2 hit=0
+Processing file backend/utils/adt/rangetypes.c
+  lines=859 hit=0 functions=75 hit=0
+Processing file backend/tsearch/ts_typanalyze.c
+  lines=131 hit=0 functions=8 hit=0
+Processing file backend/utils/adt/ascii.c
+  lines=56 hit=0 functions=6 hit=0
+Processing file backend/postmaster/interrupt.c
+  lines=23 hit=12 functions=4 hit=2
+Processing file backend/tsearch/dict.c
+  lines=31 hit=0 functions=1 hit=0
+Processing file backend/executor/nodeMergeAppend.c
+  lines=111 hit=0 functions=5 hit=0
+Processing file backend/executor/nodeMergejoin.c
+  lines=451 hit=234 functions=11 hit=7
+Processing file backend/commands/opclasscmds.c
+  lines=628 hit=331 functions=25 hit=17
+Processing file backend/utils/adt/rowtypes.c
+  lines=717 hit=167 functions=20 hit=3
+Processing file backend/commands/conversioncmds.c
+  lines=27 hit=0 functions=1 hit=0
+Processing file backend/executor/execSRF.c
+  lines=284 hit=188 functions=9 hit=8
+Processing file backend/utils/adt/domains.c
+  lines=103 hit=48 functions=7 hit=3
+Processing file backend/catalog/pg_namespace.c
+  lines=33 hit=30 functions=1 hit=1
+Processing file backend/lib/binaryheap.c
+  lines=88 hit=63 functions=15 hit=12
+Processing file backend/replication/repl_scanner.l
+  lines=119 hit=0 functions=9 hit=0
+Processing file backend/catalog/storage.c
+  lines=326 hit=99 functions=19 hit=8
+Processing file backend/utils/adt/varlena.c
+  lines=1944 hit=457 functions=148 hit=40
+Processing file backend/commands/functioncmds.c
+  lines=855 hit=295 functions=22 hit=11
+Processing file backend/access/brin/brin_validate.c
+  lines=94 hit=0 functions=1 hit=0
+Processing file backend/utils/adt/network_spgist.c
+  lines=301 hit=0 functions=7 hit=0
+Processing file backend/executor/nodeRecursiveunion.c
+  lines=100 hit=0 functions=5 hit=0
+Processing file backend/utils/adt/name.c
+  lines=119 hit=37 functions=21 hit=8
+Processing file backend/access/rmgrdesc/relmapdesc.c
+  lines=14 hit=0 functions=2 hit=0
+Processing file backend/tsearch/ts_utils.c
+  lines=45 hit=0 functions=3 hit=0
+Processing file backend/access/heap/vacuumlazy.c
+  lines=1019 hit=473 functions=34 hit=21
+Processing file backend/optimizer/util/predtest.c
+  lines=654 hit=270 functions=26 hit=17
+Processing file backend/access/transam/timeline.c
+  lines=189 hit=21 functions=9 hit=4
+Processing file backend/access/transam/varsup.c
+  lines=139 hit=84 functions=7 hit=6
+Processing file backend/snowball/libstemmer/utilities.c
+  lines=291 hit=0 functions=30 hit=0
+Processing file backend/storage/lmgr/lmgr.c
+  lines=355 hit=87 functions=44 hit=19
+Processing file backend/executor/execReplication.c
+  lines=204 hit=11 functions=9 hit=1
+Processing file backend/snowball/libstemmer/stem_UTF_8_irish.c
+  lines=191 hit=0 functions=11 hit=0
+Processing file port/erand48.c
+  lines=21 hit=10 functions=5 hit=2
+Processing file backend/storage/ipc/shmqueue.c
+  lines=43 hit=27 functions=9 hit=6
+Processing file common/encnames.c
+  lines=55 hit=35 functions=8 hit=5
+Processing file include/tcop/cmdtag.h
+  lines=8 hit=8 functions=2 hit=2
+Processing file backend/access/rmgrdesc/dbasedesc.c
+  lines=22 hit=0 functions=2 hit=0
+Processing file backend/utils/adt/orderedsetaggs.c
+  lines=487 hit=0 functions=23 hit=0
+Processing file backend/optimizer/util/clauses.c
+  lines=1638 hit=871 functions=72 hit=49
+Processing file backend/storage/ipc/dsm.c
+  lines=296 hit=52 functions=24 hit=7
+Processing file backend/utils/adt/numeric.c
+  lines=3177 hit=312 functions=188 hit=21
+Processing file backend/utils/cache/relmapper.c
+  lines=273 hit=127 functions=23 hit=13
+Processing file backend/access/common/detoast.c
+  lines=179 hit=52 functions=9 hit=4
+Processing file pl/plpgsql/src/pl_gram.c
+  lines=476 hit=104 functions=2 hit=2
+Processing file backend/statistics/extended_stats.c
+  lines=426 hit=31 functions=24 hit=3
+Processing file backend/optimizer/util/joininfo.c
+  lines=27 hit=27 functions=3 hit=3
+Processing file backend/optimizer/geqo/geqo_copy.c
+  lines=5 hit=0 functions=1 hit=0
+Processing file backend/optimizer/path/clausesel.c
+  lines=230 hit=167 functions=7 hit=7
+Processing file fe_utils/string_utils.c
+  lines=361 hit=36 functions=19 hit=7
+Processing file backend/commands/aggregatecmds.c
+  lines=177 hit=0 functions=2 hit=0
+Processing file backend/access/spgist/spgdoinsert.c
+  lines=808 hit=0 functions=15 hit=0
+Processing file backend/executor/nodeValuesscan.c
+  lines=83 hit=73 functions=6 hit=5
+Processing file port/pgstrsignal.c
+  lines=5 hit=0 functions=1 hit=0
+Processing file include/common/int128.h
+  lines=13 hit=0 functions=4 hit=0
+Processing file backend/access/gin/ginscan.c
+  lines=201 hit=0 functions=8 hit=0
+Processing file backend/optimizer/prep/prepqual.c
+  lines=218 hit=64 functions=6 hit=5
+Processing file backend/replication/syncrep_gram.c
+  lines=158 hit=0 functions=2 hit=0
+Processing file backend/access/common/toast_internals.c
+  lines=151 hit=94 functions=9 hit=6
+Processing file backend/snowball/libstemmer/stem_ISO_8859_1_danish.c
+  lines=136 hit=0 functions=8 hit=0
+Processing file backend/executor/nodeSetOp.c
+  lines=197 hit=0 functions=12 hit=0
+Processing file backend/utils/sort/tuplestore.c
+  lines=448 hit=154 functions=27 hit=16
+Processing file backend/utils/adt/cryptohashes.c
+  lines=56 hit=0 functions=6 hit=0
+Processing file backend/catalog/pg_range.c
+  lines=49 hit=0 functions=2 hit=0
+Processing file backend/lib/bipartite_match.c
+  lines=71 hit=39 functions=4 hit=3
+Processing file backend/access/spgist/spgquadtreeproc.c
+  lines=205 hit=0 functions=7 hit=0
+Processing file backend/nodes/equalfuncs.c
+  lines=2277 hit=233 functions=227 hit=17
+Processing file backend/replication/logical/relation.c
+  lines=216 hit=0 functions=12 hit=0
+Processing file backend/utils/adt/datum.c
+  lines=138 hit=66 functions=9 hit=5
+Processing file backend/access/nbtree/nbtutils.c
+  lines=745 hit=332 functions=32 hit=18
+Overall coverage rate:
+  lines......: 28.5% (98693 of 346642 lines)
+  functions......: 36.6% (6470 of 17689 functions)
+[0;32m[INFO][0m === 覆盖率摘要 ===
+[0;32m[INFO][0m 行覆盖率: 28.5%
+[0;32m[INFO][0m 函数覆盖率: 36.6%
+[0;32m[INFO][0m 分支覆盖率: 未启用
+[0;32m[INFO][0m === Step 10: Recall/Precision 评测 ===
+[0;32m[INFO][0m 运行 recall 评测: JSON=/workspaces/deep-learning_final/data/test_v3.json, COVERAGE=/workspaces/deep-learning_final/outputs/local_eval/opt_v102/coverage_workspace, OUTPUT=/workspaces/deep-learning_final/outputs/local_eval/opt_v102/eval_result.json
+PrecNF: 0.631300
+efficiency: 0.015840
+result: /workspaces/deep-learning_final/outputs/local_eval/opt_v102/eval_result.json
+[0;32m[INFO][0m Recall 评测完成，结果已保存到: /workspaces/deep-learning_final/outputs/local_eval/opt_v102/eval_result.json
+[0;32m[INFO][0m === 完成 ===
+[0;32m[INFO][0m 报告路径: file:///workspaces/deep-learning_final/outputs/local_eval/opt_v102/coverage_workspace/report/index.html
+[0;32m[INFO][0m Case 级 SQL 执行成功率: 86.5000%  (141/163)
+[0;32m[INFO][0m gcda 已清理，gcno 已保留
